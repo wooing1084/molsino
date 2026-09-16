@@ -10,6 +10,7 @@ export const channels = {
   state: 'game:state',
   window: 'overlay:command',
   resize: 'overlay:resize',
+  recovery: 'game:recovery',
 } as const;
 
 const safeNonNegativeInteger = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -29,6 +30,7 @@ export const userActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('surrender'), handId: handIdSchema }).strict(),
   z.object({ type: z.literal('nextRound') }).strict(),
   z.object({ type: z.literal('resetSession') }).strict(),
+  z.object({ type: z.literal('retrySave') }).strict(),
 ]);
 
 export const userCommandSchema = z.object({
@@ -47,6 +49,8 @@ export const resizeCommandSchema = z.discriminatedUnion('phase', [
 ]);
 
 export type UserAction = z.infer<typeof userActionSchema>;
+export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew']);
+export type RecoveryChoice = z.infer<typeof recoveryChoiceSchema>;
 export type UserCommand = z.infer<typeof userCommandSchema>;
 export type WindowCommand = z.infer<typeof windowCommandSchema>;
 export type ResizeEdge = z.infer<typeof resizeEdgeSchema>;
@@ -88,7 +92,9 @@ export interface ResultEntryView {
 export interface GameViewState {
   revision: number;
   platform: string;
-  phase: 'betting' | 'insuranceDecision' | 'playerTurn' | 'dealerTurn' | 'result';
+  phase: 'betting' | 'insuranceDecision' | 'playerTurn' | 'dealerTurn' | 'result' | 'recovery';
+  recovery?: { issue: 'corrupt' | 'futureSchema'; backupAvailable: boolean };
+  saveError?: boolean;
   balanceCents: number;
   pendingBetCents: number;
   betStepCents: number;
@@ -108,7 +114,7 @@ export interface GameViewState {
   };
 }
 
-export type CommandError = 'BUSY' | 'STALE_STATE' | 'INVALID_ACTION' | 'VALIDATION_ERROR';
+export type CommandError = 'BUSY' | 'STALE_STATE' | 'INVALID_ACTION' | 'VALIDATION_ERROR' | 'SAVE_FAILED' | 'RECOVERY_REQUIRED';
 export type CommandResult =
   | { ok: true; state: GameViewState }
   | { ok: false; error: CommandError; message: string; state: GameViewState };
@@ -119,6 +125,7 @@ export interface ResizeResult { token?: string; bounds: WindowBounds; }
 export interface BlackjackAPI {
   getSnapshot(): Promise<GameViewState>;
   dispatch(command: UserCommand): Promise<CommandResult>;
+  recover(choice: RecoveryChoice): Promise<GameViewState>;
   onState(listener: (state: GameViewState) => void): () => void;
   windowCommand(command: WindowCommand): Promise<void>;
   resize(command: ResizeCommand): Promise<ResizeResult>;

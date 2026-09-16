@@ -378,12 +378,15 @@ Main의 GameStore만 committedState를 소유한다. Node가 단일 스레드여
 
 Session에는 schemaVersion, revision, ruleSetId, balanceCents, pendingBet, betStep, shoe, round, ledger, lastResult, lastAppliedCommand가 포함된다. shoe는 312장 순서와 소비 인덱스, round는 보험 결정·정산 상태·핸드별 베팅·상태·활성 ID를 보존한다.
 
+S08 구현은 최상위 `{ schemaVersion: 1, revision, state, lastAppliedCommand }` wrapper를 사용한다. `state`가 위 게임 필드 전체를 담고 `lastAppliedCommand`는 `{commandId, revision}` 또는 `null`이다. 저장 실패 시 동일한 후보 스냅샷을 보존해 같은 ID 재전송이나 `retrySave`로 재시도하며, 저장 성공 전에는 revision·공개 화면을 변경하지 않는다. 복원 직후 `dealerTurn`이면 저장된 상태에서 내부 행동을 한 단계씩 다시 진행한다.
+
 - 같은 폴더의 임시 파일을 새로 생성해 JSON 기록 → 파일 sync → close → 기존 파일 교체 순으로 처리한다.
 - 이전에 검증된 주 파일은 backup 임시 파일을 통해 교체한다. 주 파일을 먼저 삭제하는 방식은 사용하지 않는다.
 - rename/교체의 세부 동작은 macOS·Windows에서 검증한다. Windows 잠금·EPERM에는 제한된 재시도를 하고 계속 실패하면 게임 입력을 멈춘다.
 - 임시 파일은 주 파일과 같은 볼륨에 둔다. 전원 차단에 대한 완전한 내구성을 rename만으로 보장하지 않는다.
 - primary/backup은 스키마뿐 아니라 카드 ID·슈 인덱스·잔액·원장·phase 일관성을 검사한다. 남은 tmp 파일을 임의의 최신 상태로 승격하지 않는다.
 - 손상 시 백업 복구를 안내하고, 미래 schemaVersion이면 원본을 보존한다. 자동 초기화하지 않는다.
+- S08에서는 손상/미래 버전 primary를 발견하면 recovery 화면에서 입력을 막고 백업 복구 또는 새 게임을 명시적으로 선택하게 한다. 선택한 후 덮어쓰기 전에 원본 primary를 `session.recovery-<UUID>.json`으로 복사한다. 백업이 유효하지 않으면 백업 버튼은 제공하지 않는다.
 - 저장 중 정상 종료 요청은 완료를 기다린다. 실패하면 오류를 표시하고 재시도/종료 선택을 제공한다.
 
 Preferences는 창·불투명도·베팅 표시 설정 등을 별도 원자 저장한다. 게임에 영향을 주는 pendingBet·betStep은 Session이 기준이다. 로컬 파일은 평문이므로 딜러 카드 은닉은 UI 경계이며 부정행위 방지는 범위 밖이다.
@@ -530,4 +533,4 @@ Windows 단계는 엔진 재작성이나 별도 UI 개발이 아니라 공통 �
 
 두 OS에서 공통 코드로 작은 투명 창을 실행하고, 사용자가 크기를 조절하며, 필요한 입력만 받고, 카지노 규칙 전체를 플레이할 수 있어야 한다. 숨김·클릭 통과·Renderer 장애·앱 재실행 후에도 같은 판과 잔액이 복원되어야 한다.
 
-현재 S01 커스텀 리사이즈와 P1 순수 Blackjack core가 완료됐고, S07 GameStore와 S09/S14의 인메모리 플레이 수직 경로가 연결됐다. `SessionRepository`·재기동 복원·전체 게임 E2E, 나머지 창 기능, 포커스·전체 화면·자동 부분 통과 실험, 실제 Windows 테스트와 성능 측정은 후속 단계에서 수행한다.
+현재 S01 커스텀 리사이즈, P1 순수 Blackjack core, S07 플레이 수직 경로, S08 SessionRepository와 대표 복원 E2E가 완료됐다. E2E-17의 나머지 체크포인트·전체 게임 E2E, 나머지 창 기능, 포커스·전체 화면·자동 부분 통과 실험, 실제 Windows 테스트와 성능 측정은 후속 단계에서 수행한다.

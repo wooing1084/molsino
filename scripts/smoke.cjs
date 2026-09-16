@@ -17,6 +17,7 @@ const { join } = require('node:path');
     const betting = await page.evaluate(() => window.blackjack.getSnapshot());
     if (betting.pendingBetCents !== 200 || betting.balanceCents !== 10000) throw new Error('Betting state mismatch');
     await page.getByRole('button', { name: '딜' }).click();
+    await page.locator('.hand.player .card').first().waitFor();
     const state = await page.evaluate(() => window.blackjack.getSnapshot());
     if (state.playerHands.length < 1 || state.phase === 'betting') throw new Error('Deal did not reach BlackjackCore');
     const isolation = await page.evaluate(() => typeof window.require === 'undefined');

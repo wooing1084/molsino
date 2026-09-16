@@ -1,8 +1,9 @@
 import { BlackjackError } from '../../core/errors';
 import { getPhase, legalActions, transition } from '../../core/engine';
-import type { CoreAction, EngineEnvironment, SessionState } from '../../core/game-state';
+import type { EngineEnvironment, SessionState } from '../../core/game-state';
 import { scoreHand } from '../../core/scoring';
 import type { CommandError, CommandResult, GameViewState, UserCommand } from '../../shared/contracts';
+import { SESSION_SCHEMA_VERSION, type SavedSession, type SessionRepository } from '../persistence/session-repository';
 
 const COMMAND_CACHE_LIMIT = 100;
 
@@ -10,19 +11,28 @@ export class GameStore {
   private revision = 0;
   private busy = false;
   private committedState: SessionState;
+  private lastAppliedCommand: SavedSession['lastAppliedCommand'] = null;
+  private pending: { snapshot: SavedSession; commandId: string | null } | undefined;
+  private saveFailed = false;
   private readonly commandCache = new Map<string, CommandResult>();
   private readonly listeners = new Set<(state: GameViewState) => void>();
+  private readonly idleWaiters = new Set<() => void>();
 
   public constructor(
     initialState: SessionState,
     private readonly environment: EngineEnvironment,
     private readonly platform: string,
+    private readonly repository?: SessionRepository,
+    restored?: SavedSession,
   ) {
-    this.committedState = initialState;
+    this.committedState = restored?.state ?? initialState;
+    this.revision = restored?.revision ?? 0;
+    this.lastAppliedCommand = restored?.lastAppliedCommand ?? null;
   }
 
   public getSnapshot(): GameViewState {
-    return toGameViewState(this.committedState, this.revision, this.platform);
+    return { ...toGameViewState(this.committedState, this.revision, this.platform),
+      ...(this.saveFailed ? { saveError: true } : {}) };
   }
 
   public subscribe(listener: (state: GameViewState) => void): () => void {
@@ -30,42 +40,122 @@ export class GameStore {
     return () => this.listeners.delete(listener);
   }
 
-  public dispatch(command: UserCommand): CommandResult {
+  public isBusy(): boolean { return this.busy; }
+  public hasPendingSave(): boolean { return Boolean(this.pending); }
+
+  public whenIdle(): Promise<void> {
+    return this.busy ? new Promise(resolve => this.idleWaiters.add(resolve)) : Promise.resolve();
+  }
+
+  public async dispatch(command: UserCommand): Promise<CommandResult> {
     const cached = this.commandCache.get(command.commandId);
     if (cached) return cached;
+    if (this.lastAppliedCommand?.commandId === command.commandId) {
+      return this.cache(command.commandId, { ok: true, state: this.getSnapshot() });
+    }
     if (this.busy) return this.failure('BUSY', 'Another game command is being committed');
+    if (this.pending) {
+      if (command.commandId !== this.pending.commandId && command.action.type !== 'retrySave') {
+        return this.failure('SAVE_FAILED', '저장에 실패했습니다. 저장 재시도가 필요합니다.');
+      }
+      return this.retryPending();
+    }
+    if (command.action.type === 'retrySave') return this.failure('INVALID_ACTION', 'No failed save to retry');
     if (command.expectedRevision !== this.revision) {
       return this.cache(command.commandId, this.failure('STALE_STATE', 'Game state has changed'));
     }
 
     this.busy = true;
     try {
-      let candidate = this.committedState;
-      let candidateRevision = this.revision;
-      const apply = (action: CoreAction): void => {
-        candidate = transition(candidate, action, this.environment).nextState;
-        candidateRevision += 1;
+      const candidate = transition(this.committedState, command.action, this.environment).nextState;
+      const revision = this.revision + 1;
+      this.pending = {
+        snapshot: {
+          schemaVersion: SESSION_SCHEMA_VERSION, revision, state: candidate,
+          lastAppliedCommand: { commandId: command.commandId, revision },
+        },
+        commandId: command.commandId,
       };
-
-      apply(command.action);
-      while (candidate.round?.phase === 'dealerTurn') apply({ type: 'advanceDealer' });
-
-      this.committedState = candidate;
-      this.revision = candidateRevision;
-      const state = this.getSnapshot();
-      const result: CommandResult = { ok: true, state };
-      this.cache(command.commandId, result);
-      for (const listener of this.listeners) {
-        try { listener(state); }
-        catch (error) { console.error('Game state listener failed', error); }
-      }
-      return result;
+      return await this.commitPending();
     } catch (error) {
+      if (this.pending) this.saveFailed = true;
       const result = this.failure(errorCode(error), error instanceof Error ? error.message : 'Game command failed');
-      return this.cache(command.commandId, result);
+      return this.pending ? this.failure('SAVE_FAILED', '저장에 실패했습니다. 저장 재시도가 필요합니다.')
+        : this.cache(command.commandId, result);
     } finally {
       this.busy = false;
+      this.releaseIdle();
     }
+  }
+
+  private async retryPending(): Promise<CommandResult> {
+    this.busy = true;
+    try { return await this.commitPending(); }
+    catch {
+      this.saveFailed = true;
+      return this.failure('SAVE_FAILED', '저장에 실패했습니다. 저장 재시도가 필요합니다.');
+    }
+    finally { this.busy = false; this.releaseIdle(); }
+  }
+
+  private async commitPending(): Promise<CommandResult> {
+    const pending = this.pending;
+    if (!pending) throw new Error('Missing pending transition');
+    await this.repository?.save(pending.snapshot);
+    this.committedState = pending.snapshot.state;
+    this.revision = pending.snapshot.revision;
+    this.lastAppliedCommand = pending.snapshot.lastAppliedCommand;
+    this.pending = undefined;
+    this.saveFailed = false;
+    const state = this.getSnapshot();
+    const result: CommandResult = { ok: true, state };
+    if (pending.commandId) this.cache(pending.commandId, result);
+    this.publish(state);
+    if (state.phase === 'dealerTurn') setTimeout(() => { void this.advanceDealer(); }, 0);
+    return result;
+  }
+
+  private async advanceDealer(): Promise<void> {
+    if (this.busy) {
+      setTimeout(() => { void this.advanceDealer(); }, 0);
+      return;
+    }
+    if (this.pending || this.committedState.round?.phase !== 'dealerTurn') return;
+    this.busy = true;
+    try {
+      const candidate = transition(this.committedState, { type: 'advanceDealer' }, this.environment).nextState;
+      this.pending = {
+        snapshot: {
+          schemaVersion: SESSION_SCHEMA_VERSION, revision: this.revision + 1,
+          state: candidate, lastAppliedCommand: this.lastAppliedCommand,
+        },
+        commandId: null,
+      };
+      await this.commitPending();
+    } catch (error) {
+      this.saveFailed = true;
+      console.error('Dealer checkpoint failed; waiting for save retry', error);
+      this.publish(this.getSnapshot());
+    } finally {
+      this.busy = false;
+      this.releaseIdle();
+    }
+  }
+
+  public resumeDealer(): void {
+    if (this.committedState.round?.phase === 'dealerTurn') setTimeout(() => { void this.advanceDealer(); }, 0);
+  }
+
+  private publish(state: GameViewState): void {
+    for (const listener of this.listeners) {
+      try { listener(state); }
+      catch (error) { console.error('Game state listener failed', error); }
+    }
+  }
+
+  private releaseIdle(): void {
+    for (const resolve of this.idleWaiters) resolve();
+    this.idleWaiters.clear();
   }
 
   private failure(error: CommandError, message: string): CommandResult {

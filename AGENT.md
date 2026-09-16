@@ -14,7 +14,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 ---
 
-## 현재 상태 — P0 창 기반 부분 완료, P1 완료, 인메모리 플레이 MVP 연결
+## 현재 상태 — P0 창 기반 부분 완료, P1 완료, S08 저장·복원 연결
 
 ### 완성된 것
 
@@ -61,12 +61,13 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 - `tests/main/resize-controller.test.ts`: resize geometry·token·timeout 하위 테스트
 - `tests/e2e/overlay-resize.spec.ts`: S01 전체 배관 E2E 4건
 
-**GameStore·IPC·플레이 UI (인메모리 MVP)**
-- Main 단일 작성자 `GameStore`: `commandId` 멱등 캐시, `expectedRevision`, busy 방어, 내부 딜러 진행
+**GameStore·IPC·플레이 UI·세션 저장**
+- Main 단일 작성자 `GameStore`: `commandId` 멱등 캐시/재기동 재전송, `expectedRevision`, busy 방어, 딜러 한 단계씩 저장
 - 공개 `GameViewState`: 슈와 딜러 홀 카드를 Renderer에서 차단
 - `getSnapshot` / `dispatch` / `onState` IPC와 구독 cleanup 구현
 - 베팅, 딜, 보험, 이븐 머니, 히트, 스탠드, 더블, 스플릿, 서렌더, 다음 판, 새 게임 UI 연결
 - 결정론적 E2E 슈 fixture 주입과 자연 블랙잭 대표 여정 검증
+- `SessionRepository`: versioned `session.json`, 원자 교체·검증된 primary backup, 손상/미래 schema 복구 선택, 실패 후보 재시도, 재기동 복원
 
 ---
 
@@ -79,18 +80,18 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 | 접힘(collapsed) 모드 140×30 DIP | §4.7 | `setSize`와 별도 경로 필요 |
 | 금액 직접 입력 UtilityWindow (`focusable:true`) | §4.4 | 별도 창, 포커스 복원 주의 |
 | 다중 모니터 위치 복원 (`displayId`, `workArea`) | §4.7 | `display-metrics-changed` 이벤트 연동 |
-| `SessionRepository` — 원자 저장, backup, 복구 | §7.2 | `session.json` / `preferences.json` |
+| Preferences 저장 | §7.2 | `preferences.json`은 S11 범위 |
 | Renderer 장애 복구 (`render-process-gone` → 재동기화) | §7.3 | 현재 `overlay.hide()`만 있음 |
 | 자동 부분 클릭 통과 실험 (`forward:true`) | §4.5 (O-10) | 별도 실험 항목 |
-| 전체 게임·저장 E2E | §11.2 | 대표 자연 블랙잭만 완료, E2E-01~21 확장 필요 |
+| 전체 게임·저장 E2E | §11.2 | S08 복원 6건 완료, E2E-01~21 전체 확장 필요 |
 
 ---
 
 ## 다음 작업 — 설계서 권장 순서
 
-### 다음 세션 (P2 저장 통합)
+### 다음 세션 (P2 IPC 회귀 마무리)
 
-로드맵 S08(SessionRepository와 복구)을 진행한다. 현재 인메모리 `GameStore`의 commit 경계에 원자 저장을 연결하고, 손상·미래 schema·backup 복구와 재기동 checkpoint를 먼저 검증한다.
+로드맵 S09(IPC·Preload·상태 구독)의 남은 회귀를 진행한다. snapshot/push 역순, reload·구독 정리, 신뢰되지 않은 frame/URL·payload와 비공개 상태 경계를 검증한다. S08 결과는 [`docs/session-reports/S08-session-repository.md`](docs/session-reports/S08-session-repository.md)에 기록했다.
 
 ### 구현 순서
 
@@ -106,14 +107,14 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 src/
   main/
     main.ts                  ← 창·트레이·IPC·프로토콜 (완료)
-    game/game-store.ts       ← Main 단일 작성자·명령 직렬화·공개 ViewState (완료)
+    game/game-store.ts       ← Main 단일 작성자·저장 후 commit·공개 ViewState (완료)
     game/shoe-source.ts      ← production RNG·결정론적 E2E 슈 fixture (완료)
     windows/resize-controller.ts ← 커스텀 리사이즈 상태·bounds 계산 (완료)
     ipc/trust.ts             ← URL 신뢰 검증 (완료)
     platform/adapter.ts      ← macOS/Windows 창 정책 분기 (완료)
-    persistence/README.md    ← SessionRepository 자리 표시자만 존재
+    persistence/session-repository.ts ← 세션 원자 저장·backup·복구 (완료)
   preload/preload.ts         ← 게임·창 contextBridge API (완료)
-  renderer/main.tsx          ← 실제 GameViewState 기반 플레이 UI (인메모리 완료)
+  renderer/main.tsx          ← 실제 GameViewState 플레이·복구 UI (완료)
   core/
     betting.ts               ← 기본 베팅 검증
     models.ts                ← Card/Rank/Suit/HandScore
@@ -129,8 +130,10 @@ src/
 tests/
   core/*.test.ts             ← P1 코어 40건 완료
   main/game-store.test.ts    ← 멱등·revision·공개 상태·딜러 진행
+  main/session-repository.test.ts ← 저장 실패·EPERM·손상·backup 복구
   e2e/overlay-resize.spec.ts ← S01 E2E 4건 완료
   e2e/playable-mvp.spec.ts   ← 베팅→딜→자연 블랙잭→다음 판 E2E
+  e2e/persistence.spec.ts    ← S08 복원·손상·미래 버전·컷 경계 E2E 6건
   main/resize-controller.test.ts ← 리사이즈 하위 테스트
   main/trust.test.ts         ← 완료
 
@@ -141,6 +144,7 @@ docs/
   session-reports/S01-custom-resize.md ← S01 변경·검증·이슈
   session-reports/P1-blackjack-core.md ← S02~S06 변경·검증·이슈
   session-reports/S07-playable-mvp.md ← GameStore·IPC·UI 수직 통합
+  session-reports/S08-session-repository.md ← 세션 저장·복구·검증 기록
   building-distribution.md ← macOS·Windows 빌드·배포 가이드
 ```
 
@@ -159,8 +163,9 @@ docs/
 | S01 프로덕션 패키지 + 리사이즈 E2E | ✅ 4/4 통과 (`npm run test:e2e`) | O-05 자동화 범위 |
 | P1 순수 Blackjack core | ✅ `npm run check` 9파일 78/78 + macOS arm64 `npm run package` 통과 | S02~S06 묶음 예외 검증 |
 | S07 인메모리 플레이 MVP | ✅ `npm run check` 10파일 87/87, `npm run test:e2e` 5/5, `npm run smoke` 통과 | S07 + S09/S14 일부 |
+| S08 세션 저장·재기동 복원 | ✅ `npm run check` 11파일 92/92, macOS arm64 프로덕션 `npm run test:e2e` 11/11, `npm run smoke` | S08, E2E-17/19/20 일부 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
-| 저장·재기동 복원 | ⬜ S08부터 구현 | E2E-17~20 |
+| 10개 체크포인트·Preferences 복원 | ⬜ S15/S11에서 완성 | E2E-17~18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |
 | Windows 빌드 + 창 동작 | ⬜ 미검증 (CI 대상이나 실 장비 없음) | — |
 | 자동 부분 클릭 통과 | ⬜ 미검증 (실험 항목) | O-10 |

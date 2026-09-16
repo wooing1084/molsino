@@ -1,7 +1,7 @@
 {
   "name": "molsino",
   "productName": "molsino",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A small transparent desktop game overlay for macOS and Windows.",
   "private": true,
   "main": ".vite/build/main.js",

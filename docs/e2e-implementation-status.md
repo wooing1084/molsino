@@ -1,11 +1,11 @@
 # E2E 테스트 스위트 구현 현황
 
-> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-16(S07 인메모리 플레이 MVP 완료).  
+> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-16(S08 저장·복원 대표 경로 완료).
 > 게임 E2E-01~21은 [`e2e-test-plan.md`](./e2e-test-plan.md), P0 세션 순서는 [`work-session-roadmap.md`](./work-session-roadmap.md)를 기준으로 한다.
 
 ## 1. 목표와 접근 원칙
 
-`docs/e2e-test-plan.md`에 설계된 E2E 시나리오 21개(E2E-01~21)를 실제 Playwright 테스트 코드로 확장하는 작업이다. 순수 `BlackjackCore`, 인메모리 `GameStore`, 게임 IPC·UI가 연결되어 실제 앱에서 베팅·딜·기본 행동을 플레이할 수 있다. `SessionRepository`와 재기동 복원은 아직 미구현이다.
+`docs/e2e-test-plan.md`에 설계된 E2E 시나리오 21개(E2E-01~21)를 실제 Playwright 테스트 코드로 확장하는 작업이다. 순수 `BlackjackCore`, 저장 연결 `GameStore`, 게임 IPC·UI가 연결되어 실제 앱에서 플레이하고 재기동 복원할 수 있다. 전체 체크포인트와 행동별 E2E는 후속 세션 범위다.
 
 다음 원칙으로 확장한다:
 
@@ -122,7 +122,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 최초 14개 카운트는 오류였고 실제로는 15개).
 
 카드 순서 = 제품 설계서 §4 진행 순서(플레이어→딜러 공개→플레이어→딜러 비공개, 이후 히트 순서).
-`low-balance`의 `balanceCents`와 `shoe-near-cut`의 `remainingBeforeDeal`은 향후 세션 fixture 메타데이터다. 현재 Main은 `cards`만 소비하므로 두 메타데이터를 사용하는 테스트는 S08/S15에서 연결한다.
+`low-balance`의 `balanceCents`와 `shoe-near-cut`의 `remainingBeforeDeal`은 현재 Main이 직접 소비하지 않는다. S08 컷 경계 E2E는 저장 snapshot의 `nextIndex`와 카드 순서를 테스트 프로세스에서 수정해 80장 남은 상황을 만든다. 메타데이터 직접 주입은 후속 범위다.
 
 ### 2.8 S01 오버레이 리사이즈 E2E — 완료
 
@@ -141,9 +141,8 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 ## 3. 아직 안 된 작업 (재개 시 순서대로)
 
-1. **S08 저장 통합** — SessionRepository 원자 저장·backup·손상/미래 schema 복구와 GameStore commit checkpoint를 구현한다.
-2. **S09 회귀 마무리** — snapshot/push 역순, 구독 해제, reload 후 최신 revision 적용을 검증한다.
-3. **게임용 spec 확장** — S14/S15에서 실제 배관과 UI 계약에 맞춰 작성한다.
+1. **S09 회귀 마무리** — snapshot/push 역순, 구독 해제, reload 후 최신 revision 적용을 검증한다.
+2. **게임용 spec 확장** — S14/S15에서 실제 배관과 UI 계약에 맞춰 작성한다. S08 `persistence.spec.ts` 6건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18은 미완료다.
    계약(`window-api.d.ts`, `support/*.ts`)과 15개 픽스처, 대표 플레이 spec은 준비돼 있다.
    플랜대로 그룹당 1개씩 병렬 서브에이전트에 위임 가능:
    - `tests/e2e/betting.spec.ts` — E2E-01(초기 기동 스냅샷), E2E-02(베팅 조정 경계)
@@ -167,7 +166,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - `tests/e2e/window-api.d.ts`
 - `tests/e2e/support/app.ts`, `support/game.ts`, `support/format.ts`, `support/fixtures.ts`
 - `tests/e2e/support/resize.ts`, `tests/e2e/overlay-resize.spec.ts`
-- `tests/e2e/playable-mvp.spec.ts`
+- `tests/e2e/playable-mvp.spec.ts`, `tests/e2e/persistence.spec.ts`
 - `fixtures/blackjack/*.json` × 15
 - `docs/e2e-implementation-status.md`(이 문서)
 - `src/main/game/game-store.ts`, `src/main/game/shoe-source.ts`
@@ -186,7 +185,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 ## 5. 알려진 이슈
 
 - 전체 E2E-01~21 전용 spec은 아직 미작성이다. 현재 green인 것은 S01 리사이즈 4건과 대표 플레이 1건이다.
-- 앱 재실행 시 세션이 초기화된다. 저장·복원 시나리오는 S08/S15 전까지 통과 조건이 아니다.
+- 재실행 복원 대표 경로는 통과했지만 10개 체크포인트 전체·Preferences 복원은 아직 통과 조건을 충족하지 않는다.
 - E2E는 실제 데스크톱 투명도 합성, 외부 앱 포커스, Windows 실장비 동작을 판정하지 않는다.
 - `npm install`이 high severity 취약점 17개를 보고했다. 자동 수정은 수행하지 않았다.
 - 이 저장소는 git 저장소가 아님(`Is a git repository: false`) — 커밋/버전관리 불가, 파일 변경 이력은 문서로 추적한다.

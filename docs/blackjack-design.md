@@ -257,4 +257,4 @@ macOS에서 먼저 프로토타입을 검증하되 Windows 빌드·테스트도 
 
 ## 8. 다음 작업
 
-순수 Blackjack core와 인메모리 `GameStore`, IPC 상태 구독, React 게임 UI, 대표 사용자 여정 E2E까지 연결됐다. 다음은 `SessionRepository`를 붙여 진행 중 판·잔액·슈를 재기동 후 복원하고, 나머지 게임 여정 E2E를 확장한다. 창의 나머지 기능과 Windows 실장비 검증은 [`work-session-roadmap.md`](work-session-roadmap.md)의 S10~S18 순서를 따른다.
+순수 Blackjack core, 저장 연결 `GameStore`, IPC 상태 구독, React 게임 UI와 대표 복원 E2E까지 연결됐다. 다음은 S09 IPC 회귀를 마무리하고 나머지 게임 여정·저장 체크포인트 E2E를 확장한다. 창의 나머지 기능과 Windows 실장비 검증은 [`work-session-roadmap.md`](work-session-roadmap.md)의 S10~S18 순서를 따른다.

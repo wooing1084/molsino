@@ -229,11 +229,20 @@ function App() {
         expectedRevision: state.revision,
         action,
       });
-      setState(result.state);
+      setState(current => !current || result.state.revision >= current.revision ? result.state : current);
       setError(result.ok ? '' : result.message);
     } catch {
       setError('게임 명령을 처리할 수 없습니다.');
     }
+    finally { setBusy(false); }
+  }
+
+  async function recover(choice: 'restoreBackup' | 'startNew'): Promise<void> {
+    setBusy(true);
+    try {
+      setState(await window.blackjack.recover(choice));
+      setError('');
+    } catch { setError('저장 복구에 실패했습니다. 다시 시도해 주세요.'); }
     finally { setBusy(false); }
   }
 
@@ -246,7 +255,11 @@ function App() {
 
   const activeHand = state?.playerHands.find(hand => hand.active);
   const can = (action: GameViewState['legalActions'][number]) => state?.legalActions.includes(action) ?? false;
-  const controls = !state ? null : state.phase === 'betting' ? state.balanceCents < 100
+  const controls = !state ? null : state.phase === 'recovery' ? <>
+    {state.recovery?.backupAvailable && <button className="wide" disabled={busy} onClick={() => void recover('restoreBackup')}>백업 복구</button>}
+    <button className="wide" disabled={busy} onClick={() => void recover('startNew')}>새 게임 시작</button>
+  </> : state.saveError || error.includes('저장에 실패') ? <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>저장 재시도</button>
+    : state.phase === 'betting' ? state.balanceCents < 100
     ? <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'resetSession' })}>새 게임</button>
     : <>
       <span>BET</span>
@@ -276,6 +289,10 @@ function App() {
       : <span>딜러 진행 중…</span>;
 
   const status = !state ? '앱 연결 중…'
+    : state.saveError ? '저장에 실패했습니다 · 재시도하거나 종료하세요'
+    : state.phase === 'recovery' ? state.recovery?.issue === 'futureSchema'
+      ? '지원하지 않는 저장 버전 · 원본을 보존했습니다'
+      : '저장 파일이 손상되었습니다 · 복구 방법을 선택하세요'
     : state.phase === 'result' && state.lastResult ? `라운드 ${signedUsd(state.lastResult.netCents)}`
     : state.phase === 'insuranceDecision' ? '보험 또는 이븐 머니를 선택하세요'
     : state.phase === 'playerTurn' ? '행동을 선택하세요'

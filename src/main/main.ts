@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createSession } from '../core/engine';
-import { channels, resizeCommandSchema, userCommandSchema, windowCommandSchema } from '../shared/contracts';
+import { channels, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState } from '../shared/contracts';
 import { GameStore } from './game/game-store';
 import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument } from './ipc/trust';
+import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
 import { configurePlatformWindow } from './platform/adapter';
 import { ResizeController } from './windows/resize-controller';
 
@@ -19,6 +20,7 @@ let tray: Tray | undefined;
 let resizeController: ResizeController | undefined;
 let quitting = false;
 let clickThrough = false;
+let gameStore: GameStore | undefined;
 const devURL = MAIN_WINDOW_VITE_DEV_SERVER_URL;
 const documentURL = devURL || 'app://molsino/index.html';
 
@@ -79,11 +81,35 @@ function setupTray(): void {
 
 async function start(): Promise<void> {
   const createGameShoe = createShoeFactory(process.env.BLACKJACK_TEST_SHOE_FIXTURE);
-  const gameStore = new GameStore(
-    createSession(createGameShoe()),
-    { createShoe: createGameShoe, nextId: () => randomUUID() },
-    process.platform,
-  );
+  const repository = new SessionRepository(app.getPath('userData'));
+  let loaded = await repository.load();
+  let unsubscribeGameState: (() => void) | undefined;
+  const initializeGame = (snapshot: SavedSession): void => {
+    unsubscribeGameState?.();
+    gameStore = new GameStore(
+      snapshot.state,
+      { createShoe: createGameShoe, nextId: () => randomUUID() },
+      process.platform, repository, snapshot,
+    );
+    unsubscribeGameState = gameStore.subscribe(state => {
+      if (overlay && !overlay.isDestroyed()) overlay.webContents.send(channels.state, state);
+    });
+    gameStore.resumeDealer();
+  };
+  if (loaded.kind === 'missing') {
+    const state = createSession(createGameShoe());
+    const snapshot: SavedSession = { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0, state, lastAppliedCommand: null };
+    await repository.save(snapshot);
+    loaded = { kind: 'ready', snapshot };
+  }
+  if (loaded.kind === 'ready') initializeGame(loaded.snapshot);
+  const recoveryState = (): GameViewState => ({
+    revision: 0, platform: process.platform, phase: 'recovery', balanceCents: 0,
+    pendingBetCents: 0, betStepCents: 100, playerHands: [], activeHandIndex: null,
+    dealerHand: { cards: [], hiddenCardCount: 0 }, legalActions: [],
+    recovery: { issue: loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
+      backupAvailable: loaded.kind === 'recovery' && Boolean(loaded.backup) },
+  });
   const rendererRoot = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
   // Only the two generated asset locations are served. No arbitrary file paths.
   protocol.handle('app', request => {
@@ -131,13 +157,34 @@ async function start(): Promise<void> {
     if (!overlay || event.sender !== overlay.webContents || event.senderFrame !== overlay.webContents.mainFrame ||
       !isTrustedDocument(event.senderFrame.url, documentURL)) throw new Error('Untrusted IPC sender');
   };
-  const unsubscribeGameState = gameStore.subscribe(state => {
-    if (overlay && !overlay.isDestroyed()) overlay.webContents.send(channels.state, state);
-  });
-  ipcMain.handle(channels.snapshot, event => { requireTrusted(event); return gameStore.getSnapshot(); });
+  ipcMain.handle(channels.snapshot, event => { requireTrusted(event); return gameStore?.getSnapshot() ?? recoveryState(); });
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
-    return gameStore.dispatch(userCommandSchema.parse(value));
+    const command = userCommandSchema.parse(value);
+    return gameStore?.dispatch(command) ?? {
+      ok: false, error: 'RECOVERY_REQUIRED', message: '저장 복구 선택이 필요합니다.', state: recoveryState(),
+    };
+  });
+  let recovering = false;
+  ipcMain.handle(channels.recovery, async (event, value: unknown) => {
+    requireTrusted(event);
+    const choice = recoveryChoiceSchema.parse(value);
+    if (loaded.kind !== 'recovery' || gameStore || recovering) throw new Error('Recovery is unavailable');
+    if (choice === 'restoreBackup' && !loaded.backup) throw new Error('No valid backup exists');
+    recovering = true;
+    try {
+      await repository.archivePrimary();
+      const snapshot: SavedSession = choice === 'restoreBackup'
+        ? (loaded.backup as SavedSession)
+        : { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0,
+          state: createSession(createGameShoe()), lastAppliedCommand: null };
+      await repository.save(snapshot);
+      loaded = { kind: 'ready', snapshot };
+      initializeGame(snapshot);
+      const state = gameStore!.getSnapshot();
+      overlay?.webContents.send(channels.state, state);
+      return state;
+    } finally { recovering = false; }
   });
   ipcMain.handle(channels.window, (event, value: unknown) => {
     requireTrusted(event);
@@ -167,7 +214,7 @@ async function start(): Promise<void> {
   overlay.webContents.on('will-navigate', (event, url) => { if (!isTrustedDocument(url, documentURL)) event.preventDefault(); });
   overlay.on('hide', () => resizeController?.invalidate());
   overlay.on('close', event => { resizeController?.invalidate(); if (!quitting) { event.preventDefault(); hideOverlay(); } });
-  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState(); });
+  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState?.(); });
   overlay.webContents.on('did-start-navigation', () => resizeController?.invalidate());
   overlay.webContents.on('render-process-gone', () => { resizeController?.invalidate(); hideOverlay(); console.error('Renderer exited; restart the app from the tray.'); });
   overlay.once('ready-to-show', reveal);
@@ -177,7 +224,17 @@ if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', reveal);
   app.on('activate', reveal);
-  app.on('before-quit', () => { quitting = true; resizeController?.invalidate(); tray?.destroy(); });
+  app.on('before-quit', event => {
+    if (gameStore?.isBusy()) {
+      event.preventDefault();
+      void gameStore.whenIdle().then(() => {
+        if (gameStore?.hasPendingSave()) { reveal(); return; }
+        app.quit();
+      });
+      return;
+    }
+    quitting = true; resizeController?.invalidate(); tray?.destroy();
+  });
   app.on('window-all-closed', () => { /* tray owns application lifetime */ });
   app.whenReady().then(start).catch(error => { console.error(error); app.quit(); });
 }
