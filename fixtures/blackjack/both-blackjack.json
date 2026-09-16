@@ -1,0 +1,9 @@
+{
+  "description": "양쪽 자연 블랙잭 — 무승부. 원금 반환, 딜러 플레이 없음.",
+  "cards": [
+    { "cardId": "AS-1", "rank": "A", "suit": "S" },
+    { "cardId": "AC-1", "rank": "A", "suit": "C" },
+    { "cardId": "KD-1", "rank": "K", "suit": "D" },
+    { "cardId": "KH-1", "rank": "K", "suit": "H" }
+  ]
+}

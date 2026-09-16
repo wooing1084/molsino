@@ -1,0 +1,9 @@
+{
+  "description": "표준 라운드 — 플레이어 스탠드(16), 딜러 스탠드(19). 플레이어 패배.",
+  "cards": [
+    { "cardId": "9S-1", "rank": "9", "suit": "S" },
+    { "cardId": "10C-1", "rank": "10", "suit": "C" },
+    { "cardId": "7D-1", "rank": "7", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" }
+  ]
+}

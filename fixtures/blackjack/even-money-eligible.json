@@ -1,0 +1,9 @@
+{
+  "description": "플레이어 자연 블랙잭 + 딜러 A 공개 → 이븐 머니 제시. 수락 시 1:1 고정 지급, 거절 시 딜러 논블랙잭이므로 표준 3:2 지급.",
+  "cards": [
+    { "cardId": "AS-1", "rank": "A", "suit": "S" },
+    { "cardId": "AC-1", "rank": "A", "suit": "C" },
+    { "cardId": "KD-1", "rank": "K", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" }
+  ]
+}

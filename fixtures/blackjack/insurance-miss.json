@@ -1,0 +1,9 @@
+{
+  "description": "딜러 A 공개, 보험 구매 → 딜러 논블랙잭(소프트 17, 스탠드) → 보험 손실. 본게임은 별도로 진행되어 패배.",
+  "cards": [
+    { "cardId": "9S-1", "rank": "9", "suit": "S" },
+    { "cardId": "AC-1", "rank": "A", "suit": "C" },
+    { "cardId": "7D-1", "rank": "7", "suit": "D" },
+    { "cardId": "6H-1", "rank": "6", "suit": "H" }
+  ]
+}

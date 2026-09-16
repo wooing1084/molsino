@@ -1,0 +1,12 @@
+{
+  "description": "A 페어 스플릿 — 재스플릿 금지, 각 핸드 정확히 한 장만 받고 즉시 종료(히트·더블 불가) 확인용.",
+  "cards": [
+    { "cardId": "AS-1", "rank": "A", "suit": "S" },
+    { "cardId": "7C-1", "rank": "7", "suit": "C" },
+    { "cardId": "AD-1", "rank": "A", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" },
+    { "cardId": "9S-1", "rank": "9", "suit": "S" },
+    { "cardId": "6D-1", "rank": "6", "suit": "D" },
+    { "cardId": "5C-1", "rank": "5", "suit": "C" }
+  ]
+}

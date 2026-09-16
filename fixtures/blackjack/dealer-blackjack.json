@@ -1,0 +1,9 @@
+{
+  "description": "딜러 블랙잭, 플레이어 일반 패. 딜러 A 공개 → 피크 → 블랙잭 확인 즉시 패배 정산, 플레이어 액션 없음.",
+  "cards": [
+    { "cardId": "9S-1", "rank": "9", "suit": "S" },
+    { "cardId": "AC-1", "rank": "A", "suit": "C" },
+    { "cardId": "7D-1", "rank": "7", "suit": "D" },
+    { "cardId": "KH-1", "rank": "K", "suit": "H" }
+  ]
+}

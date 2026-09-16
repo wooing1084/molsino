@@ -1,0 +1,10 @@
+{
+  "description": "슈 소진 75% 근접(78장 미만) 상태에서 새 판이 시작될 때 재셔플되는지 확인. remainingBeforeDeal은 이 판 시작 시점의 슈 잔여 카드 수, cards는 이 판에서 실제로 뽑히는 카드 순서다. 이 판은 끝까지 현재 슈로 진행하고, 다음 판 시작 전에만 재셔플되어야 한다.",
+  "remainingBeforeDeal": 76,
+  "cards": [
+    { "cardId": "7S-1", "rank": "7", "suit": "S" },
+    { "cardId": "10C-1", "rank": "10", "suit": "C" },
+    { "cardId": "6D-1", "rank": "6", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" }
+  ]
+}

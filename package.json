@@ -1,0 +1,54 @@
+{
+  "name": "overlay-blackjack",
+  "productName": "Overlay Blackjack",
+  "version": "0.1.0",
+  "description": "A small transparent desktop blackjack overlay for macOS and Windows.",
+  "private": true,
+  "main": ".vite/build/main.js",
+  "author": "Overlay Blackjack",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "scripts": {
+    "start": "electron-forge start",
+    "typecheck": "tsc --noEmit",
+    "typecheck:e2e": "tsc -p tests/e2e/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run typecheck:e2e && npm test",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "make:mac": "electron-forge make --platform=darwin --arch=universal --targets=@electron-forge/maker-zip",
+    "make:mac:arm64": "electron-forge make --platform=darwin --arch=arm64 --targets=@electron-forge/maker-zip",
+    "make:windows": "electron-forge make --platform=win32 --arch=x64",
+    "make:windows:portable": "electron-forge make --platform=win32 --arch=x64 --targets=@electron-forge/maker-zip",
+    "smoke": "node scripts/smoke.cjs",
+    "pretest:e2e": "electron-forge package",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2",
+    "@electron-forge/plugin-vite": "7.11.2",
+    "@playwright/test": "1.59.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "electron": "44.3.0",
+    "playwright": "1.59.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  },
+  "overrides": {
+    "tar": "7.5.22",
+    "tmp": "0.2.7"
+  }
+}

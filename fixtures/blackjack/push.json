@@ -1,0 +1,9 @@
+{
+  "description": "표준 라운드 — 플레이어와 딜러 모두 19로 스탠드. 무승부, 원금 반환.",
+  "cards": [
+    { "cardId": "10S-1", "rank": "10", "suit": "S" },
+    { "cardId": "10C-1", "rank": "10", "suit": "C" },
+    { "cardId": "9D-1", "rank": "9", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" }
+  ]
+}

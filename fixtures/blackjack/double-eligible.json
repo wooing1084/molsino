@@ -1,0 +1,11 @@
+{
+  "description": "더블다운 — 초기 두 장 11(5+6). 더블 후 카드 1장만 받고 종료. 딜러는 15에서 히트해 20으로 스탠드.",
+  "cards": [
+    { "cardId": "5S-1", "rank": "5", "suit": "S" },
+    { "cardId": "6C-1", "rank": "6", "suit": "C" },
+    { "cardId": "6D-1", "rank": "6", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" },
+    { "cardId": "9S-2", "rank": "9", "suit": "S" },
+    { "cardId": "5D-1", "rank": "5", "suit": "D" }
+  ]
+}

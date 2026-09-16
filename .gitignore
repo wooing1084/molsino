@@ -1,0 +1,27 @@
+node_modules/
+.vite/
+out/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.cache/
+*.tsbuildinfo
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Local editor and coding-agent state
+.claude/
+.codex/
+.agents/
+.idea/
+.vscode/
+
+# Local signing material must never be committed
+*.p12
+*.pfx
+*.key
+*.pem

@@ -1,0 +1,10 @@
+{
+  "description": "표준 라운드 — 플레이어 스탠드(19), 딜러는 16에서 히트해 버스트. 플레이어 승리.",
+  "cards": [
+    { "cardId": "10S-1", "rank": "10", "suit": "S" },
+    { "cardId": "10C-1", "rank": "10", "suit": "C" },
+    { "cardId": "9D-1", "rank": "9", "suit": "D" },
+    { "cardId": "6H-1", "rank": "6", "suit": "H" },
+    { "cardId": "10D-2", "rank": "10", "suit": "D" }
+  ]
+}

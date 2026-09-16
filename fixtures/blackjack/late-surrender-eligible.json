@@ -1,0 +1,9 @@
+{
+  "description": "레이트 서렌더 — 딜러 업카드가 A/10점이 아니라 피크 없이 바로 서렌더 가능. 초기 두 장(16)에서 서렌더, 원금 절반 반환.",
+  "cards": [
+    { "cardId": "10S-1", "rank": "10", "suit": "S" },
+    { "cardId": "9C-1", "rank": "9", "suit": "C" },
+    { "cardId": "6D-1", "rank": "6", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" }
+  ]
+}

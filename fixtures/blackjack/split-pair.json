@@ -1,0 +1,13 @@
+{
+  "description": "동일 점수(8/8) 페어 스플릿, DAS(스플릿 후 더블) 포함. 스플릿 직후 왼쪽 핸드부터 한 장씩 배분: 핸드1은 11에서 더블, 핸드2는 13에서 스탠드. 딜러는 15에서 히트해 19로 스탠드.",
+  "cards": [
+    { "cardId": "8S-1", "rank": "8", "suit": "S" },
+    { "cardId": "6C-1", "rank": "6", "suit": "C" },
+    { "cardId": "8D-1", "rank": "8", "suit": "D" },
+    { "cardId": "9H-1", "rank": "9", "suit": "H" },
+    { "cardId": "3S-1", "rank": "3", "suit": "S" },
+    { "cardId": "5D-1", "rank": "5", "suit": "D" },
+    { "cardId": "10C-2", "rank": "10", "suit": "C" },
+    { "cardId": "4D-1", "rank": "4", "suit": "D" }
+  ]
+}

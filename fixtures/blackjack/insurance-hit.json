@@ -1,0 +1,9 @@
+{
+  "description": "딜러 A 공개, 보험 구매 → 딜러 블랙잭 확인 → 보험 2:1 지급. 본 베팅은 별도로 패배 정산.",
+  "cards": [
+    { "cardId": "9S-1", "rank": "9", "suit": "S" },
+    { "cardId": "AC-1", "rank": "A", "suit": "C" },
+    { "cardId": "7D-1", "rank": "7", "suit": "D" },
+    { "cardId": "KH-1", "rank": "K", "suit": "H" }
+  ]
+}

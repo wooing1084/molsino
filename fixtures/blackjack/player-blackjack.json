@@ -1,0 +1,9 @@
+{
+  "description": "플레이어 자연 블랙잭, 딜러 논-블랙잭. 배분 즉시 3:2 정산되고 딜러는 플레이하지 않는다.",
+  "cards": [
+    { "cardId": "AS-1", "rank": "A", "suit": "S" },
+    { "cardId": "9C-1", "rank": "9", "suit": "C" },
+    { "cardId": "10D-1", "rank": "10", "suit": "D" },
+    { "cardId": "7H-1", "rank": "7", "suit": "H" }
+  ]
+}
