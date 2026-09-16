@@ -1,7 +1,7 @@
 {
   "name": "overlay-blackjack",
   "productName": "Overlay Blackjack",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "A small transparent desktop blackjack overlay for macOS and Windows.",
   "private": true,
   "main": ".vite/build/main.js",
