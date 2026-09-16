@@ -1,4 +1,4 @@
-# 오버레이 블랙잭 기술 설계 — Electron
+# molsino Blackjack 기술 설계 — Electron
 
 버전: 2.1 · 작성일: 2026-09-15 · 갱신일: 2026-09-16 · 상태: P0 일부·P1 구현 완료
 
@@ -142,7 +142,7 @@ const overlay = new BrowserWindow({
     webSecurity: true,
   },
 });
-await overlay.loadURL('app://blackjack/overlay.html');
+await overlay.loadURL('app://molsino/overlay.html');
 // ui:ready 검증 후 overlay.showInactive()
 ```
 
@@ -418,7 +418,7 @@ render-process-gone 또는 unresponsive 발생 시 자동 게임 진행을 멈�
 런타임은 패키지 안의 UI만 로드한다. Main의 Node 권한과 Renderer를 분리하기 위해 다음을 구현 계약으로 둔다. [Electron 보안 가이드](https://www.electronjs.org/docs/latest/tutorial/security)
 
 - contextIsolation:true, sandbox:true, nodeIntegration:false, webSecurity:true를 명시한다.
-- `app://blackjack`을 standard/secure 사용자 프로토콜로 등록하고 정해진 번들 파일만 매핑한다. 정규화 후 번들 루트 밖 경로와 symlink 탈출을 거부한다.
+- `app://molsino`를 standard/secure 사용자 프로토콜로 등록하고 정해진 번들 파일만 매핑한다. 정규화 후 번들 루트 밖 경로와 symlink 탈출을 거부한다.
 - CSP는 기본 self, 외부 connect 차단, object/base/frame 제한으로 구성한다. 개발 서버 HMR 허용은 개발 빌드에만 둔다.
 - 임의 navigation과 window.open은 차단한다. 모든 새 창은 Main의 정해진 경로로 생성한다.
 - Preload는 파일 읽기·셸 실행·raw IPC를 노출하지 않는다. 입력값은 텍스트로 렌더링한다.

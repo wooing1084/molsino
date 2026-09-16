@@ -1,8 +1,9 @@
 module.exports = {
   packagerConfig: {
     asar: true,
-    appBundleId: 'com.overlayblackjack.desktop',
-    executableName: 'overlay-blackjack',
+    appBundleId: 'com.molsino.desktop',
+    appCategoryType: 'public.app-category.games',
+    executableName: 'molsino',
   },
   rebuildConfig: {},
   makers: [
@@ -11,8 +12,8 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       platforms: ['win32'],
       config: {
-        name: 'overlay_blackjack',
-        setupExe: 'Overlay-Blackjack-Setup.exe',
+        name: 'molsino',
+        setupExe: 'molsino-Setup.exe',
         noMsi: true,
       },
     },

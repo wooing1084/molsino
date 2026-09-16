@@ -1,4 +1,4 @@
-name: Check and package
+name: Check and package molsino
 on: [push, pull_request]
 jobs:
   check:

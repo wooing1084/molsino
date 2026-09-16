@@ -26,16 +26,16 @@ export async function getPrimaryWorkArea(app: ElectronApplication): Promise<Wind
 
 export async function installCursorStub(app: ElectronApplication, initial: Point): Promise<void> {
   await app.evaluate(({ screen }, point) => {
-    const state = globalThis as typeof globalThis & { __blackjackTestCursor?: Point };
-    state.__blackjackTestCursor = point;
-    screen.getCursorScreenPoint = () => ({ ...(state.__blackjackTestCursor ?? point) });
+    const state = globalThis as typeof globalThis & { __molsinoTestCursor?: Point };
+    state.__molsinoTestCursor = point;
+    screen.getCursorScreenPoint = () => ({ ...(state.__molsinoTestCursor ?? point) });
   }, initial);
 }
 
 export async function setCursorStub(app: ElectronApplication, point: Point): Promise<void> {
   await app.evaluate((_, value) => {
-    const state = globalThis as typeof globalThis & { __blackjackTestCursor?: Point };
-    state.__blackjackTestCursor = value;
+    const state = globalThis as typeof globalThis & { __molsinoTestCursor?: Point };
+    state.__molsinoTestCursor = value;
   }, point);
 }
 

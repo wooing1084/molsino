@@ -1,4 +1,4 @@
-# 오버레이 블랙잭 — 작업 세션 로드맵
+# molsino Blackjack — 작업 세션 로드맵
 
 작성일: 2026-09-16  
 기준 문서: [`blackjack-design.md`](blackjack-design.md), [`blackjack-technical-design.md`](blackjack-technical-design.md), [`e2e-test-plan.md`](e2e-test-plan.md)

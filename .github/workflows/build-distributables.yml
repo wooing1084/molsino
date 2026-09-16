@@ -1,4 +1,4 @@
-name: Build desktop distributables
+name: Build molsino distributables
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
       - run: npm run make:mac
       - uses: actions/upload-artifact@v4
         with:
-          name: overlay-blackjack-macos-universal
+          name: molsino-macos-universal
           path: out/make/zip/darwin/universal/*.zip
           if-no-files-found: error
 
@@ -37,7 +37,7 @@ jobs:
       - run: npm run make:windows
       - uses: actions/upload-artifact@v4
         with:
-          name: overlay-blackjack-windows-x64
+          name: molsino-windows-x64
           path: |
             out/make/zip/win32/x64/*.zip
             out/make/squirrel.windows/x64/*.exe

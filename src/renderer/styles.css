@@ -26,6 +26,7 @@ button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 header, .bet, footer { padding-inline: 20px; }
 header { display: flex; min-width: 0; gap: 4px; align-items: center; }
 .drag { flex: 1; min-width: 0; overflow: hidden; app-region: drag; cursor: grab; letter-spacing: 1px; font-size: 11px; line-height: 24px; white-space: nowrap; text-overflow: ellipsis; }
+.game-label { margin-left: 5px; font-size: 8px; font-weight: 500; opacity: .55; }
 header button { flex: 0 0 24px; padding: 0; border: none; }
 .balance { display: flex; min-width: 0; align-items: center; justify-content: space-between; }
 .balance span, .bet > span { flex: 0 0 auto; font-size: 11px; line-height: 1; letter-spacing: 1px; }

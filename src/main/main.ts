@@ -11,7 +11,7 @@ import { configurePlatformWindow } from './platform/adapter';
 import { ResizeController } from './windows/resize-controller';
 
 // E2E 테스트 전용: 격리된 userData로 실제 개발자 세션 파일을 건드리지 않게 한다. 미설정 시 동작 동일.
-if (process.env.BLACKJACK_TEST_USER_DATA) app.setPath('userData', process.env.BLACKJACK_TEST_USER_DATA);
+if (process.env.MOLSINO_TEST_USER_DATA) app.setPath('userData', process.env.MOLSINO_TEST_USER_DATA);
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 let overlay: BrowserWindow | undefined;
@@ -20,7 +20,7 @@ let resizeController: ResizeController | undefined;
 let quitting = false;
 let clickThrough = false;
 const devURL = MAIN_WINDOW_VITE_DEV_SERVER_URL;
-const documentURL = devURL || 'app://blackjack/index.html';
+const documentURL = devURL || 'app://molsino/index.html';
 
 function reveal(): void {
   if (!overlay || overlay.isDestroyed()) return;
@@ -62,7 +62,7 @@ function setupTray(): void {
   const icon = nativeImage.createFromBitmap(bytes, { width: 16, height: 16 });
   if (process.platform === 'darwin') icon.setTemplateImage(true);
   tray = new Tray(icon);
-  tray.setToolTip('Overlay Blackjack');
+  tray.setToolTip('molsino');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '보이기 / 클릭 통과 해제', click: reveal },
     { label: '숨기기', click: hideOverlay },
@@ -88,7 +88,7 @@ async function start(): Promise<void> {
   // Only the two generated asset locations are served. No arbitrary file paths.
   protocol.handle('app', request => {
     const url = new URL(request.url);
-    if (url.host !== 'blackjack' || request.method !== 'GET') return new Response('', { status: 403 });
+    if (url.host !== 'molsino' || request.method !== 'GET') return new Response('', { status: 403 });
     const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '');
     if (!(relative === 'index.html' || /^assets\/[a-zA-Z0-9_.-]+$/.test(relative))) return new Response('', { status: 404 });
     return net.fetch(pathToFileURL(path.join(rendererRoot, relative)).href);

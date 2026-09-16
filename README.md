@@ -1,6 +1,6 @@
-# Overlay Blackjack
+# molsino
 
-macOS와 Windows용 작은 투명 블랙잭 오버레이. 투명 창, **순수 TypeScript Blackjack core**, Main GameStore와 실제 게임 UI까지 연결된 인메모리 MVP입니다. 로컬 저장·재기동 복원은 다음 단계입니다.
+macOS와 Windows용 작은 투명 게임 오버레이. `molsino`에서 제공하는 첫 번째 게임은 Blackjack입니다. 투명 창, **순수 TypeScript Blackjack core**, Main GameStore와 실제 게임 UI까지 연결된 인메모리 MVP이며 이후 다른 게임을 추가할 수 있는 제품 이름과 배포 체계를 사용합니다. 로컬 저장·재기동 복원은 다음 단계입니다.
 
 ## 릴리즈 다운로드와 실행
 
@@ -8,8 +8,8 @@ macOS와 Windows용 작은 투명 블랙잭 오버레이. 투명 창, **순수 T
 
 ### macOS
 
-1. `Overlay Blackjack-darwin-universal-<version>.zip`을 다운로드합니다.
-2. ZIP을 풀고 `Overlay Blackjack.app`을 실행합니다.
+1. `molsino-darwin-universal-<version>.zip`을 다운로드합니다.
+2. ZIP을 풀고 `molsino.app`을 실행합니다.
 3. 필요하면 앱을 `/Applications` 폴더로 옮깁니다.
 
 Universal 빌드는 Intel Mac과 Apple Silicon Mac을 모두 지원합니다. 현재 앱은 Apple Developer 서명·공증 전이므로 Gatekeeper 경고가 표시될 수 있습니다. 출처와 파일이 신뢰되는지 확인한 뒤 Finder에서 앱을 우클릭해 **열기**를 선택할 수 있습니다.
@@ -18,12 +18,12 @@ Universal 빌드는 Intel Mac과 Apple Silicon Mac을 모두 지원합니다. �
 
 설치형과 포터블 중 하나를 선택합니다.
 
-- `Overlay-Blackjack-Setup.exe`: 권장 설치 파일. 다운로드한 파일을 실행해 설치합니다.
-- `Overlay Blackjack-win32-x64-<version>.zip`: 설치하지 않는 포터블 버전. ZIP을 **전부 압축 해제**한 뒤 폴더 안의 `overlay-blackjack.exe`를 실행합니다.
+- `molsino-Setup.exe`: 권장 설치 파일. 다운로드한 파일을 실행해 설치합니다.
+- `molsino-win32-x64-<version>.zip`: 설치하지 않는 포터블 버전. ZIP을 **전부 압축 해제**한 뒤 폴더 안의 `molsino.exe`를 실행합니다.
 
 포터블 버전은 EXE 하나만 분리하면 필요한 DLL과 리소스를 찾지 못하므로 폴더 전체를 유지해야 합니다. 현재 Windows 코드 서명 전이므로 SmartScreen 경고가 표시될 수 있으며, 출처를 신뢰할 수 있을 때만 실행합니다.
 
-앱은 화면 오른쪽 아래에 나타납니다. 창을 숨기거나 클릭 통과 상태가 됐다면 macOS 메뉴 막대 또는 Windows 알림 영역의 Overlay Blackjack 아이콘에서 **보이기 / 클릭 통과 해제**를 선택합니다. 완전히 종료하려면 창의 `×` 또는 트레이 메뉴의 **종료**를 사용합니다.
+앱은 화면 오른쪽 아래에 나타납니다. 창을 숨기거나 클릭 통과 상태가 됐다면 macOS 메뉴 막대 또는 Windows 알림 영역의 `molsino` 아이콘에서 **보이기 / 클릭 통과 해제**를 선택합니다. 완전히 종료하려면 창의 `×` 또는 트레이 메뉴의 **종료**를 사용합니다.
 
 현재 버전은 앱을 종료하면 잔액과 진행 중인 판이 초기화됩니다.
 

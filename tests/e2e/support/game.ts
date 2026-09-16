@@ -1,4 +1,4 @@
-// window.blackjack 호출을 감싸는 얇은 래퍼. GameStore가 없으므로 dispatch는 오늘 전부 실패한다.
+// 현재 Blackjack 게임의 window.blackjack 호출을 감싸는 얇은 E2E 래퍼.
 import type { Page } from 'playwright';
 import type { CommandResult, GameViewState, UserAction } from '../window-api';
 

@@ -9,7 +9,7 @@
 
 ## 프로젝트 개요
 
-다른 앱 위에 떠 있는 투명 오버레이 블랙잭. macOS·Windows 공통 코드 기반.
+`molsino`는 다른 앱 위에 떠 있는 투명 게임 오버레이이며, 현재 첫 게임으로 Blackjack을 제공한다. macOS·Windows 공통 코드 기반.
 Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 ---
@@ -44,7 +44,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 **보안·IPC**
 - `contextIsolation:true, sandbox:true, nodeIntegration:false, webSecurity:true`
-- `app://blackjack` 커스텀 프로토콜 — whitelist 경로만 서빙, symlink 탈출 차단
+- `app://molsino` 커스텀 프로토콜 — whitelist 경로만 서빙, symlink 탈출 차단
 - CSP 헤더 (개발 빌드 HMR 허용 / 배포 빌드 `connect:none`)
 - `isTrustedDocument`: sender, senderFrame, URL을 모두 검증
 - `userCommandSchema`, `windowCommandSchema`, `resizeCommandSchema` Zod 런타임 검증

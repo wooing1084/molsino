@@ -296,7 +296,7 @@ function App() {
       onPointerCancel={cancelResize}
       onLostPointerCapture={cancelResize}
     />)}
-    <header><span className="drag">⠿ <strong>BLACKJACK</strong></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.blackjack.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.blackjack.windowCommand('quit')}>×</button></header>
+    <header><span className="drag">⠿ <strong>molsino</strong><span className="game-label">BLACKJACK</span></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.blackjack.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.blackjack.windowCommand('quit')}>×</button></header>
     <section className="balance"><span>BANKROLL</span><strong>{state ? usd(state.balanceCents) : '…'}</strong></section>
     <section className="cards" aria-label="게임 카드">
       {state?.dealerHand.cards.length ? <div className="hand dealer"><small>DEALER {state.dealerHand.total}</small><div>{state.dealerHand.cards.map(card => <span className={`card ${card.suit === 'H' || card.suit === 'D' ? 'red' : ''}`} key={card.cardId}>{card.rank}{suitSymbol[card.suit]}</span>)}{state.dealerHand.hiddenCardCount > 0 && <span className="card">?</span>}</div></div> : <p>베팅을 정하고<br/>첫 카드를 받아보세요.</p>}

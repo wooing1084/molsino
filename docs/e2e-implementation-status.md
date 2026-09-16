@@ -60,7 +60,7 @@ export default defineConfig({
 
 ```ts
 // E2E 테스트 전용: 격리된 userData로 실제 개발자 세션 파일을 건드리지 않게 한다. 미설정 시 동작 동일.
-if (process.env.BLACKJACK_TEST_USER_DATA) app.setPath('userData', process.env.BLACKJACK_TEST_USER_DATA);
+if (process.env.MOLSINO_TEST_USER_DATA) app.setPath('userData', process.env.MOLSINO_TEST_USER_DATA);
 ```
 
 환경변수 미설정 시 일반 userData를 사용한다. `src/main/game/shoe-source.ts`는 `BLACKJACK_TEST_SHOE_FIXTURE`를 검증해 고정 prefix와 나머지 카드를 합친 완전한 6덱 슈를 만든다. `src/main/game/game-store.ts`와 `src/main/main.ts`는 실제 `dispatch`, snapshot, push 상태 구독을 제공한다.
@@ -74,7 +74,7 @@ export interface LaunchedApp { app: ElectronApplication; page: Page; userDataDir
 export interface LaunchOptions { userDataDir?: string; shoeFixture?: string; }
 
 launchApp(options?: LaunchOptions): Promise<LaunchedApp>
-  // mkdtemp로 임시 userData 생성 → electron.launch({args:['.'], env:{...process.env, BLACKJACK_TEST_USER_DATA, BLACKJACK_TEST_SHOE_FIXTURE?}})
+  // mkdtemp로 임시 userData 생성 → electron.launch({args:['.'], env:{...process.env, MOLSINO_TEST_USER_DATA, BLACKJACK_TEST_SHOE_FIXTURE?}})
 relaunchApp(previous: LaunchedApp, options?): Promise<LaunchedApp>
   // 저장 복원 테스트용 — 같은 userDataDir로 기존 앱 close 후 재launch
 closeApp(launched: LaunchedApp, options?: {cleanup?: boolean}): Promise<void>

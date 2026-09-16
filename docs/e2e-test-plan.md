@@ -1,4 +1,4 @@
-# 오버레이 블랙잭 E2E 테스트 설계 — MVP 목표
+# molsino Blackjack E2E 테스트 설계 — MVP 목표
 
 버전: 0.3 · 작성일: 2026-09-15 · 갱신일: 2026-09-16 · 상태: 인메모리 플레이 배관 완료, 저장·전체 E2E 대기
 
@@ -29,7 +29,7 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 
 | 훅 | 목적 | 제안 |
 | --- | --- | --- |
-| 격리된 `userData` | 테스트 간 저장 파일 충돌 방지, 병렬 실행 | ✅ `BLACKJACK_TEST_USER_DATA`로 구현 |
+| 격리된 `userData` | 테스트 간 저장 파일 충돌 방지, 병렬 실행 | ✅ `MOLSINO_TEST_USER_DATA`로 구현 |
 | 결정론적 슈 주입 | 특정 카드 시퀀스(블랙잭, 버스트, 페어 등)를 앱 전체 레벨에서 재현 | ✅ `BLACKJACK_TEST_SHOE_FIXTURE`와 `EngineEnvironment.createShoe` 연결 |
 | 확장된 `getSnapshot`/`onState` | 판 상태를 화면 밖에서 단언 | ✅ 실제 `GameViewState`와 revision 기반 구독 구현 |
 | `dispatch` 커맨드 확장 | UI 없이도 명령 실행/검증 가능 | ✅ 모든 사용자 행동과 strict Zod 계약 구현 |

@@ -1,11 +1,11 @@
 {
-  "name": "overlay-blackjack",
-  "productName": "Overlay Blackjack",
+  "name": "molsino",
+  "productName": "molsino",
   "version": "0.0.1",
-  "description": "A small transparent desktop blackjack overlay for macOS and Windows.",
+  "description": "A small transparent desktop game overlay for macOS and Windows.",
   "private": true,
   "main": ".vite/build/main.js",
-  "author": "Overlay Blackjack",
+  "author": "molsino",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=22.12.0 <23"

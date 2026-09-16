@@ -4,9 +4,9 @@ const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 
 (async () => {
-  const executablePath = process.env.BLACKJACK_SMOKE_EXECUTABLE;
-  const userDataDir = await mkdtemp(join(tmpdir(), 'blackjack-smoke-'));
-  const env = { ...process.env, BLACKJACK_TEST_USER_DATA: userDataDir };
+  const executablePath = process.env.MOLSINO_SMOKE_EXECUTABLE;
+  const userDataDir = await mkdtemp(join(tmpdir(), 'molsino-smoke-'));
+  const env = { ...process.env, MOLSINO_TEST_USER_DATA: userDataDir };
   let application;
   try {
     application = await electron.launch(executablePath ? { executablePath, env } : { args: ['.'], env });

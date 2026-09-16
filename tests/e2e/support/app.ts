@@ -16,7 +16,7 @@ export interface LaunchOptions {
 }
 
 async function createTempUserData(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'blackjack-e2e-'));
+  return mkdtemp(join(tmpdir(), 'molsino-e2e-'));
 }
 
 export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedApp> {
@@ -24,7 +24,7 @@ export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedAp
   const inheritedEnv = Object.fromEntries(
     Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
-  const env: Record<string, string> = { ...inheritedEnv, BLACKJACK_TEST_USER_DATA: userDataDir };
+  const env: Record<string, string> = { ...inheritedEnv, MOLSINO_TEST_USER_DATA: userDataDir };
   if (options.shoeFixture) env.BLACKJACK_TEST_SHOE_FIXTURE = options.shoeFixture;
   const app = await electron.launch({ args: ['.'], env });
   const page = await app.firstWindow();
