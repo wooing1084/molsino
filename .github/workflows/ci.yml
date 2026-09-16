@@ -1,7 +1,13 @@
 name: Check and package molsino
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - DEV
+    types:
+      - closed
 jobs:
   check:
+    if: github.event.pull_request.merged == true
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
