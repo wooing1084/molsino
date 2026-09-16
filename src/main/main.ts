@@ -6,7 +6,7 @@ import { createSession } from '../core/engine';
 import { channels, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState } from '../shared/contracts';
 import { GameStore } from './game/game-store';
 import { createShoeFactory } from './game/shoe-source';
-import { isTrustedDocument } from './ipc/trust';
+import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
 import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
 import { configurePlatformWindow } from './platform/adapter';
 import { ResizeController } from './windows/resize-controller';
@@ -23,6 +23,9 @@ let clickThrough = false;
 let gameStore: GameStore | undefined;
 const devURL = MAIN_WINDOW_VITE_DEV_SERVER_URL;
 const documentURL = devURL || 'app://molsino/index.html';
+// Only isolated E2E launches may delay a captured snapshot to exercise push-before-snapshot ordering.
+const snapshotDelayMs = process.env.MOLSINO_TEST_USER_DATA
+  ? Number(process.env.MOLSINO_TEST_SNAPSHOT_DELAY_MS ?? 0) : 0;
 
 function reveal(): void {
   if (!overlay || overlay.isDestroyed()) return;
@@ -154,10 +157,16 @@ async function start(): Promise<void> {
       : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-src 'none'"],
   } }));
   const requireTrusted = (event: Electron.IpcMainInvokeEvent): void => {
-    if (!overlay || event.sender !== overlay.webContents || event.senderFrame !== overlay.webContents.mainFrame ||
-      !isTrustedDocument(event.senderFrame.url, documentURL)) throw new Error('Untrusted IPC sender');
+    if (!isTrustedIpcSender(event, overlay?.webContents, documentURL)) throw new Error('Untrusted IPC sender');
   };
-  ipcMain.handle(channels.snapshot, event => { requireTrusted(event); return gameStore?.getSnapshot() ?? recoveryState(); });
+  ipcMain.handle(channels.snapshot, async event => {
+    requireTrusted(event);
+    const snapshot = gameStore?.getSnapshot() ?? recoveryState();
+    if (Number.isInteger(snapshotDelayMs) && snapshotDelayMs > 0 && snapshotDelayMs <= 2000) {
+      await new Promise(resolve => setTimeout(resolve, snapshotDelayMs));
+    }
+    return snapshot;
+  });
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
     const command = userCommandSchema.parse(value);

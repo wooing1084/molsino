@@ -13,6 +13,7 @@ export interface LaunchedApp {
 export interface LaunchOptions {
   userDataDir?: string;
   shoeFixture?: string;
+  snapshotDelayMs?: number;
 }
 
 async function createTempUserData(): Promise<string> {
@@ -26,6 +27,7 @@ export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedAp
   );
   const env: Record<string, string> = { ...inheritedEnv, MOLSINO_TEST_USER_DATA: userDataDir };
   if (options.shoeFixture) env.BLACKJACK_TEST_SHOE_FIXTURE = options.shoeFixture;
+  if (options.snapshotDelayMs !== undefined) env.MOLSINO_TEST_SNAPSHOT_DELAY_MS = String(options.snapshotDelayMs);
   const app = await electron.launch({ args: ['.'], env });
   const page = await app.firstWindow();
   await page.locator('#root').waitFor({ state: 'attached' });

@@ -147,6 +147,8 @@ P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정�
 
 ### S09 — IPC·Preload·상태 구독
 
+**상태:** 완료 (2026-09-16). 결과: [`session-reports/S09-ipc-subscription.md`](session-reports/S09-ipc-subscription.md).
+
 **목표:** 목표 `BlackjackAPI`와 revision 기반 push 동기화를 완성한다.
 
 - 설계: `getSnapshot`, `dispatch`, `onState`, sender 검증, 공개 ViewState 경계.
@@ -246,7 +248,7 @@ P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정�
 | S06 — 코어 무결성과 정산 원장 | 완료 | 2026-09-16 | P1 묶음 검증 + `npm run package` 통과 |
 | S07 — GameStore 명령 직렬화 | 완료 | 2026-09-16 | 플레이 수직 통합 E2E 포함 5/5 통과 |
 | S08 — SessionRepository와 복구 | 완료 | 2026-09-16 | `npm run test:e2e` 11/11 통과 (S08 6건) |
-| S09 — IPC·Preload·상태 구독 | 부분 완료 | — | snapshot/dispatch/onState와 공개 상태 연결, 복원 역순 회귀 미완료 |
+| S09 — IPC·Preload·상태 구독 | 완료 | 2026-09-16 | `npm run test:e2e` 16/16 통과 (S09 신규 5건) |
 | S14 — React 게임 UI 통합 | 부분 완료 | — | 전체 행동 UI 연결, 대표 자연 블랙잭 E2E 1건 |
 
-현재 다음 시작점은 **S09(IPC·Preload·상태 구독의 남은 회귀)**다. S09와 S14의 수직 경로를 일부 앞당겨 연결했으며, 저장 완료 후 각 세션의 나머지 회귀를 채운다. E2E-17의 10개 체크포인트 완주와 설정 복원은 S15/S11에서 진행한다. 기존 `e2e-test-plan.md`의 E2E-01~21은 주로 P1/P2 게임 여정을 다루므로 P0 창 동작 E2E는 각 P0 세션(S10~S13)에서 별도로 추가한다.
+현재 다음 시작점은 **S10(접힘·펼침과 창 상태 모델)**이다. S14의 전체 게임 행동 회귀와 E2E-17의 10개 체크포인트 완주는 후속 세션에서 진행한다. 설정 복원은 S11에서 구현한다. 기존 `e2e-test-plan.md`의 E2E-01~21은 주로 P1/P2 게임 여정을 다루므로 P0 창 동작 E2E는 각 P0 세션(S10~S13)에서 별도로 추가한다.

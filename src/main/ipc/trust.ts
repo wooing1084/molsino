@@ -8,3 +8,14 @@ export function isTrustedDocument(candidate: string, expected: string): boolean 
       actual.username === '' && actual.password === '';
   } catch { return false; }
 }
+
+/** Match the registered webContents and its current top-level frame. */
+export function isTrustedIpcSender(
+  event: { sender: unknown; senderFrame: { url: string } | null },
+  registered: { mainFrame: { url: string } | null } | undefined,
+  documentURL: string,
+): boolean {
+  return Boolean(registered && event.sender === registered && event.senderFrame &&
+    event.senderFrame === registered.mainFrame &&
+    isTrustedDocument(event.senderFrame.url, documentURL));
+}
