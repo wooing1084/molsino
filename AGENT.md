@@ -73,6 +73,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 - 베팅, 딜, 보험, 이븐 머니, 히트, 스탠드, 더블, 스플릿, 서렌더, 다음 판, 새 게임 UI 연결
 - 결정론적 E2E 슈 fixture 주입과 자연 블랙잭 대표 여정 검증
 - `SessionRepository`: versioned `session.json`, 원자 교체·검증된 primary backup, 손상/미래 schema 복구 선택, 실패 후보 재시도, 재기동 복원
+- S09: 등록된 최상위 frame·URL별 IPC 송신자 검증과 신뢰 문서로만 상태 push, 늦은 snapshot보다 새 revision의 push 유지, 구독 해제·reload, 비정상 payload 거부와 공개 상태 경계 E2E
 
 ---
 
@@ -141,6 +142,7 @@ tests/
   e2e/playable-mvp.spec.ts   ← 베팅→딜→자연 블랙잭→다음 판 E2E
   e2e/persistence.spec.ts    ← S08 복원·손상·미래 버전·컷 경계 E2E 6건
   e2e/ipc-state.spec.ts      ← S09 역순·reload·보안 E2E 5건
+  e2e/ipc-subscription.spec.ts ← S09 snapshot 역순·복구·구독/reload·공개 상태·보안 E2E 6건
   main/resize-controller.test.ts ← 리사이즈 하위 테스트
   main/trust.test.ts         ← 완료
 
@@ -153,6 +155,7 @@ docs/
   session-reports/S07-playable-mvp.md ← GameStore·IPC·UI 수직 통합
   session-reports/S08-session-repository.md ← 세션 저장·복구·검증 기록
   session-reports/S09-ipc-state-sync.md ← IPC·상태 구독 회귀·검증 기록
+  session-reports/S09-ipc-subscription.md ← 병합된 S09 IPC·상태 구독 회귀 기록
   session-reports/S10-overlay-state-opacity.md ← 접힘·불투명도·헤더 버튼 제거·전역 숨기기 검증 기록
   building-distribution.md ← macOS·Windows 빌드·배포 가이드
 ```
@@ -174,8 +177,10 @@ docs/
 | S07 인메모리 플레이 MVP | ✅ `npm run check` 10파일 87/87, `npm run test:e2e` 5/5, `npm run smoke` 통과 | S07 + S09/S14 일부 |
 | S08 세션 저장·재기동 복원 | ✅ `npm run check` 11파일 92/92, macOS arm64 프로덕션 `npm run test:e2e` 11/11, `npm run smoke` | S08, E2E-17/19/20 일부 |
 | S09 IPC·상태 구독 회귀 | ✅ `npm run check` 11파일 108/108, macOS arm64 프로덕션 `npm run test:e2e` 16/16 | S09, E2E-21 |
+| S09 IPC·Preload·상태 구독 (병합 PR #1) | ✅ macOS arm64 프로덕션 `npm run test:e2e` 17/17 (S09 신규 6건) | S09, E2E-21 보안 경계 |
 | S10 접힘·불투명도·전역 숨기기 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 25/25 (S10 9건), `npm run check` 110/110 | S10, O-01/O-05/O-11 자동화 범위 |
 | macOS E2E Dock 정리 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 26/26, `npm run check` 110/110 | 테스트 앱 한정 Dock 숨김, 일반 앱 정책 유지 |
+| 최신 DEV 병합 통합 검증 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 32/32, `npm run check` 114/114 | 병합된 S09 회귀 6건 포함 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
 | 10개 체크포인트·창 설정 재실행 초기화 | ⬜ S15/S11에서 완성 | E2E-17~18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |

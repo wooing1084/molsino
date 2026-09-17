@@ -147,6 +147,8 @@ P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정�
 
 ### S09 — IPC·Preload·상태 구독
 
+**상태:** 완료 (2026-09-16). 결과: [`session-reports/S09-ipc-subscription.md`](session-reports/S09-ipc-subscription.md).
+
 **목표:** 목표 `BlackjackAPI`와 revision 기반 push 동기화를 완성한다.
 
 - 설계: `getSnapshot`, `dispatch`, `onState`, sender 검증, 공개 ViewState 경계.
@@ -247,8 +249,10 @@ P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정�
 | S07 — GameStore 명령 직렬화 | 완료 | 2026-09-16 | 플레이 수직 통합 E2E 포함 5/5 통과 |
 | S08 — SessionRepository와 복구 | 완료 | 2026-09-16 | `npm run test:e2e` 11/11 통과 (S08 6건) |
 | S09 — IPC·Preload·상태 구독 | 완료 | 2026-09-16 | `npm run test:e2e` 16/16 통과 (S09 5건) |
+| S09 — 병합 PR #1 회귀 보강 | 완료 | 2026-09-17 | `npm run test:e2e` 17/17 통과 (S09 신규 6건) |
 | S10 — 접힘·펼침, 창 상태 모델과 불투명도 조절 | 완료 | 2026-09-17 | 헤더 접기 버튼 제거·Alt+백틱 숨기기 포함 `npm run test:e2e` 25/25 통과 (S10 9건) |
 | macOS E2E Dock 정리 | 완료 | 2026-09-17 | 테스트 앱 전용 Dock 숨김, 프로덕션 패키지 전체 `npm run test:e2e` 26/26 통과 |
+| 최신 DEV 병합 통합 검증 | 완료 | 2026-09-17 | 병합된 S09 회귀 포함 프로덕션 패키지 전체 `npm run test:e2e` 32/32, `npm run check` 114/114 |
 | S14 — React 게임 UI 통합 | 부분 완료 | — | 전체 행동 UI 연결, 대표 자연 블랙잭 E2E 1건 |
 
 현재 다음 시작점은 **S11(위치·다중 모니터와 시작 기본값)**이다. S14의 플레이 UI 수직 경로는 일부 앞당겨 연결했으며, 각 세션의 나머지 회귀를 채운다. E2E-17의 10개 체크포인트 완주와 창 설정의 전체 재실행 초기화는 S15/S11에서 진행한다. 기존 `e2e-test-plan.md`의 E2E-01~21은 주로 P1/P2 게임 여정을 다루므로 P0 창 동작 E2E는 각 P0 세션(S10~S13)에서 별도로 추가한다.

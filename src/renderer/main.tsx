@@ -34,6 +34,15 @@ interface ResizeGesture {
   updateTimer?: number;
 }
 
+function newerState(current: GameViewState | undefined, incoming: GameViewState): GameViewState {
+  if (!current || incoming.revision > current.revision) return incoming;
+  if (incoming.revision < current.revision) return current;
+  // Recovery and save failure can change without incrementing the committed revision.
+  if (current.phase === 'recovery' && incoming.phase !== 'recovery') return incoming;
+  if (current.phase !== 'recovery' && incoming.phase === 'recovery') return current;
+  return !current.saveError && incoming.saveError ? incoming : current;
+}
+
 function App() {
   const [state, setState] = useState<GameViewState>();
   const [error, setError] = useState('');
@@ -44,12 +53,15 @@ function App() {
   const resizeGesture = useRef<ResizeGesture | undefined>(undefined);
 
   useEffect(() => {
+    let active = true;
     const applyState = (nextState: GameViewState) => {
-      setState(current => !current || nextState.revision >= current.revision ? nextState : current);
+      if (active) setState(current => newerState(current, nextState));
     };
     const unsubscribe = window.blackjack.onState(applyState);
-    void window.blackjack.getSnapshot().then(applyState).catch(() => setError('앱 연결 실패 · 다시 실행해 주세요'));
-    return unsubscribe;
+    void window.blackjack.getSnapshot().then(applyState).catch(() => {
+      if (active) setError('앱 연결 실패 · 다시 실행해 주세요');
+    });
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -239,7 +251,7 @@ function App() {
         expectedRevision: state.revision,
         action,
       });
-      setState(current => !current || result.state.revision >= current.revision ? result.state : current);
+      setState(current => newerState(current, result.state));
       setError(result.ok ? '' : result.message);
     } catch {
       setError('게임 명령을 처리할 수 없습니다.');
@@ -250,7 +262,8 @@ function App() {
   async function recover(choice: 'restoreBackup' | 'startNew'): Promise<void> {
     setBusy(true);
     try {
-      setState(await window.blackjack.recover(choice));
+      const recovered = await window.blackjack.recover(choice);
+      setState(current => newerState(current, recovered));
       setError('');
     } catch { setError('저장 복구에 실패했습니다. 다시 시도해 주세요.'); }
     finally { setBusy(false); }

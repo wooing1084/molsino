@@ -70,8 +70,12 @@ describe('game command contract', () => {
     { commandId: token, expectedRevision: 0, action: { type: 'advanceDealer' } },
     { commandId: token, expectedRevision: 0, action: { type: 'hit' } },
     { commandId: token, expectedRevision: 0, action: { type: 'deal', extra: true } },
+    { commandId: token, expectedRevision: Number.NaN, action: { type: 'deal' } },
     { commandId: token, expectedRevision: Number.MAX_SAFE_INTEGER + 1, action: { type: 'deal' } },
+    { commandId: token, expectedRevision: 0, action: { type: 'setBet', amountCents: 1.5 } },
+    { commandId: token, expectedRevision: 0, action: { type: 'setBet', amountCents: -100 } },
     { commandId: token, expectedRevision: 0, action: { type: 'deal' }, internal: true },
+    { commandId: token, expectedRevision: 0, action: { type: 'deal' }, filePath: '/tmp/session.json' },
     null,
   ])('rejects malformed or internal commands', value => {
     expect(userCommandSchema.safeParse(value).success).toBe(false);
