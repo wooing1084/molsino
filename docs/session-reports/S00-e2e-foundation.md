@@ -2,7 +2,7 @@
 
 **목적:** 이후 세션이 프로덕션 Electron 패키지에서 E2E를 실행할 기반을 마련한다.
 
-**요약:** Playwright 테스트 러너와 패키징 선행 명령, E2E 전용 TypeScript 구성을 마련했다. 이 문서는 당시 별도 보고서가 없어 기존 [E2E 구현 현황](../e2e-implementation-status.md)의 기록을 기준으로 사후 정리했다.
+**요약:** Playwright 테스트 러너와 패키징 선행 명령, E2E 전용 TypeScript 구성을 마련했다. 이 문서는 당시 별도 보고서가 없어 기존 E2E 구현 현황의 기록을 기준으로 사후 정리했다. 현재 공통 실행 기반은 [메인 E2E 현황](../main/e2e-implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -21,7 +21,7 @@
 
 - `@playwright/test`를 설치하고 `package.json`에 `pretest:e2e` 패키징과 `test:e2e` 실행 명령을 추가했다.
 - `playwright.config.ts`와 `tests/e2e/tsconfig.json`을 만들고 앱 타입 검사와 E2E 타입 검사를 분리했다.
-- 이후 세션에서 격리된 `userData`와 결정론적 슈 픽스처 연결을 확장했다. 해당 구현 내역은 [E2E 구현 현황](../e2e-implementation-status.md)에 있다.
+- 이후 세션에서 격리된 `userData`와 결정론적 슈 픽스처 연결을 확장했다. 공통 실행 기반은 [메인 E2E 현황](../main/e2e-implementation-status.md), 카드 픽스처는 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)에 있다.
 
 ## 검증 기록과 한계
 

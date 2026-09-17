@@ -2,7 +2,7 @@
 
 **목적:** 프로젝트 문서의 역할과 작성·갱신 규칙을 정의한다.
 
-**요약:** 사실과 결정은 담당 문서 한 곳에서 관리한다. 다른 문서에는 필요한 요약과 링크만 둔다. 문서는 목적·요약·목차 순서로 시작하며, 세션이 끝나면 보고서와 세션 목록을 갱신한다.
+**요약:** 사실과 결정은 담당 문서 한 곳에서 관리한다. 메인 기능과 블랙잭 문서를 분리하고 다른 곳에는 필요한 요약과 링크만 둔다. 문서는 목적·요약·목차 순서로 시작하며, 세션이 끝나면 보고서와 세션 목록을 갱신한다.
 
 ## 목차
 
@@ -15,19 +15,26 @@
 
 **SSOT 원칙:** 한 사실이나 결정의 상세 내용은 담당 문서 한 곳에서 갱신한다. 다른 문서에서 그 정보가 필요하면 짧게 요약하고 담당 문서로 연결한다. 특히 현재 상태, 검증 건수, 다음 작업처럼 자주 바뀌는 정보는 여러 문서에 복제하지 않는다.
 
+`main/`은 현재 앱의 오버레이·창·플랫폼·IPC 신뢰 경계·빌드 기능, `games/blackjack/`은 현재 블랙잭의 규칙·화면·게임 상태·저장 계약을 맡는다. 실제 `GameStore`와 `SessionRepository`는 블랙잭 상태에 결합돼 있으므로 이름만으로 게임 공통 계약으로 간주하지 않는다. 두 영역에 걸친 한 세션의 당시 기록은 `session-reports/`에 유지한다. 전체 문서 경로는 [문서 안내](README.md)에서 찾는다.
+
 | 정보 | 담당 문서 |
 | --- | --- |
-| Blackjack 제품 동작·게임 규칙·범위 | [제품 설계](blackjack-design.md) |
-| 아키텍처·창·IPC·저장 등 구현 계약과 기술 결정 | [기술 설계](blackjack-technical-design.md) |
-| E2E 시나리오·완료 기준 | [E2E 테스트 설계](e2e-test-plan.md) |
+| 오버레이·창 조작의 제품 동작 | [메인 제품 설계](main/product-design.md) |
+| 블랙잭 화면·게임 규칙·완료 기준 | [블랙잭 제품 설계](games/blackjack/product-design.md) |
+| Electron 창·플랫폼·IPC 신뢰 경계 | [메인 기술 설계](main/technical-design.md) |
+| 블랙잭 엔진·명령·게임 세션 저장 계약 | [블랙잭 기술 설계](games/blackjack/technical-design.md) |
+| 메인 기능의 오버레이·보안 E2E 기준 | [메인 E2E 설계](main/e2e-test-plan.md) |
+| 블랙잭 사용자 여정 E2E 기준 | [블랙잭 E2E 설계](games/blackjack/e2e-test-plan.md) |
 | 세션별 완료 내용·당시 검증·남은 이슈 | [세션 목록](session-reports/session-list.md)에서 해당 보고서 |
 | 세션 보고서의 작성·목록 갱신 방법 | [세션 보고서 운영 방침](session-reports/README.md) |
-| 현재 소스 기준 코드 구성·파일 위치·구현 경계 | [구현 현황](implementation-status.md) |
-| E2E 스위트의 현재 커버리지·남은 테스트 범위 | [E2E 구현 현황](e2e-implementation-status.md) |
+| 메인 기능의 현재 코드 구성·파일 위치 | [메인 구현 현황](main/implementation-status.md) |
+| 블랙잭의 현재 코드 구성·파일 위치 | [블랙잭 구현 현황](games/blackjack/implementation-status.md) |
+| 메인 기능 E2E의 현재 범위 | [메인 E2E 현황](main/e2e-implementation-status.md) |
+| 블랙잭 E2E의 현재 범위 | [블랙잭 E2E 현황](games/blackjack/e2e-implementation-status.md) |
 | 세션 실행 순서·완료 조건·다음 시작점 | [작업 세션 로드맵](work-session-roadmap.md) |
-| 빌드·배포 절차와 산출물 | [빌드와 배포](building-distribution.md) |
+| 빌드·배포 절차와 산출물 | [빌드와 배포](main/building-distribution.md) |
 
-`AGENT.md`는 작업 전 배경과 문서 경로를 안내한다. 진행 현황이나 검증 수치를 유지하는 장소로 쓰지 않는다. `README.md`는 앱 사용자와 개발자의 시작 안내를 맡고, 실제 스크립트와 의존성 버전은 `package.json`과 `package-lock.json`을 확인한다.
+`AGENT.md`는 작업 전 배경과 문서 경로를 안내한다. 진행 현황이나 검증 수치를 유지하는 장소로 쓰지 않는다. 루트 `README.md`는 앱 사용자와 개발자의 시작 안내를, `docs/README.md`는 문서 색인을 맡는다. 실제 스크립트와 의존성 버전은 `package.json`과 `package-lock.json`을 확인한다.
 
 설계 문서는 현재 적용할 동작과 계약을 설명하고, 세션 보고서는 작업 당시 무엇을 바꾸고 확인했는지 기록한다. 과거 보고서의 당시 상태를 현재 상태처럼 재서술하지 않는다. 설계가 바뀌면 담당 설계 문서를 갱신하고 관련 보고서를 이력으로 연결한다.
 
@@ -47,4 +54,4 @@
 
 검증 기록은 다음 작업자가 **이전에 통과한 범위와 아직 확인하지 않은 범위**를 구분하고, 변경에 필요한 재검증을 선택하는 근거다. 결과 숫자만으로 전체 기능이나 실제 OS 동작이 검증됐다고 추정하지 않는다.
 
-각 세션의 실제 명령, 통과·실패·스킵 수, 실행 환경과 한계는 해당 [세션 보고서](session-reports/session-list.md)에 기록한다. 실패와 스킵은 원인 및 재현 조건을 함께 남긴다. 세션에 속하지 않은 독립 통합 검증은 [E2E 구현 현황](e2e-implementation-status.md), 배포 산출물 검증은 [빌드와 배포](building-distribution.md)에 날짜와 범위를 기록한다. 공식 세션 검증 방법은 [로드맵의 검증 정책](work-session-roadmap.md#검증-정책)을 따른다. 문서에 기록되지 않은 검증은 세션 완료 근거로 간주하지 않는다.
+각 세션의 실제 명령, 통과·실패·스킵 수, 실행 환경과 한계는 해당 [세션 보고서](session-reports/session-list.md)에 기록한다. 실패와 스킵은 원인 및 재현 조건을 함께 남긴다. 세션에 속하지 않은 독립 통합 검증은 해당 영역의 [메인 E2E 현황](main/e2e-implementation-status.md) 또는 [블랙잭 E2E 현황](games/blackjack/e2e-implementation-status.md), 배포 산출물 검증은 [빌드와 배포](main/building-distribution.md)에 날짜와 범위를 기록한다. 공식 세션 검증 방법은 [로드맵의 검증 정책](work-session-roadmap.md#검증-정책)을 따른다. 문서에 기록되지 않은 검증은 세션 완료 근거로 간주하지 않는다.

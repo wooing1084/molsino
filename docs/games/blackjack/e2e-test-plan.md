@@ -2,7 +2,7 @@
 
 목적: 플레이 가능한 Blackjack MVP의 완료 기준을 확인할 E2E 시나리오를 정의한다.
 
-요약: 대표 게임 흐름·저장 복원·보안 경계의 시나리오와 픽스처, 완료 기준을 다룬다. 현재 구현 현황은 [E2E 구현 현황](e2e-implementation-status.md), 세션별 검증 결과는 [세션 목록](session-reports/session-list.md)에서 확인한다.
+요약: 대표 블랙잭 게임 흐름·세션 저장 복원의 시나리오와 픽스처, MVP 완료 기준을 다룬다. 창·Preload·Main의 공통 경계는 [메인 E2E 설계](../../main/e2e-test-plan.md), 현재 게임 테스트 범위는 [블랙잭 E2E 현황](e2e-implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -14,13 +14,13 @@
 - [6. 범위 밖과 P0 보조 스위트](#6-범위-밖과-p0-보조-스위트)
 - [7. 실행 원칙](#7-실행-원칙)
 
-기준 문서: [제품 설계서](blackjack-design.md) §6 3단계 "플레이 가능한 MVP", [기술 설계서](blackjack-technical-design.md) §11.2·§11.4.
+기준 문서: [블랙잭 제품 설계](product-design.md), [블랙잭 기술 설계](technical-design.md). 세션별 검증 결과는 [세션 목록](../../session-reports/session-list.md)에서 확인한다.
 
 ## 1. 목적과 범위
 
-이 문서는 [제품 설계서 §6의 플레이 가능한 MVP 완료 기준](blackjack-design.md)을 E2E 시나리오에 매핑한다. 제품 요구사항의 원문은 제품 설계서를 기준으로 한다.
+이 문서는 [블랙잭 제품 설계](product-design.md)의 플레이 가능한 MVP 완료 기준을 E2E 시나리오에 매핑한다. 제품 요구사항의 원문은 제품 설계서를 기준으로 한다.
 
-범위는 기술 설계서 §11.4의 **P1(엔진) + P2(GameStore·IPC·UI·저장 통합)**다. E2E-18은 게임 세션 복원과 창 설정 재실행 초기화의 경계를 확인하는 시나리오로 설계에 보존한다. 실행 시점과 현재 상태는 [작업 세션 로드맵](work-session-roadmap.md)과 [E2E 구현 현황](e2e-implementation-status.md)을 따른다. 나머지 P0 창 프로토타입 항목(O-01~O-11: 리사이즈, 클릭 통과, 다중 모니터 등)과 P3(장애 복구 전면, 접근성, DPI, 성능, 설치본 서명)는 이 문서의 대상이 아니다 — §6에서 별도 표기.
+범위는 **블랙잭 엔진과 GameStore·IPC·UI·세션 저장의 통합**이다. 창 설정 초기화 E2E-18, 신뢰 경계 E2E-21 및 오버레이 O-01~O-11은 [메인 E2E 설계](../../main/e2e-test-plan.md)가 관리한다. 실행 시점과 현재 상태는 [작업 세션 로드맵](../../work-session-roadmap.md)과 [블랙잭 E2E 현황](e2e-implementation-status.md)을 따른다.
 
 ### 테스트 계층 구분
 
@@ -28,7 +28,7 @@
 
 | 계층 | 도구 | 대상 | 개수/속도 |
 | --- | --- | --- | --- |
-| 엔진·저장·IPC 신뢰 경계 | Vitest | `BlackjackCore` 순수 함수, 정산 원장, `SessionRepository` 원자 저장, IPC sender/스키마 검증 | 다수, 빠름 — 기술 설계서 §11.2 목록 전부 여기 소속 |
+| 엔진·게임 저장·명령 스키마 | Vitest | `BlackjackCore` 순수 함수, 정산 원장, `SessionRepository`에 저장하는 블랙잭 상태와 명령 계약 | 다수, 빠름 — [블랙잭 기술 설계](technical-design.md)의 검증 항목 |
 | 사용자 여정 (배관 검증) | Playwright `_electron` | 실제 앱 프로세스: Renderer 클릭 → Preload → Main IPC → GameStore → 엔진 → 저장 → 화면 반영 | 소수, 느림 — 이 문서의 시나리오 |
 
 E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지의 모든 경로)을 다시 검증하지 않는다. 각 주요 분기(블랙잭, 보험, 이븐 머니, 더블, 스플릿, 서렌더)당 **대표 경로 1개**만 실제 UI로 통과시켜 "전체 스택이 올바르게 연결됐다"를 증명하고, 세부 규칙 조합은 Vitest 픽스처가 책임진다.
@@ -45,7 +45,8 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 | `dispatch` 명령 | 사용자 행동과 잘못된 명령의 결과를 검증할 수 있어야 한다. |
 | 강제 종료 → 재기동 헬퍼 | 동일 `userData`로 복원 결과를 확인할 수 있어야 한다. |
 | 저장 파일 사전 조작 | 테스트 프로세스가 재기동 전에 `session.json` 손상·미래 스키마 상태를 구성할 수 있어야 한다. |
-| macOS 테스트 앱 Dock 처리 | 테스트 실행으로 남는 Dock 아이콘을 제어하되 일반 앱과 OS Dock 설정은 바꾸지 않아야 한다. |
+
+Dock 등 테스트 앱의 공통 실행 정책은 [메인 E2E 설계](../../main/e2e-test-plan.md)를 따른다.
 
 ## 3. 시나리오
 
@@ -90,11 +91,10 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 | ID | 목적 | 체크포인트 | 기대 결과 |
 | --- | --- | --- | --- |
 | E2E-17 | 판 중간 강제 종료 → 재기동 복원 | 아래 10개 체크포인트 각각에서 강제 종료 후 재기동 | 동일 카드(딜러 홀 카드 포함)·동일 잔액·동일 phase로 이어짐. 슈를 다시 섞지 않음 |
-| E2E-18 | 창 설정 재실행 초기화 | 색상 모드·불투명도·접힘·크기·위치·클릭 통과를 변경한 뒤 재기동 | 창 설정은 기본 색상·65%·펼침·280×180 DIP·기본 위치·대화형으로 초기화되고 게임 판·잔액은 유지 |
 | E2E-19 | 저장 손상/미래 스키마 복구 | `session.json`을 깨뜨리거나 `schemaVersion`을 미래값으로 조작 후 기동 | 원본 보존, 자동 초기화 금지, 복구/새 게임 선택 UI 표시 |
 | E2E-20 | 슈 재셔플 경계 | 232장 사용 상태로 판 시작(80장 남음) | 해당 판은 끝까지 진행, 234장 컷에 닿으면 다음 판 시작 시 재셔플 (판 중간 셔플 없음) |
 
-**E2E-17 체크포인트 목록** (제품 설계서 §6 3단계 완료 기준 그대로):
+**E2E-17 체크포인트 목록** ([블랙잭 제품 설계의 플레이 가능한 MVP 완료 기준](product-design.md#5-블랙잭-완료-기준)):
 
 1. 히트 전
 2. 히트 후
@@ -109,13 +109,11 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 
 ### 3.6 보안/격리 회귀
 
-| ID | 목적 | 핵심 단계 | 기대 결과 |
-| --- | --- | --- | --- |
-| E2E-21 | Node 격리·신뢰 경계 유지 | `window.require` 미존재, 비정상 명령 거부, 비신뢰 문서의 snapshot 요청과 상태 push 차단 확인 | Preload·Main 양방향 경계를 실제 Electron에서 검증 |
+앱 공통 신뢰 경계 E2E-21의 수용 조건은 [메인 E2E 설계](../../main/e2e-test-plan.md)에 있다. 블랙잭 명령·공개 상태의 구체적인 스키마는 [블랙잭 기술 설계](technical-design.md)를 따른다.
 
 ### 3.7 금액 입력·게임 오버 상세 검증
 
-E2E-02와 E2E-15의 세부 수용 조건은 다음과 같다. 구현·통과 기록은 [E2E 구현 현황](e2e-implementation-status.md)과 [세션 보고서](session-reports/S10.5-inline-bet-input.md)에서 확인한다.
+E2E-02와 E2E-15의 세부 수용 조건은 다음과 같다. 구현·통과 기록은 [E2E 구현 현황](e2e-implementation-status.md)과 [세션 보고서](../../session-reports/S10.5-inline-bet-input.md)에서 확인한다.
 
 - 금액 숫자칸 클릭 → 같은 자리의 텍스트 필드로 전환 → `1`, `1.5`, `1.01`, `1.25` 입력 → Enter 확정 후 화면·`GameViewState`·재기동 저장값이 정확한 센트인지 확인한다. 현재 잔액 상한, $1.00 하한, Escape/필드 밖 클릭 취소, 딜 후 편집 거부를 검증한다.
 - 편집 중에만 메인 창이 키보드 포커스를 받고, 확정·취소·숨김·접힘·클릭 통과·reload 뒤 `focusable:false`와 비집중 상태로 돌아오는지 확인한다. 220×150 DIP에서 베팅 행의 글자·버튼이 잘리지 않아야 한다.
@@ -124,17 +122,16 @@ E2E-02와 E2E-15의 세부 수용 조건은 다음과 같다. 구현·통과 기
 
 ## 4. MVP 완료 기준 매핑
 
-| 제품 완료 기준 항목 ([제품 설계서 §6](blackjack-design.md)) | 매핑 시나리오 |
+| 제품 완료 기준 항목 ([블랙잭 제품 설계](product-design.md)) | 매핑 시나리오 |
 | --- | --- |
 | 초기 잔액·최소 베팅·여러 판 플레이 | E2E-01, 02, 03~13 |
 | 재기동 뒤 카드·잔액 복원 | E2E-17 |
 | 주요 진행 지점별 저장 복원 | E2E-17 체크포인트 1~10 |
-| 창 설정 재실행 초기화 ([기술 설계서 §7.2](blackjack-technical-design.md)) | E2E-18 |
-| 손상·미래 스키마 복구 ([기술 설계서 §7.2](blackjack-technical-design.md)) | E2E-19 |
+| 블랙잭 세션 손상·미래 스키마 복구 ([블랙잭 기술 설계](technical-design.md)) | E2E-19 |
 
 ## 5. 픽스처 설계
 
-기술 설계서 §10 구조대로 `fixtures/blackjack/*.json`에 카드 시퀀스를 둔다. 각 파일은 슈 순서(또는 다음 N장)와 시나리오 이름을 매핑한다.
+`fixtures/blackjack/*.json`에 카드 시퀀스를 둔다. 각 파일은 슈 순서(또는 다음 N장)와 시나리오 이름을 매핑한다.
 
 - `player-blackjack.json`, `dealer-blackjack.json`, `both-blackjack.json`
 - `standard-win.json`, `standard-loss.json`, `push.json`
@@ -149,14 +146,14 @@ E2E-02와 E2E-15의 세부 수용 조건은 다음과 같다. 구현·통과 기
 
 ## 6. 범위 밖과 P0 보조 스위트
 
-- E2E-01~21의 범위에서는 P0 창 프로토타입 O-01~O-11을 제외한다. P0 창 동작의 시나리오와 세션별 범위는 [작업 세션 로드맵](work-session-roadmap.md)을 기준으로 한다. 구현한 보조 spec과 결과는 [E2E 구현 현황](e2e-implementation-status.md)에 기록한다.
+- 오버레이 O-01~O-11과 E2E-18·21은 [메인 E2E 설계](../../main/e2e-test-plan.md)가 관리한다. 세션별 실행 순서는 [작업 세션 로드맵](../../work-session-roadmap.md)을 기준으로 한다.
 - Playwright Electron으로 실제 외부 앱 포커스 이동, 물리 Alt+백틱 입력, 투명도 합성, 클릭 통과 대상 앱 반응, 물리 다중 모니터를 확인할 수 없으면 통과로 추정하지 않고 관련 이슈로 기록한다.
-- P3: 접근성 창(키보드/VoiceOver/Narrator), DPI, 성능 목표(§11.3), 설치본 서명·공증.
-- Windows 실 장비 검증 (GUI 동작은 실 장비에서 확인 — [빌드·배포 가이드](building-distribution.md) 참조).
+- 메인 제품화 검증: 접근성 창(키보드/VoiceOver/Narrator), DPI, 성능 목표, 설치본 서명·공증은 [메인 기술 설계](../../main/technical-design.md)를 따른다.
+- Windows 실 장비 검증 (GUI 동작은 실 장비에서 확인 — [빌드·배포 가이드](../../main/building-distribution.md) 참조).
 
 ## 7. 실행 원칙
 
-- 디렉터리: 기술 설계서 §10 구조를 따라 `tests/e2e/*.spec.ts`.
+- 테스트 파일은 `tests/e2e/*.spec.ts`에 둔다.
 - E2E는 Forge 프로덕션 패키지를 대상으로 실제 Renderer 클릭부터 Main·저장·화면 반영까지 검증한다. 결정론적 슈와 격리된 `userData`를 사용한다.
-- GUI가 필요한 Electron E2E를 CI 필수 게이트로 삼으려면 macOS·Windows 러너에서 실제 동작을 먼저 확인한다. 검증 범위와 실행 결과는 [E2E 구현 현황](e2e-implementation-status.md) 및 해당 [세션 보고서](session-reports/session-list.md)에 기록한다.
-- 구현 순서와 남은 작업은 [작업 세션 로드맵](work-session-roadmap.md), 현재 파일·테스트 수와 알려진 한계는 [E2E 구현 현황](e2e-implementation-status.md)을 따른다.
+- GUI가 필요한 Electron E2E를 CI 필수 게이트로 삼으려면 macOS·Windows 러너에서 실제 동작을 먼저 확인한다. 검증 범위와 실행 결과는 [E2E 구현 현황](e2e-implementation-status.md) 및 해당 [세션 보고서](../../session-reports/session-list.md)에 기록한다.
+- 구현 순서와 남은 작업은 [작업 세션 로드맵](../../work-session-roadmap.md), 현재 파일·테스트 수와 알려진 한계는 [E2E 구현 현황](e2e-implementation-status.md)을 따른다.

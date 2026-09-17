@@ -73,20 +73,22 @@ npm start
 
 ## 구조와 기준 문서
 
-- `src/main`: 창·트레이·플랫폼 설정·IPC와 게임 상태를 소유하는 `GameStore`.
+- `src/main`: 공통 창·트레이·플랫폼·IPC 경계와 현재 블랙잭 상태를 소유하는 `GameStore`.
 - `src/preload`: Renderer에 기능별 API만 노출.
 - `src/renderer`: 공개 게임 상태만 소비하는 React + CSS 플레이 화면.
-- `src/core`: Electron에 의존하지 않는 P1 게임 엔진. 6덱 슈, 점수, 전체 카지노 행동, 딜러 S17, 정산 원장을 구현.
+- `src/core`: Electron에 의존하지 않는 블랙잭 엔진. 6덱 슈, 점수, 카지노 행동, 딜러 S17, 정산 원장을 구현.
 - `src/shared`: 타입·Zod 스키마·채널 이름.
 - `tests`: P1 게임 규칙·원장·슈/점수, GameStore·IPC 신뢰 경계, 리사이즈와 대표 플레이 Electron E2E.
 - `.github/workflows/ci.yml`: macOS/Windows 공통 검사·패키징. GitHub에 연결하면 실행됩니다.
 
-제품 규칙: [제품 설계서](docs/blackjack-design.md)
+메인 기능과 블랙잭의 기준 문서: [문서 안내](docs/README.md)
 
-구현 계약: [기술 설계서](docs/blackjack-technical-design.md)
+제품 규칙: [블랙잭 제품 설계](docs/games/blackjack/product-design.md)
 
-배포 산출물과 OS별 빌드 방법: [빌드·배포 가이드](docs/building-distribution.md)
+구현 계약: [메인 기술 설계](docs/main/technical-design.md), [블랙잭 기술 설계](docs/games/blackjack/technical-design.md)
+
+배포 산출물과 OS별 빌드 방법: [빌드·배포 가이드](docs/main/building-distribution.md)
 
 ## 구현과 검증 현황
 
-완료된 작업과 당시 검증·미검증 사항은 [세션 목록](docs/session-reports/session-list.md)에서 해당 보고서로 이동해 확인하세요. 현재 코드 구조는 [구현 현황](docs/implementation-status.md), 다음 작업은 [작업 세션 로드맵](docs/work-session-roadmap.md), E2E 스위트의 현재 범위는 [E2E 구현 현황](docs/e2e-implementation-status.md)에 있습니다.
+완료된 작업과 당시 검증·미검증 사항은 [세션 목록](docs/session-reports/session-list.md)에서 해당 보고서로 이동해 확인하세요. 현재 코드 구조와 E2E 범위는 [문서 안내](docs/README.md)에서 메인 기능과 블랙잭으로 나누어 찾을 수 있습니다. 다음 작업은 [작업 세션 로드맵](docs/work-session-roadmap.md)을 따릅니다.

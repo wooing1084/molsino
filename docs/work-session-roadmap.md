@@ -1,8 +1,8 @@
-# molsino Blackjack — 작업 세션 로드맵
+# molsino 작업 세션 로드맵
 
 목적: 작업 세션의 실행 순서와 완료 조건을 정의한다.
 
-요약: 세션별 목표와 후속 작업은 이 로드맵을 따르고, 완료된 작업의 요약·검증 결과는 [세션 목록](session-reports/session-list.md)에서 해당 보고서로 이동해 확인한다.
+요약: 메인 기능과 블랙잭의 세션별 목표·후속 작업은 이 로드맵을 따르고, 완료된 작업의 요약·검증 결과는 [세션 목록](session-reports/session-list.md)에서 해당 보고서로 이동해 확인한다. 각 영역의 현재 기준 문서는 [문서 안내](README.md)에서 찾는다.
 
 ## 목차
 
@@ -18,7 +18,7 @@
 
 작성일: 2026-09-16
 
-기준 문서: [`blackjack-design.md`](blackjack-design.md), [`blackjack-technical-design.md`](blackjack-technical-design.md), [`e2e-test-plan.md`](e2e-test-plan.md)
+기준 문서: [메인 제품 설계](main/product-design.md)·[기술 설계](main/technical-design.md)·[E2E 설계](main/e2e-test-plan.md), [블랙잭 제품 설계](games/blackjack/product-design.md)·[기술 설계](games/blackjack/technical-design.md)·[E2E 설계](games/blackjack/e2e-test-plan.md).
 
 ## 1. 세션 운영 원칙
 
@@ -47,7 +47,9 @@ P1(S02~S06)은 2026-09-16 사용자 지시에 따른 일회성 예외로 세션�
 
 ### 실행 순서와 P 단계 표기
 
-P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정의하는 완료 판정 범주이지 세션이 반드시 따라야 하는 고정 실행 순서가 아니다. 세션 번호(S00~S18)는 이 로드맵이 정하는 실제 작업 순서이며, 아래처럼 범주를 의도적으로 교차 배치한다.
+P0·P3는 [메인 기술 설계](main/technical-design.md#8-검증과-완료-기준), P1·P2는 [블랙잭 기술 설계](games/blackjack/technical-design.md#6-검증과-완료-기준)의 완료 판정 범주이며 세션의 고정 실행 순서는 아니다. 세션 번호(S00~S18)는 이 로드맵이 정하는 실제 작업 순서이며, 아래처럼 범주를 교차 배치한다.
+
+주된 문서 영역은 S00·S01·S10·S11·S13·S16~S18이 **메인 기능**, S02~S06·S08·S10.5·S14·S15가 **블랙잭**, S07·S09·S12가 **두 영역의 통합**이다. 완료 세션의 당시 범위와 검증은 [세션 목록](session-reports/session-list.md)에서 확인한다.
 
 - 창 UI 마무리(P0 나머지)와 React 게임 UI 통합(P2 마지막)보다 게임 핵심 로직(P1)과 화면 없이 검증 가능한 백엔드 통합(P2 앞부분: GameStore·SessionRepository·IPC)을 먼저 끝낸다.
 - 이유: `BlackjackCore`/`GameStore`/`SessionRepository`/IPC까지는 화면 없이 단위 테스트와 E2E(헤드리스 구동, 계약 검증)로 동작을 확정할 수 있고, 게임이 실제로 규칙대로 동작하는지가 창 크기·위치 저장 같은 UI 마감보다 우선순위가 높기 때문이다.
@@ -157,7 +159,7 @@ P0~P3 표기는 [기술 설계서](blackjack-technical-design.md) §11.4가 정�
 
 ### S10 — 접힘·펼침, 창 상태 모델과 불투명도 조절
 
-S10 당시 보고서는 숨기기 전용 단축키를 기록한다. 이후 Alt+백틱이 숨김·복원 토글로 변경됐으며 현재 계약은 [제품 설계](blackjack-design.md#2-오버레이와-조작)를 따른다.
+S10 당시 보고서는 숨기기 전용 단축키를 기록한다. 이후 Alt+백틱이 숨김·복원 토글로 변경됐으며 현재 계약은 [메인 제품 설계](main/product-design.md#2-오버레이와-조작)를 따른다.
 
 **목표:** 140×30 DIP 접힘 상태와 펼친 크기를 실행 중에 독립적으로 보존하고, 색상 전환 버튼 호버 조절창의 슬라이더로 전경 불투명도를 조절한다. 사용자 피드백에 따라 오해를 낳은 헤더 접기 버튼을 제거하고 Alt+백틱 전역 창 숨김·복원을 제공한다.
 

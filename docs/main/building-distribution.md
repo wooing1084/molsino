@@ -172,7 +172,7 @@ MOLSINO_SMOKE_EXECUTABLE="out/molsino-darwin-universal/molsino.app/Contents/MacO
 
 ## 8. 현재 제품 제한
 
-- 게임 세션은 로컬에 저장되어 재실행 후 복원된다. 창 설정의 재실행 초기화·다중 모니터 대응은 [구현 현황](implementation-status.md)에서 확인한다.
+- 현재 블랙잭 세션은 로컬에 저장되어 재실행 후 복원된다. 구체적인 게임 저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md), 창 설정의 재실행 초기화·다중 모니터 대응은 [메인 구현 현황](implementation-status.md)에서 확인한다.
 - 자동 업데이트와 GitHub Release 게시 자동화는 아직 구성하지 않았다.
 - 스토어 배포 설정은 후속 제품화 범위다.
 - Windows 실장비 GUI 검증은 아직 완료되지 않았다.
