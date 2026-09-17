@@ -22,11 +22,12 @@ describe('settlement ledger and money integrity', () => {
     expect(calculateRoundNet(duplicate.ledger, 'round-1')).toBe(100);
   });
 
-  it('calculates exact cent payouts without fractional rounding', () => {
+  it('rounds half-cent returns up while keeping whole-cent payouts unchanged', () => {
     expect(blackjackReturn(100)).toBe(250);
+    expect(blackjackReturn(101)).toBe(253);
     expect(insuranceWinReturn(50)).toBe(150);
     expect(surrenderReturn(100)).toBe(50);
-    expect(() => surrenderReturn(101)).toThrow('exactly');
+    expect(surrenderReturn(101)).toBe(51);
     expect(() => blackjackReturn(Number.MAX_SAFE_INTEGER)).toThrow('safe integer');
   });
 
@@ -44,7 +45,8 @@ describe('settlement ledger and money integrity', () => {
   it('rejects invalid bets, phases, inactive hand IDs, and unexpected exhaustion', () => {
     const env = environment();
     const state = createSession(fixtureShoe([]));
-    expect(() => transition(state, { type: 'setBet', amountCents: 150 }, env)).toThrow('whole dollars');
+    expect(transition(state, { type: 'setBet', amountCents: 150 }, env).nextState.pendingBetCents).toBe(150);
+    expect(() => transition(state, { type: 'setBet', amountCents: 99 }, env)).toThrow('between $1');
     expect(() => transition(state, { type: 'setBet', amountCents: 50_100 }, env)).toThrow('$500');
     expect(() => transition(state, { type: 'hit', handId: 'missing' }, env)).toThrow('playerTurn');
 

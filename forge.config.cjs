@@ -1,5 +1,6 @@
 module.exports = {
   packagerConfig: {
+    ...(process.env.MOLSINO_ELECTRON_ZIP_DIR ? { electronZipDir: process.env.MOLSINO_ELECTRON_ZIP_DIR } : {}),
     asar: true,
     appBundleId: 'com.molsino.desktop',
     appCategoryType: 'public.app-category.games',

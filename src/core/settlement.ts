@@ -34,18 +34,12 @@ export function normalWinReturn(wagerCents: number): number {
 
 export function blackjackReturn(wagerCents: number): number {
   const multiplied = safeMultiply(wagerCents, 5, 'Blackjack return');
-  if (multiplied % 2 !== 0) {
-    throw new BlackjackError('INVALID_AMOUNT', 'Blackjack wager cannot be paid exactly at 3:2');
-  }
-  return multiplied / 2;
+  return Math.floor(multiplied / 2) + multiplied % 2;
 }
 
 export function surrenderReturn(wagerCents: number): number {
   assertSafeCents(wagerCents, 'Surrender wager');
-  if (wagerCents % 2 !== 0) {
-    throw new BlackjackError('INVALID_AMOUNT', 'Surrender wager cannot be halved exactly');
-  }
-  return wagerCents / 2;
+  return Math.floor(wagerCents / 2) + wagerCents % 2;
 }
 
 export function insuranceWinReturn(wagerCents: number): number {

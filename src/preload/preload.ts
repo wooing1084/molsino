@@ -18,6 +18,7 @@ const api: BlackjackAPI = {
   },
   setOpacity: percent => ipcRenderer.invoke(channels.opacity, percent),
   opacityPopover: command => ipcRenderer.invoke(channels.opacityPopover, command),
+  amountEditFocus: phase => ipcRenderer.invoke(channels.amountEditFocus, phase),
   resize: command => ipcRenderer.invoke(channels.resize, command),
 };
 contextBridge.exposeInMainWorld('blackjack', api);

@@ -1,6 +1,6 @@
 # molsino 빌드와 배포
 
-갱신일: 2026-09-16
+갱신일: 2026-09-17
 
 `molsino`는 Electron 데스크톱 게임 오버레이다. 현재 첫 게임으로 Blackjack을 제공한다. 최종 사용자에게는 Docker 이미지가 아니라 macOS 앱 ZIP 또는 Windows 설치 파일/포터블 ZIP을 전달한다.
 
@@ -109,7 +109,7 @@ Windows 설치형 `Setup.exe`는 Windows에서 빌드한다. 현재 macOS에는 
 - `molsino-macos-universal`
 - `molsino-windows-x64`
 
-이 저장소를 GitHub에 연결하기 전에는 workflow가 실행되지 않는다. 현재 작업 디렉터리에는 `.git` 저장소가 없으므로 우선 로컬 산출물을 사용한다.
+workflow 실행 여부와 산출물은 연결된 GitHub 저장소의 Actions에서 확인한다.
 
 ## 6. 산출물 확인
 
@@ -123,6 +123,12 @@ Windows 설치형 `Setup.exe`는 Windows에서 빌드한다. 현재 macOS에는 
 6. 설치형은 설치 → 실행 → 종료 → 제거까지 확인한다.
 
 `npm run test:e2e`는 현재 호스트용 프로덕션 패키지를 대상으로 자동 검증한다. Windows GUI 동작은 Windows 환경에서 별도로 확인해야 한다.
+
+Electron ZIP이 이미 로컬에 있고 다운로드가 불가능한 환경에서는 ZIP이 담긴 디렉터리를 지정해 같은 프로덕션 패키지 검증을 실행할 수 있다.
+
+```sh
+MOLSINO_ELECTRON_ZIP_DIR=/absolute/path/to/electron-zip-directory npm run test:e2e
+```
 
 macOS 패키지 자체를 smoke 테스트하려면 실행 파일 경로를 지정할 수 있다.
 

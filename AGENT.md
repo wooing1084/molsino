@@ -14,7 +14,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 ---
 
-## 현재 상태 — P0 S10 접힘·불투명도·전역 숨기기 완료, P1 완료, S08 저장·S09 IPC 회귀 완료
+## 현재 상태 — P0 S10.5 금액 입력·게임 오버 경계 완료, P1 완료, S08 저장·S09 IPC 회귀 완료
 
 ### 완성된 것
 
@@ -60,7 +60,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
   - deal/hit/stand, 자연 블랙잭, 딜러 S17, 보험/이븐 머니/서렌더
   - double/DAS, 같은 점수 split, 왼쪽 우선, 최대 4핸드, A split 제한
   - 정수 센트·safe integer, `(roundId, componentId)` 멱등 원장, 상태 무결성 검사
-- `tests/core`: P1 규칙·슈·점수·원장과 베팅 경계 40건
+- `tests/core`: P1 규칙·슈·점수·원장과 S10.5 센트 베팅·게임 오버 경계 검증
 - `tests/main/trust.test.ts`: contents·subframe·URL·포트·프로토콜 거부 커버
 - `tests/main/resize-controller.test.ts`: resize geometry·token·timeout 하위 테스트
 - `tests/e2e/overlay-resize.spec.ts`: S01 전체 배관 E2E 4건
@@ -74,6 +74,8 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 - 결정론적 E2E 슈 fixture 주입과 자연 블랙잭 대표 여정 검증
 - `SessionRepository`: versioned `session.json`, 원자 교체·검증된 primary backup, 손상/미래 schema 복구 선택, 실패 후보 재시도, 재기동 복원
 - S09: 등록된 최상위 frame·URL별 IPC 송신자 검증과 신뢰 문서로만 상태 push, 늦은 snapshot보다 새 revision의 push 유지, 구독 해제·reload, 비정상 payload 거부와 공개 상태 경계 E2E
+- S10.5: 베팅 금액 숫자칸 클릭 시 같은 자리에 텍스트 필드 표시, Enter 확정·Escape/필드 밖 클릭 취소, $1.00~min($500.00, 잔액)의 센트 베팅. 편집 중에만 메인 창 포커스를 허용하고 종료·숨김·접힘·클릭 통과·reload 시 해제
+- S10.5: 자연 블랙잭·서렌더의 반 센트 반환금 올림, 정산 후 잔액 $1.00은 다음 판 가능·$0.99 이하는 게임 오버/새 게임. 프로덕션 패키지 E2E 7건 추가
 
 ---
 
@@ -83,20 +85,19 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 | 항목 | 설계서 위치 | 비고 |
 |------|------------|------|
-| 금액 직접 입력 UtilityWindow (`focusable:true`) | §4.4 | 별도 창, 포커스 복원 주의 |
 | 다중 모니터 위치 보정 (`displayId`, `workArea`) | §4.7 | `display-metrics-changed` 이벤트 연동 |
 | 창 설정 재실행 초기화·다중 모니터 | §4.7·§7.2 | S11 범위. `preferences.json`은 만들지 않음 |
 | Renderer 장애 복구 (`render-process-gone` → 재동기화) | §7.3 | 현재 `overlay.hide()`만 있음 |
 | 자동 부분 클릭 통과 실험 (`forward:true`) | §4.5 (O-10) | 별도 실험 항목 |
-| 전체 게임·저장 E2E | §11.2 | S08 복원 6건·S09 IPC 5건 완료, E2E-01~20 전체 확장 필요 |
+| 전체 게임·저장 E2E | §11.2 | S08 복원 6건·S09 IPC 11건·S10.5 베팅/게임 오버 7건 완료, E2E-01~20의 나머지 확장 필요 |
 
 ---
 
 ## 다음 작업 — 설계서 권장 순서
 
-### 다음 세션 (P0 위치·다중 모니터·시작 기본값)
+### 다음 세션 (S11 위치·다중 모니터와 시작 기본값)
 
-로드맵 S11(위치·다중 모니터와 시작 기본값)을 진행한다. 실행 중 모니터 변경·음수 좌표·화면 밖 보정과 재실행 시 기본 위치·크기·색상·불투명도·펼침·클릭 통과 해제를 E2E부터 검증한다. 게임 판·잔액은 계속 복원하고 `preferences.json`은 만들지 않는다. S10 및 헤더 버튼·단축키 후속 확장 결과는 [`docs/session-reports/S10-overlay-state-opacity.md`](docs/session-reports/S10-overlay-state-opacity.md)에 기록했다.
+로드맵 S11에서 음수 좌표·화면 밖 보정과 모니터 배치 변경을 처리한다. 앱 재실행 시 위치·크기·색상·불투명도·접힘·클릭 통과는 기본값으로 돌아가고 게임 세션은 복원되는지 프로덕션 E2E로 검증한다. S10.5 변경·검증과 OS 포커스 한계는 [`docs/session-reports/S10.5-inline-bet-input.md`](docs/session-reports/S10.5-inline-bet-input.md)에 기록했다.
 
 ### 구현 순서
 
@@ -131,6 +132,7 @@ src/
     engine.ts                ← 순수 상태 전이
     errors.ts                ← 도메인 오류·safe 산술
   shared/contracts.ts        ← 채널·Zod 스키마·타입 (완료)
+  shared/bet-input.ts        ← 달러 텍스트를 정수 센트로 파싱 (완료)
 
 tests/
   core/*.test.ts             ← P1 코어 40건 완료
@@ -143,11 +145,12 @@ tests/
   e2e/persistence.spec.ts    ← S08 복원·손상·미래 버전·컷 경계 E2E 6건
   e2e/ipc-state.spec.ts      ← S09 역순·reload·보안 E2E 5건
   e2e/ipc-subscription.spec.ts ← S09 snapshot 역순·복구·구독/reload·공개 상태·보안 E2E 6건
+  e2e/betting.spec.ts        ← S10.5 인라인 금액 입력·센트 베팅·게임 오버 경계 E2E 7건
   main/resize-controller.test.ts ← 리사이즈 하위 테스트
   main/trust.test.ts         ← 완료
 
 docs/
-  blackjack-design.md        ← 제품 설계서 (v0.3)
+  blackjack-design.md        ← 제품 설계서 (v0.4)
   blackjack-technical-design.md ← 기술 설계서
   work-session-roadmap.md    ← S00~S18 세션 순서와 현재 상태
   session-reports/S01-custom-resize.md ← S01 변경·검증·이슈
@@ -157,6 +160,7 @@ docs/
   session-reports/S09-ipc-state-sync.md ← IPC·상태 구독 회귀·검증 기록
   session-reports/S09-ipc-subscription.md ← 병합된 S09 IPC·상태 구독 회귀 기록
   session-reports/S10-overlay-state-opacity.md ← 접힘·불투명도·헤더 버튼 제거·전역 숨기기 검증 기록
+  session-reports/S10.5-inline-bet-input.md ← 인라인 금액 입력·게임 오버 경계 검증 기록
   building-distribution.md ← macOS·Windows 빌드·배포 가이드
 ```
 
@@ -181,6 +185,7 @@ docs/
 | S10 접힘·불투명도·전역 숨기기 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 25/25 (S10 9건), `npm run check` 110/110 | S10, O-01/O-05/O-11 자동화 범위 |
 | macOS E2E Dock 정리 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 26/26, `npm run check` 110/110 | 테스트 앱 한정 Dock 숨김, 일반 앱 정책 유지 |
 | 최신 DEV 병합 통합 검증 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 32/32, `npm run check` 114/114 | 병합된 S09 회귀 6건 포함 |
+| S10.5 인라인 베팅·게임 오버 경계 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 39/39 (S10.5 7건), `npm run check` 13파일 131/131 | 최소 $1.00, $0.99 게임 오버, 센트 입력·정산 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
 | 10개 체크포인트·창 설정 재실행 초기화 | ⬜ S15/S11에서 완성 | E2E-17~18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |

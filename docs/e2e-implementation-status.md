@@ -1,6 +1,6 @@
 # E2E 테스트 스위트 구현 현황
 
-> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-17(macOS E2E Dock 정리 완료).
+> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-17(S10.5 인라인 금액 입력·게임 오버 경계 완료).
 > 게임 E2E-01~21은 [`e2e-test-plan.md`](./e2e-test-plan.md), P0 세션 순서는 [`work-session-roadmap.md`](./work-session-roadmap.md)를 기준으로 한다.
 
 ## 1. 목표와 접근 원칙
@@ -167,13 +167,19 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 - 병합된 S09 spec의 Preload API 기대 목록을 S10에서 추가된 오버레이 API까지 포함하도록 갱신했다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 32/32, `npm run check` 12파일 114/114 통과.
 
+### 2.15 S10.5 금액 입력·게임 오버 경계 — 완료
+
+- `tests/e2e/betting.spec.ts` 7건: 숫자칸 클릭 후 같은 자리의 텍스트 필드, 정수·소수 센트 입력·재기동 복원, 무효 값 거부와 취소, 편집 중 포커스 수명, $500.00 상한, $1.01 자연 블랙잭·서렌더 반환금, 정산 뒤 잔액 $1.00/$0.99 경계를 확인했다.
+- S10.5-01 E2E를 구현 전에 작성해 클릭 가능한 금액칸 부재로 실패하는 red를 확인했다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 39/39 통과, `npm run check` 13파일 131/131 통과. 상세는 [`session-reports/S10.5-inline-bet-input.md`](session-reports/S10.5-inline-bet-input.md).
+- 실제 외부 앱으로의 포커스 복귀와 Windows GUI 동작은 이 E2E로 판정하지 않는다.
+
 ## 3. 아직 안 된 작업 (재개 시 순서대로)
 
-1. **S11~S13 창 기능 E2E** — S10 접힘·펼침과 색상 버튼 호버 불투명도 조절창(20–100%)은 완료했다. 위치/다중 모니터·시작 기본값, UtilityWindow, 클릭 통과 회귀를 로드맵 순서대로 추가한다. 재실행 때 창 설정은 기본값으로 돌아가고 게임 세션만 복원한다.
-2. **게임용 spec 확장** — S14/S15에서 실제 배관과 UI 계약에 맞춰 작성한다. S08 `persistence.spec.ts` 6건과 S09 두 spec 11건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18 창 설정 초기화는 미완료다.
+1. **S11~S13 창 기능 E2E** — 위치·다중 모니터·시작 기본값, 포커스 회귀, 클릭 통과를 로드맵 순서대로 추가한다. 재실행 때 창 설정은 기본값으로 돌아가고 게임 세션만 복원한다.
+2. **게임용 spec 확장** — S10.5 `betting.spec.ts`에서 베팅·게임 오버 경계 일부를 먼저 작성했다. S14/S15에서 나머지를 실제 배관과 UI 계약에 맞춰 완성한다. S08 `persistence.spec.ts` 6건과 S09 두 spec 11건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18 창 설정 초기화는 미완료다.
    계약(`window-api.d.ts`, `support/*.ts`)과 15개 픽스처, 대표 플레이 spec은 준비돼 있다.
-   플랜대로 그룹당 1개씩 병렬 서브에이전트에 위임 가능:
-   - `tests/e2e/betting.spec.ts` — E2E-01(초기 기동 스냅샷), E2E-02(베팅 조정 경계)
+   남은 시나리오별 spec 계획:
+   - `tests/e2e/betting.spec.ts` — S10.5 경계는 완료. E2E-01(초기 기동 스냅샷), E2E-02(증감·잔액 경계)의 남은 범위 확장
    - `tests/e2e/standard-rounds.spec.ts` — E2E-03(히트→스탠드 완주), E2E-04(플레이어 자연 블랙잭),
      E2E-05(딜러 블랙잭), E2E-06(양쪽 자연 블랙잭)
    - `tests/e2e/side-rules.spec.ts` — E2E-07~13(보험 구매/거절, 이븐머니 수락/거절, 더블다운, 스플릿,
@@ -193,7 +199,8 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - `tests/e2e/window-api.d.ts`
 - `tests/e2e/support/app.ts`, `support/game.ts`, `support/format.ts`, `support/fixtures.ts`
 - `tests/e2e/support/resize.ts`, `tests/e2e/overlay-resize.spec.ts`
-- `tests/e2e/playable-mvp.spec.ts`, `tests/e2e/persistence.spec.ts`, `tests/e2e/ipc-state.spec.ts`, `tests/e2e/ipc-subscription.spec.ts`, `tests/e2e/overlay-state.spec.ts`, `tests/e2e/dock-lifecycle.spec.ts`
+- `tests/e2e/playable-mvp.spec.ts`, `tests/e2e/persistence.spec.ts`, `tests/e2e/ipc-state.spec.ts`, `tests/e2e/ipc-subscription.spec.ts`, `tests/e2e/overlay-state.spec.ts`, `tests/e2e/dock-lifecycle.spec.ts`, `tests/e2e/betting.spec.ts`
+- `src/shared/bet-input.ts`, `tests/shared/bet-input.test.ts`, `docs/session-reports/S10.5-inline-bet-input.md`
 - `fixtures/blackjack/*.json` × 15
 - `docs/e2e-implementation-status.md`(이 문서)
 - `src/main/game/game-store.ts`, `src/main/game/shoe-source.ts`
@@ -203,16 +210,17 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - `package.json` (`@playwright/test`, `pretest:e2e`, `test:e2e`, `typecheck:e2e`)
 - `src/main/main.ts` (`GameStore`, 게임 IPC, 상태 push, 테스트 userData)
 - `src/shared/contracts.ts`, `src/preload/preload.ts`, `src/renderer/main.tsx`, `src/renderer/styles.css`
+- `src/core/betting.ts`, `src/core/rules.ts`, `src/core/engine.ts`, `src/core/settlement.ts`, `forge.config.cjs`
 - `scripts/smoke.cjs`
 
 **아직 미생성**
-- `tests/e2e/betting.spec.ts`, `standard-rounds.spec.ts`, `side-rules.spec.ts`, `integrity.spec.ts`와
+- `tests/e2e/standard-rounds.spec.ts`, `side-rules.spec.ts`, `integrity.spec.ts`와
   `persistence.spec.ts`의 E2E-17 전체 체크포인트·E2E-18 확장
 
 ## 5. 알려진 이슈
 
-- 전체 E2E-01~21 전용 spec은 아직 미완료다. 현재 green은 S01 리사이즈 4건, S07 대표 플레이 1건, S08 복원 6건, S09 IPC·보안 11건, S10 오버레이 9건, macOS Dock 1건이다.
+- 전체 E2E-01~21 전용 spec은 아직 미완료다. 현재 green은 S01 리사이즈 4건, S07 대표 플레이 1건, S08 복원 6건, S09 IPC·보안 11건, S10 오버레이 9건, macOS Dock 1건, S10.5 베팅·게임 오버 7건으로 총 39건이다.
 - 재실행 게임 복원 대표 경로는 통과했지만 10개 체크포인트 전체·창 설정 재실행 초기화는 아직 통과 조건을 충족하지 않는다.
 - E2E는 실제 데스크톱 투명도 합성, 외부 앱 포커스, Windows 실장비 동작을 판정하지 않는다.
 - `npm install`이 high severity 취약점 17개를 보고했다. 자동 수정은 수행하지 않았다.
-- 현재 변경은 Git 저장소의 PR 브랜치에서 추적한다.
+- S10.5 구현과 문서 변경은 `codex/feature/s10-5-inline-bet-input` feature 브랜치에서 추적한다.

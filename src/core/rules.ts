@@ -64,11 +64,12 @@ export function canSurrender(round: RoundState, hand: PlayerHand): boolean {
 export function legalActions(state: SessionState): readonly LegalAction[] {
   const round = state.round;
   if (!round) {
-    const actions: LegalAction[] = ['setBet', 'setBetStep', 'resetSession'];
+    const actions: LegalAction[] = ['resetSession'];
+    if (state.balanceCents < 100) return actions;
+    actions.push('setBet', 'setBetStep');
     const validBet = Number.isSafeInteger(state.pendingBetCents)
       && state.pendingBetCents >= 100
       && state.pendingBetCents <= MAX_BET_CENTS
-      && state.pendingBetCents % 100 === 0
       && state.pendingBetCents <= state.balanceCents;
     if (validBet) actions.push('deal');
     return actions;
@@ -90,7 +91,8 @@ export function legalActions(state: SessionState): readonly LegalAction[] {
     return actions;
   }
 
-  if (round.phase === 'result') return ['nextRound', 'resetSession'];
+  if (round.phase === 'result') return state.balanceCents >= 100
+    ? ['nextRound', 'resetSession'] : ['resetSession'];
   return ['resetSession'];
 }
 
