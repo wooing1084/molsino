@@ -260,7 +260,6 @@ async function start(): Promise<void> {
   const applicationIcon = nativeImage.createFromPath(app.isPackaged
     ? path.join(process.resourcesPath, 'molsino.png')
     : path.join(app.getAppPath(), 'resources/icons/molsino.png'));
-  if (process.platform === 'darwin') app.dock?.setIcon(applicationIcon);
   overlay = new BrowserWindow({
     icon: applicationIcon,
     width: 280, height: 180, x: area.x + area.width - 304, y: area.y + area.height - 204,
@@ -287,6 +286,7 @@ async function start(): Promise<void> {
     clearTimer: timer => clearTimeout(timer),
   });
   configurePlatformWindow(overlay);
+  if (process.platform === 'darwin') app.dock?.setIcon(applicationIcon);
   setupTray();
   const disposeHideShortcut = installHideShortcut(globalShortcut, hideOverlay, message => console.warn(message));
   app.once('will-quit', disposeHideShortcut);
