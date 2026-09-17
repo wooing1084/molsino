@@ -175,8 +175,8 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 ## 3. 아직 안 된 작업 (재개 시 순서대로)
 
-1. **S11~S13 창 기능 E2E** — 위치·다중 모니터·시작 기본값, 포커스 회귀, 클릭 통과를 로드맵 순서대로 추가한다. 재실행 때 창 설정은 기본값으로 돌아가고 게임 세션만 복원한다.
-2. **게임용 spec 확장** — S10.5 `betting.spec.ts`에서 베팅·게임 오버 경계 일부를 먼저 작성했다. S14/S15에서 나머지를 실제 배관과 UI 계약에 맞춰 완성한다. S08 `persistence.spec.ts` 6건과 S09 두 spec 11건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18 창 설정 초기화는 미완료다.
+1. **S12~S13 창 기능 E2E** — S10.5 인라인 금액 입력의 포커스·접근성 회귀와 클릭 통과를 로드맵 순서대로 추가한다. S11 위치·다중 모니터·전체 시작 기본값과 E2E-18은 TOBE로 보류한다. 게임 세션 복원 검증은 계속 진행한다.
+2. **게임용 spec 확장** — S10.5 `betting.spec.ts`에서 베팅·게임 오버 경계 일부를 먼저 작성했다. S14/S15에서 나머지를 실제 배관과 UI 계약에 맞춰 완성한다. S08 `persistence.spec.ts` 6건과 S09 두 spec 11건은 완료됐지만 E2E-17 전체 10개 체크포인트는 미완료다. E2E-18 창 설정 초기화는 TOBE로 보류한다.
    계약(`window-api.d.ts`, `support/*.ts`)과 15개 픽스처, 대표 플레이 spec은 준비돼 있다.
    남은 시나리오별 spec 계획:
    - `tests/e2e/betting.spec.ts` — S10.5 경계는 완료. E2E-01(초기 기동 스냅샷), E2E-02(증감·잔액 경계)의 남은 범위 확장
@@ -185,7 +185,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
    - `tests/e2e/side-rules.spec.ts` — E2E-07~13(보험 구매/거절, 이븐머니 수락/거절, 더블다운, 스플릿,
      A스플릿, 레이트 서렌더) — 7개
    - `tests/e2e/integrity.spec.ts` — E2E-14(연속 클릭 거부), E2E-15(잔액 부족), E2E-16(새 게임 초기화)
-   - `tests/e2e/persistence.spec.ts` — E2E-17(저장 복원 10-checkpoint 반복문), E2E-18(창 설정 재실행 초기화),
+   - `tests/e2e/persistence.spec.ts` — E2E-17(저장 복원 10-checkpoint 반복문), E2E-18(창 설정 재실행 초기화, TOBE),
      E2E-19(저장 손상/미래 스키마), E2E-20(슈 재셔플 경계)
    - E2E-21 Node 격리·비정상 명령 거부 — 두 S09 spec에서 검증했다. 새 창·frame 기능 추가 시 경계 회귀를 확장한다.
 
@@ -215,7 +215,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 **아직 미생성**
 - `tests/e2e/standard-rounds.spec.ts`, `side-rules.spec.ts`, `integrity.spec.ts`와
-  `persistence.spec.ts`의 E2E-17 전체 체크포인트·E2E-18 확장
+  `persistence.spec.ts`의 E2E-17 전체 체크포인트. E2E-18 확장은 TOBE로 보류
 
 ## 5. 알려진 이슈
 

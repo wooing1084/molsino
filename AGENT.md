@@ -85,19 +85,19 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 
 | 항목 | 설계서 위치 | 비고 |
 |------|------------|------|
-| 다중 모니터 위치 보정 (`displayId`, `workArea`) | §4.7 | `display-metrics-changed` 이벤트 연동 |
-| 창 설정 재실행 초기화·다중 모니터 | §4.7·§7.2 | S11 범위. `preferences.json`은 만들지 않음 |
+| 다중 모니터 위치 보정 (`displayId`, `workArea`) | §4.7 | S11과 함께 TOBE 보류 |
+| 창 설정 재실행 초기화·다중 모니터 | §4.7·§7.2 | S11 전체 TOBE 보류. `preferences.json`은 만들지 않음 |
 | Renderer 장애 복구 (`render-process-gone` → 재동기화) | §7.3 | 현재 `overlay.hide()`만 있음 |
 | 자동 부분 클릭 통과 실험 (`forward:true`) | §4.5 (O-10) | 별도 실험 항목 |
-| 전체 게임·저장 E2E | §11.2 | S08 복원 6건·S09 IPC 11건·S10.5 베팅/게임 오버 7건 완료, E2E-01~20의 나머지 확장 필요 |
+| 전체 게임·저장 E2E | §11.2 | S08 복원 6건·S09 IPC 11건·S10.5 베팅/게임 오버 7건 완료, E2E-18(TOBE)을 제외한 나머지 확장 필요 |
 
 ---
 
 ## 다음 작업 — 설계서 권장 순서
 
-### 다음 세션 (S11 위치·다중 모니터와 시작 기본값)
+### 다음 세션 (S12 인라인 금액 입력의 포커스·접근성 회귀)
 
-로드맵 S11에서 음수 좌표·화면 밖 보정과 모니터 배치 변경을 처리한다. 앱 재실행 시 위치·크기·색상·불투명도·접힘·클릭 통과는 기본값으로 돌아가고 게임 세션은 복원되는지 프로덕션 E2E로 검증한다. S10.5 변경·검증과 OS 포커스 한계는 [`docs/session-reports/S10.5-inline-bet-input.md`](docs/session-reports/S10.5-inline-bet-input.md)에 기록했다.
+사용자 결정(2026-09-17)에 따라 S11(위치·다중 모니터와 시작 기본값) 전체를 TOBE로 보류한다. 다음은 S12에서 S10.5 인라인 금액 입력의 반복 시작·종료, 숨김·복원 뒤 포커스 상태, 키보드·접근성 경로를 회귀 검증한다. 별도의 금액 입력 UtilityWindow는 만들지 않는다. S10.5 변경·검증과 실제 업무 앱 포커스 한계는 [`docs/session-reports/S10.5-inline-bet-input.md`](docs/session-reports/S10.5-inline-bet-input.md)에 기록했다.
 
 ### 구현 순서
 
@@ -187,7 +187,8 @@ docs/
 | 최신 DEV 병합 통합 검증 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 32/32, `npm run check` 114/114 | 병합된 S09 회귀 6건 포함 |
 | S10.5 인라인 베팅·게임 오버 경계 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 39/39 (S10.5 7건), `npm run check` 13파일 130/130 | 최소 $1.00, 잔액 전체 상한, $0.99 게임 오버, 센트 입력·정산 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
-| 10개 체크포인트·창 설정 재실행 초기화 | ⬜ S15/S11에서 완성 | E2E-17~18 |
+| 10개 체크포인트 | ⬜ S15에서 완성 | E2E-17 |
+| 창 설정 재실행 초기화 | ⏸ S11과 함께 TOBE 보류 | E2E-18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |
 | Windows 빌드 + 창 동작 | ⬜ 미검증 (CI 대상이나 실 장비 없음) | — |
 | 자동 부분 클릭 통과 | ⬜ 미검증 (실험 항목) | O-10 |
