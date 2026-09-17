@@ -168,7 +168,7 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 ### 4.4 포커스와 인라인 입력
 
 - 기본 오버레이는 마우스 중심이다. 복원·호버·액션 클릭에서 `focus()` 또는 `app.focus()`를 호출하지 않는다.
-- 창 제어 예외인 전역 Alt+백틱은 Electron Main의 `globalShortcut`으로 앱 준비 후 등록한다. 콜백은 기존 `hideOverlay()`만 호출하고 숨김 중에는 복원하지 않는다. 게임 명령·일시정지·키보드 포커스 변경은 없다. 등록 실패(다른 앱 점유 등)는 경고만 남기고 트레이 경로를 유지하며, 실제 종료 시 `will-quit`에서 해제한다. 키보드 배열·OS별 실제 키 조합은 실장비에서 확인한다. [Electron globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut), [Accelerator](https://www.electronjs.org/docs/latest/api/accelerator)
+- 창 제어 예외인 전역 Alt+백틱은 Electron Main의 `globalShortcut`으로 앱 준비 후 등록한다. 콜백 `toggleOverlay()`는 보이는 상태면 기존 `hideOverlay()`를, 숨김 상태면 트레이 복원과 같은 `reveal()`(`showInactive`)을 호출한다. 게임 명령·일시정지·키보드 포커스 변경은 없다. 등록 실패(다른 앱 점유 등)는 경고만 남기고 트레이 경로를 유지하며, 실제 종료 시 `will-quit`에서 해제한다. 키보드 배열·OS별 실제 키 조합은 실장비에서 확인한다. [Electron globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut), [Accelerator](https://www.electronjs.org/docs/latest/api/accelerator)
 - `acceptFirstMouse`는 macOS의 비활성 첫 클릭을 위한 설정이다. 아래 업무 창으로 클릭을 통과시키는 설정과 혼동하지 않는다.
 - S10.5에서 베팅 금액 숫자칸을 누르면 같은 자리의 텍스트 필드로 바꾸고 현재 베팅액을 채운다. Main은 신뢰된 메인 창의 명시적 편집 요청에서만 `setFocusable(true)`와 `focus()`를 호출한다. Renderer는 그 뒤 필드에 포커스를 준다. 평소 창은 `focusable:false`이고 복원·호버·일반 게임 액션에서는 포커스를 가져오지 않는다.
 - Enter는 유효한 입력을 기존 `setBet` 명령으로 확정한다. 저장된 새 상태를 받은 뒤 숫자칸으로 돌아간다. Escape·필드 밖 클릭은 입력 초안을 버리고 이전 베팅액을 표시한다. 빈 값이나 잘못된 값에서 Enter를 누르면 필드 옆 오류를 표시하고 편집을 유지한다. 편집 중에는 딜을 막는다.
@@ -514,7 +514,7 @@ maker와 서명 구성은 채택한 Forge 버전에서 확인해 고정한다. �
 | O-08 | suspend/resume·재실행 | 중복 창·타이머·잘못된 위치 없음, 재실행 시 창 설정 기본값·게임 세션 복원 |
 | O-09 | Renderer 재로드·종료 | 게임 보존, 공개 상태 재동기화 |
 | O-10 | 자동 부분 클릭 통과 실험 | 빠른 진입·클릭·스크롤 오입력 없음 |
-| O-11 | 전역 Alt+백틱 창 숨기기 | 다른 앱 사용 중 숨김, 숨김 중 재입력은 복원하지 않음, 트레이 복원 가능. 충돌·키보드 배열은 OS별 기록 |
+| O-11 | 전역 Alt+백틱 창 숨기기/복원 | 다른 앱 사용 중 숨김, 숨김 중 재입력은 포커스 이동 없이 복원, 트레이 복원 가능. 충돌·키보드 배열은 OS별 기록 |
 
 O-01~O-09와 O-11은 제품 검증 조건이고 O-10은 별도 실험이다. 특히 O-05 실패를 고정 크기 UI로 대체해 완료 처리하지 않는다. DevTools가 열린 투명 창은 문서상 제약이 있으므로 투명도 최종 판정은 DevTools를 닫은 패키지에서 한다.
 
