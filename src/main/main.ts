@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createSession } from '../core/engine';
-import { channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
+import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
 import { GameStore } from './game/game-store';
 import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
@@ -24,6 +24,7 @@ let tray: Tray | undefined;
 let resizeController: ResizeController | undefined;
 let quitting = false;
 let clickThrough = false;
+let amountEditing = false;
 let gameStore: GameStore | undefined;
 let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false };
 let shownVisibility: 'expanded' | 'collapsed' = 'expanded';
@@ -39,6 +40,7 @@ const snapshotDelayMs = Number.isSafeInteger(requestedSnapshotDelay)
   && requestedSnapshotDelay >= 0 && requestedSnapshotDelay <= 2_000 ? requestedSnapshotDelay : 0;
 
 function sendGameState(state: GameViewState): void {
+  if (amountEditing && state.phase !== 'betting') endAmountEdit();
   if (!overlay || overlay.isDestroyed()) return;
   const contents = overlay.webContents;
   const frame = contents.isDestroyed() ? null : contents.mainFrame;
@@ -75,6 +77,27 @@ function clampBounds(bounds: WindowBounds): WindowBounds {
 function clearOpacityHideTimer(): void {
   if (opacityHideTimer) clearTimeout(opacityHideTimer);
   opacityHideTimer = undefined;
+}
+
+function endAmountEdit(): void {
+  if (!amountEditing) return;
+  amountEditing = false;
+  if (!overlay || overlay.isDestroyed()) return;
+  overlay.blur();
+  overlay.setFocusable(false);
+}
+
+function beginAmountEdit(): void {
+  const snapshot = gameStore?.getSnapshot();
+  if (!overlay || overlay.isDestroyed() || !overlay.isVisible() || clickThrough
+    || overlayState.visibility !== 'expanded' || snapshot?.phase !== 'betting'
+    || snapshot.saveError || !snapshot.legalActions.includes('setBet')) {
+    throw new Error('Bet editing is unavailable');
+  }
+  if (amountEditing) return;
+  amountEditing = true;
+  overlay.setFocusable(true);
+  overlay.focus();
 }
 
 function hideOpacityPanel(): void {
@@ -151,6 +174,7 @@ function reveal(): void {
 }
 function hideOverlay(): void {
   resizeController?.invalidate();
+  endAmountEdit();
   hideOpacityPanel();
   if (overlayState.visibility !== 'hidden') {
     shownVisibility = overlayState.visibility;
@@ -161,6 +185,7 @@ function hideOverlay(): void {
 function collapseOverlay(): void {
   if (!overlay || overlayState.visibility !== 'expanded') return;
   resizeController?.invalidate();
+  endAmountEdit();
   hideOpacityPanel();
   expandedBounds = overlay.getBounds();
   overlay.setBounds(clampBounds({ ...expandedBounds, width: 140, height: 30 }));
@@ -176,6 +201,7 @@ function expandOverlay(): void {
 }
 function enableClickThrough(): void {
   resizeController?.invalidate();
+  endAmountEdit();
   hideOpacityPanel();
   clickThrough = true;
   overlay?.setIgnoreMouseEvents(true);
@@ -313,6 +339,11 @@ async function start(): Promise<void> {
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
     const command = userCommandSchema.parse(value);
+    if (amountEditing && command.action.type === 'deal' && gameStore) {
+      return { ok: false, error: 'INVALID_ACTION' as const,
+        message: '베팅 금액 입력을 먼저 완료하세요.', state: gameStore.getSnapshot() };
+    }
+    if (amountEditing && command.action.type === 'resetSession') endAmountEdit();
     return gameStore?.dispatch(command) ?? {
       ok: false, error: 'RECOVERY_REQUIRED', message: '저장 복구 선택이 필요합니다.', state: recoveryState(),
     };
@@ -370,6 +401,12 @@ async function start(): Promise<void> {
     } else if (command.phase === 'keep') clearOpacityHideTimer();
     else scheduleOpacityPanelHide();
   });
+  ipcMain.handle(channels.amountEditFocus, (event, value: unknown) => {
+    requireTrusted(event);
+    const phase = amountEditFocusSchema.parse(value);
+    if (phase === 'begin') beginAmountEdit();
+    else endAmountEdit();
+  });
   ipcMain.handle(channels.resize, (event, value: unknown) => {
     requireTrusted(event);
     if (!resizeController || !overlay) throw new Error('Resize controller is unavailable');
@@ -385,13 +422,14 @@ async function start(): Promise<void> {
   });
   overlay.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   overlay.webContents.on('will-navigate', (event, url) => { if (!isTrustedDocument(url, documentURL)) event.preventDefault(); });
-  overlay.on('hide', () => { resizeController?.invalidate(); hideOpacityPanel(); });
+  overlay.on('hide', () => { resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); });
+  overlay.on('blur', endAmountEdit);
   overlay.on('move', () => {
     if (opacityPanel?.isVisible() && opacityAnchor) placeOpacityPanel(opacityAnchor);
   });
   overlay.on('close', event => { resizeController?.invalidate(); if (!quitting) { event.preventDefault(); hideOverlay(); } });
   overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState?.(); });
-  overlay.webContents.on('did-start-navigation', () => { resizeController?.invalidate(); hideOpacityPanel(); });
+  overlay.webContents.on('did-start-navigation', () => { resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); });
   overlay.webContents.on('render-process-gone', () => { resizeController?.invalidate(); hideOverlay(); console.error('Renderer exited; restart the app from the tray.'); });
   overlay.once('ready-to-show', reveal);
   await overlay.loadURL(documentURL);
@@ -409,7 +447,7 @@ else {
       });
       return;
     }
-    quitting = true; resizeController?.invalidate(); hideOpacityPanel(); tray?.destroy();
+    quitting = true; resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); tray?.destroy();
   });
   app.on('window-all-closed', () => { /* tray owns application lifetime */ });
   app.whenReady().then(start).catch(error => { console.error(error); app.quit(); });

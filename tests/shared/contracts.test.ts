@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema } from '../../src/shared/contracts';
+import { amountEditFocusSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema } from '../../src/shared/contracts';
 
 const token = '11111111-1111-4111-8111-111111111111';
 
@@ -83,6 +83,11 @@ describe('game command contract', () => {
 });
 
 describe('other IPC command contracts', () => {
+  it('accepts only begin and end for inline bet editing focus', () => {
+    expect(amountEditFocusSchema.safeParse('begin').success).toBe(true);
+    expect(amountEditFocusSchema.safeParse('end').success).toBe(true);
+    expect(amountEditFocusSchema.safeParse({ phase: 'begin' }).success).toBe(false);
+  });
   it.each(['restoreBackup', 'startNew'])('accepts the recovery choice %s', choice => {
     expect(recoveryChoiceSchema.safeParse(choice).success).toBe(true);
   });

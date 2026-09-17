@@ -74,7 +74,7 @@ test('S09-03 E2E-21 Node 격리와 내부·비정상 명령 거부를 확인한�
   }));
   expect(boundary).toEqual({
     hasRequire: false, hasProcess: false, hasIpcRenderer: false,
-    apiKeys: ['dispatch', 'getOverlayState', 'getSnapshot', 'onOverlayState', 'onState', 'opacityPopover', 'recover', 'resize', 'setOpacity', 'windowCommand'],
+    apiKeys: ['amountEditFocus', 'dispatch', 'getOverlayState', 'getSnapshot', 'onOverlayState', 'onState', 'opacityPopover', 'recover', 'resize', 'setOpacity', 'windowCommand'],
   });
   const before = await launched.page.evaluate(() => window.blackjack.getSnapshot());
   await expect(launched.page.evaluate(() => window.blackjack.dispatch({

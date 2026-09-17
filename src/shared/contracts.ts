@@ -14,6 +14,7 @@ export const channels = {
   overlayStateChanged: 'overlay:state',
   opacity: 'overlay:set-opacity',
   opacityPopover: 'overlay:opacity-popover',
+  amountEditFocus: 'overlay:amount-edit-focus',
   recovery: 'game:recovery',
 } as const;
 
@@ -45,6 +46,7 @@ export const userCommandSchema = z.object({
 
 export const windowCommandSchema = z.enum(['hide', 'quit', 'small', 'default', 'large', 'passthrough', 'collapse', 'expand']);
 export const opacityPercentSchema = z.number().int().min(20).max(100).refine(value => value % 5 === 0);
+export const amountEditFocusSchema = z.enum(['begin', 'end']);
 const anchorSchema = z.object({
   x: z.number().finite().nonnegative(), y: z.number().finite().nonnegative(),
   width: z.number().finite().positive().max(100), height: z.number().finite().positive().max(100),
@@ -149,5 +151,6 @@ export interface BlackjackAPI {
   onOverlayState(listener: (state: OverlayViewState) => void): () => void;
   setOpacity(percent: number): Promise<OverlayViewState>;
   opacityPopover(command: OpacityPopoverCommand): Promise<void>;
+  amountEditFocus(phase: 'begin' | 'end'): Promise<void>;
   resize(command: ResizeCommand): Promise<ResizeResult>;
 }

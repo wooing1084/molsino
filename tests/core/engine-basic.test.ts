@@ -99,9 +99,30 @@ describe('basic blackjack rounds', () => {
     const brokeHandId = brokeDeal.round?.playerHands[0]?.handId;
     if (!brokeHandId) throw new Error('missing test hand');
     const brokeResult = transition(brokeDeal, { type: 'stand', handId: brokeHandId }, environment()).nextState;
-    const brokeNext = transition(brokeResult, { type: 'nextRound' }, environment()).nextState;
-    expect(brokeNext).toMatchObject({ balanceCents: 0, pendingBetCents: 0, round: null });
-    expect(legalActions(brokeNext)).not.toContain('deal');
+    expect(brokeResult.balanceCents).toBe(0);
+    expect(legalActions(brokeResult)).not.toContain('nextRound');
+    expect(() => transition(brokeResult, { type: 'nextRound' }, environment())).toThrow('Game over');
+  });
+
+  it('keeps $1 playable and ends the game below $1 after settlement', () => {
+    const shoe = fixtureShoe([
+      card('9'), card('10', 'C'), card('7', 'D'), card('9', 'H'),
+    ]);
+    for (const remaining of [100, 99]) {
+      const env = environment();
+      const dealt = transition(createSession(shoe, { balanceCents: remaining + 100 }), { type: 'deal' }, env).nextState;
+      const handId = dealt.round?.playerHands[0]?.handId;
+      if (!handId) throw new Error('missing test hand');
+      const result = transition(dealt, { type: 'stand', handId }, env).nextState;
+      expect(result.balanceCents).toBe(remaining);
+      expect(legalActions(result).includes('nextRound')).toBe(remaining === 100);
+      if (remaining === 100) {
+        const next = transition(result, { type: 'nextRound' }, env).nextState;
+        expect(legalActions(next)).toContain('deal');
+      } else {
+        expect(() => transition(result, { type: 'nextRound' }, env)).toThrow('Game over');
+      }
+    }
   });
 
   it('uses a fresh shoe only at a round boundary', () => {

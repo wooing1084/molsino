@@ -124,7 +124,7 @@ test('E2E-21 격리된 Preload API가 내부 명령과 잘못된 payload를 거�
     api: Object.keys(window.blackjack).sort(),
   }))).toEqual({
     require: 'undefined', process: 'undefined', ipcRenderer: 'undefined',
-    api: ['dispatch', 'getOverlayState', 'getSnapshot', 'onOverlayState', 'onState', 'opacityPopover', 'recover', 'resize', 'setOpacity', 'windowCommand'],
+    api: ['amountEditFocus', 'dispatch', 'getOverlayState', 'getSnapshot', 'onOverlayState', 'onState', 'opacityPopover', 'recover', 'resize', 'setOpacity', 'windowCommand'],
   });
 
   const invalidCommands: unknown[] = [
