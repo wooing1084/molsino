@@ -9,7 +9,7 @@ import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
 import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
 import { configurePlatformWindow } from './platform/adapter';
-import { installHideShortcut } from './windows/hide-shortcut';
+import { installToggleShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
 
 // E2E 테스트 전용: 격리된 userData로 실제 개발자 세션 파일을 건드리지 않게 한다. 미설정 시 동작 동일.
@@ -182,6 +182,11 @@ function hideOverlay(): void {
   }
   overlay?.hide();
 }
+function toggleOverlay(): void {
+  if (!overlay || overlay.isDestroyed()) return;
+  if (overlayState.visibility === 'hidden' || !overlay.isVisible()) reveal();
+  else hideOverlay();
+}
 function collapseOverlay(): void {
   if (!overlay || overlayState.visibility !== 'expanded') return;
   resizeController?.invalidate();
@@ -314,8 +319,8 @@ async function start(): Promise<void> {
   });
   configurePlatformWindow(overlay);
   setupTray();
-  const disposeHideShortcut = installHideShortcut(globalShortcut, hideOverlay, message => console.warn(message));
-  app.once('will-quit', disposeHideShortcut);
+  const disposeToggleShortcut = installToggleShortcut(globalShortcut, toggleOverlay, message => console.warn(message));
+  app.once('will-quit', disposeToggleShortcut);
   const session = overlay.webContents.session;
   session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.webRequest.onHeadersReceived((details, callback) => callback({ responseHeaders: {
