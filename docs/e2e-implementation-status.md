@@ -169,8 +169,8 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 ### 2.15 S10.5 금액 입력·게임 오버 경계 — 완료
 
-- `tests/e2e/betting.spec.ts` 7건: 숫자칸 클릭 후 같은 자리의 텍스트 필드, 정수·소수 센트 입력·재기동 복원, 무효 값 거부와 취소, 편집 중 포커스 수명, $500.00 상한, $1.01 자연 블랙잭·서렌더 반환금, 정산 뒤 잔액 $1.00/$0.99 경계를 확인했다.
-- S10.5-01 E2E를 구현 전에 작성해 클릭 가능한 금액칸 부재로 실패하는 red를 확인했다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 39/39 통과, `npm run check` 13파일 131/131 통과. 상세는 [`session-reports/S10.5-inline-bet-input.md`](session-reports/S10.5-inline-bet-input.md).
+- `tests/e2e/betting.spec.ts` 7건: 숫자칸 클릭 후 같은 자리의 텍스트 필드, 정수·소수 센트 입력·재기동 복원, 무효 값 거부와 취소, 편집 중 포커스 수명, $500을 넘는 잔액 전체 베팅, $1.01 자연 블랙잭·서렌더 반환금, 정산 뒤 잔액 $1.00/$0.99 경계를 확인했다.
+- S10.5-01 E2E를 구현 전에 작성해 클릭 가능한 금액칸 부재로 실패하는 red를 확인했다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 39/39 통과, `npm run check` 13파일 130/130 통과. 상세는 [`session-reports/S10.5-inline-bet-input.md`](session-reports/S10.5-inline-bet-input.md).
 - 실제 외부 앱으로의 포커스 복귀와 Windows GUI 동작은 이 E2E로 판정하지 않는다.
 
 ## 3. 아직 안 된 작업 (재개 시 순서대로)

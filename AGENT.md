@@ -74,7 +74,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 - 결정론적 E2E 슈 fixture 주입과 자연 블랙잭 대표 여정 검증
 - `SessionRepository`: versioned `session.json`, 원자 교체·검증된 primary backup, 손상/미래 schema 복구 선택, 실패 후보 재시도, 재기동 복원
 - S09: 등록된 최상위 frame·URL별 IPC 송신자 검증과 신뢰 문서로만 상태 push, 늦은 snapshot보다 새 revision의 push 유지, 구독 해제·reload, 비정상 payload 거부와 공개 상태 경계 E2E
-- S10.5: 베팅 금액 숫자칸 클릭 시 같은 자리에 텍스트 필드 표시, Enter 확정·Escape/필드 밖 클릭 취소, $1.00~min($500.00, 잔액)의 센트 베팅. 편집 중에만 메인 창 포커스를 허용하고 종료·숨김·접힘·클릭 통과·reload 시 해제
+- S10.5: 베팅 금액 숫자칸 클릭 시 같은 자리에 텍스트 필드 표시, Enter 확정·Escape/필드 밖 클릭 취소, $1.00~현재 잔액의 센트 베팅. 편집 중에만 메인 창 포커스를 허용하고 종료·숨김·접힘·클릭 통과·reload 시 해제
 - S10.5: 자연 블랙잭·서렌더의 반 센트 반환금 올림, 정산 후 잔액 $1.00은 다음 판 가능·$0.99 이하는 게임 오버/새 게임. 프로덕션 패키지 E2E 7건 추가
 
 ---
@@ -185,7 +185,7 @@ docs/
 | S10 접힘·불투명도·전역 숨기기 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 25/25 (S10 9건), `npm run check` 110/110 | S10, O-01/O-05/O-11 자동화 범위 |
 | macOS E2E Dock 정리 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 26/26, `npm run check` 110/110 | 테스트 앱 한정 Dock 숨김, 일반 앱 정책 유지 |
 | 최신 DEV 병합 통합 검증 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 32/32, `npm run check` 114/114 | 병합된 S09 회귀 6건 포함 |
-| S10.5 인라인 베팅·게임 오버 경계 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 39/39 (S10.5 7건), `npm run check` 13파일 131/131 | 최소 $1.00, $0.99 게임 오버, 센트 입력·정산 |
+| S10.5 인라인 베팅·게임 오버 경계 | ✅ macOS arm64 프로덕션 전체 `npm run test:e2e` 39/39 (S10.5 7건), `npm run check` 13파일 130/130 | 최소 $1.00, 잔액 전체 상한, $0.99 게임 오버, 센트 입력·정산 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
 | 10개 체크포인트·창 설정 재실행 초기화 | ⬜ S15/S11에서 완성 | E2E-17~18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |

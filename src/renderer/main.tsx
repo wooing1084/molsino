@@ -294,7 +294,7 @@ function App() {
 
   function changeBet(delta: number): void {
     if (!state) return;
-    const maximum = Math.min(50_000, state.balanceCents);
+    const maximum = state.balanceCents;
     const amountCents = Math.max(100, Math.min(maximum, state.pendingBetCents + delta));
     void runAction({ type: 'setBet', amountCents });
   }
@@ -359,7 +359,7 @@ function App() {
           onBlur={endBetEdit}/>
         {betError && <span className="bet-input-error" title={betError} aria-label={betError}>!</span>}
       </div> : <button className="bet-amount" aria-label="베팅 금액" disabled={busy} onClick={() => void beginBetEdit()}><output>{usd(state.pendingBetCents)}</output></button>}
-      <button aria-label="베팅 올리기" disabled={busy || betEditing || state.pendingBetCents >= Math.min(50_000, state.balanceCents)} onClick={() => changeBet(state.betStepCents)}>+</button>
+      <button aria-label="베팅 올리기" disabled={busy || betEditing || state.pendingBetCents >= state.balanceCents} onClick={() => changeBet(state.betStepCents)}>+</button>
       <button aria-label="딜" disabled={busy || betEditing || !can('deal')} onClick={() => void runAction({ type: 'deal' })}>딜</button>
     </>
     : state.phase === 'insuranceDecision' ? can('acceptEvenMoney')

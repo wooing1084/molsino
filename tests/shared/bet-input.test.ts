@@ -15,5 +15,7 @@ describe('direct bet text parsing', () => {
   it('uses the exact cent balance as the upper bound', () => {
     expect(parseBetInput('1.25', 125)).toEqual({ ok: true, cents: 125 });
     expect(parseBetInput('1.26', 125).ok).toBe(false);
+    expect(parseBetInput('600.01', 60_001)).toEqual({ ok: true, cents: 60_001 });
+    expect(parseBetInput('600.02', 60_001).ok).toBe(false);
   });
 });

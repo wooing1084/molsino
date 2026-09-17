@@ -46,8 +46,8 @@ describe('settlement ledger and money integrity', () => {
     const env = environment();
     const state = createSession(fixtureShoe([]));
     expect(transition(state, { type: 'setBet', amountCents: 150 }, env).nextState.pendingBetCents).toBe(150);
-    expect(() => transition(state, { type: 'setBet', amountCents: 99 }, env)).toThrow('between $1');
-    expect(() => transition(state, { type: 'setBet', amountCents: 50_100 }, env)).toThrow('$500');
+    expect(() => transition(state, { type: 'setBet', amountCents: 99 }, env)).toThrow('at least $1');
+    expect(() => transition(state, { type: 'setBet', amountCents: 50_100 }, env)).toThrow('Insufficient balance');
     expect(() => transition(state, { type: 'hit', handId: 'missing' }, env)).toThrow('playerTurn');
 
     const shoe = fixtureShoe([

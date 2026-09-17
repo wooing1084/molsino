@@ -2,7 +2,6 @@ import type { Card } from './models';
 import { scoreHand } from './scoring';
 import {
   BET_STEPS_CENTS,
-  MAX_BET_CENTS,
   MAX_HANDS,
   type LegalAction,
   type PlayerHand,
@@ -69,7 +68,6 @@ export function legalActions(state: SessionState): readonly LegalAction[] {
     actions.push('setBet', 'setBetStep');
     const validBet = Number.isSafeInteger(state.pendingBetCents)
       && state.pendingBetCents >= 100
-      && state.pendingBetCents <= MAX_BET_CENTS
       && state.pendingBetCents <= state.balanceCents;
     if (validBet) actions.push('deal');
     return actions;
