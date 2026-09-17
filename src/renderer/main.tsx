@@ -1,6 +1,6 @@
-import { StrictMode, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { StrictMode, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { CardView, GameViewState, SettlementOutcome, UserAction } from '../shared/contracts';
+import type { CardView, GameViewState, OverlayViewState, SettlementOutcome, UserAction } from '../shared/contracts';
 import './styles.css';
 
 const usd = (value: number) => `$${(value / 100).toFixed(2)}`;
@@ -39,6 +39,7 @@ function App() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [dark, setDark] = useState(false);
+  const [overlayView, setOverlayView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false });
   const [resizingEdge, setResizingEdge] = useState<ResizeEdge>();
   const resizeGesture = useRef<ResizeGesture | undefined>(undefined);
 
@@ -48,6 +49,15 @@ function App() {
     };
     const unsubscribe = window.blackjack.onState(applyState);
     void window.blackjack.getSnapshot().then(applyState).catch(() => setError('앱 연결 실패 · 다시 실행해 주세요'));
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const applyOverlay = (next: OverlayViewState) => {
+      setOverlayView(current => next.revision >= current.revision ? next : current);
+    };
+    const unsubscribe = window.blackjack.onOverlayState(applyOverlay);
+    void window.blackjack.getOverlayState().then(applyOverlay).catch(() => setError('창 설정을 불러올 수 없습니다.'));
     return unsubscribe;
   }, []);
 
@@ -253,6 +263,13 @@ function App() {
     void runAction({ type: 'setBet', amountCents });
   }
 
+  function showOpacityPopover(target: HTMLElement): void {
+    const rect = target.getBoundingClientRect();
+    void window.blackjack.opacityPopover({ phase: 'show', anchor: {
+      x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+    } });
+  }
+
   const activeHand = state?.playerHands.find(hand => hand.active);
   const can = (action: GameViewState['legalActions'][number]) => state?.legalActions.includes(action) ?? false;
   const controls = !state ? null : state.phase === 'recovery' ? <>
@@ -299,7 +316,15 @@ function App() {
     : state.phase === 'betting' ? '베팅 후 딜하세요'
     : '딜러 진행 중…';
 
-  return <main className={dark ? 'overlay ink-dark' : 'overlay'} data-resizing={resizingEdge !== undefined}>
+  const overlayStyle = { '--overlay-opacity': overlayView.opacityPercent / 100 } as CSSProperties;
+  if (overlayView.visibility === 'collapsed') return <main className={dark ? 'overlay collapsed ink-dark' : 'overlay collapsed'} style={overlayStyle}>
+    <section className="collapsed-bar">
+      <span>{state ? usd(state.balanceCents) : '…'} · {state && state.phase !== 'betting' && state.phase !== 'result' ? '진행 중' : '대기'}</span>
+      <button type="button" aria-label="펼치기" onClick={() => void window.blackjack.windowCommand('expand')}>▣</button>
+    </section>
+  </main>;
+
+  return <main className={dark ? 'overlay ink-dark' : 'overlay'} style={overlayStyle} data-popover-open={overlayView.opacityPopoverVisible} data-resizing={resizingEdge !== undefined}>
     {resizeHandles.map(({ edge, label }) => <button
       key={edge}
       type="button"
@@ -313,7 +338,7 @@ function App() {
       onPointerCancel={cancelResize}
       onLostPointerCapture={cancelResize}
     />)}
-    <header><span className="drag">⠿ <strong>molsino</strong><span className="game-label">BLACKJACK</span></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.blackjack.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.blackjack.windowCommand('quit')}>×</button></header>
+    <header><span className="drag">⠿ <strong>molsino</strong><span className="game-label">BLACKJACK</span></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.blackjack.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.blackjack.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.blackjack.windowCommand('quit')}>×</button></header>
     <section className="balance"><span>BANKROLL</span><strong>{state ? usd(state.balanceCents) : '…'}</strong></section>
     <section className="cards" aria-label="게임 카드">
       {state?.dealerHand.cards.length ? <div className="hand dealer"><small>DEALER {state.dealerHand.total}</small><div>{state.dealerHand.cards.map(card => <span className={`card ${card.suit === 'H' || card.suit === 'D' ? 'red' : ''}`} key={card.cardId}>{card.rank}{suitSymbol[card.suit]}</span>)}{state.dealerHand.hiddenCardCount > 0 && <span className="card">?</span>}</div></div> : <p>베팅을 정하고<br/>첫 카드를 받아보세요.</p>}
@@ -330,4 +355,34 @@ function App() {
   </main>;
 }
 
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
+function OpacityPanel() {
+  const [view, setView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false });
+  const [draft, setDraft] = useState<number | null>(null);
+  const latestRequest = useRef(0);
+
+  useEffect(() => {
+    const apply = (state: OverlayViewState) => setView(current => state.revision >= current.revision ? state : current);
+    const unsubscribe = window.blackjack.onOverlayState(apply);
+    void window.blackjack.getOverlayState().then(apply);
+    return unsubscribe;
+  }, []);
+
+  function change(percent: number): void {
+    const requestId = ++latestRequest.current;
+    setDraft(percent);
+    void window.blackjack.setOpacity(percent).then(state => {
+      setView(current => state.revision >= current.revision ? state : current);
+      if (requestId === latestRequest.current) setDraft(null);
+    }).catch(() => {
+      if (requestId === latestRequest.current) setDraft(null);
+    });
+  }
+
+  const value = draft ?? view.opacityPercent;
+  return <main className="opacity-popover" onMouseEnter={() => void window.blackjack.opacityPopover({ phase: 'keep' })}
+    onMouseLeave={() => void window.blackjack.opacityPopover({ phase: 'hide' })}>
+    <label className="opacity-control"><span aria-hidden="true">◐</span><input type="range" aria-label="불투명도" min="20" max="100" step="5" value={value} onChange={event => change(Number(event.currentTarget.value))}/><span className="opacity-percent">{value}%</span></label>
+  </main>;
+}
+
+createRoot(document.getElementById('root')!).render(<StrictMode>{window.location.search === '?panel=opacity' ? <OpacityPanel/> : <App/>}</StrictMode>);

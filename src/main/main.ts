@@ -1,14 +1,15 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createSession } from '../core/engine';
-import { channels, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState } from '../shared/contracts';
+import { channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
 import { GameStore } from './game/game-store';
 import { createShoeFactory } from './game/shoe-source';
-import { isTrustedDocument } from './ipc/trust';
+import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
 import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
 import { configurePlatformWindow } from './platform/adapter';
+import { installHideShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
 
 // E2E 테스트 전용: 격리된 userData로 실제 개발자 세션 파일을 건드리지 않게 한다. 미설정 시 동작 동일.
@@ -16,40 +17,178 @@ if (process.env.MOLSINO_TEST_USER_DATA) app.setPath('userData', process.env.MOLS
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 let overlay: BrowserWindow | undefined;
+let opacityPanel: BrowserWindow | undefined;
+let opacityPanelLoading: Promise<BrowserWindow> | undefined;
+let opacityHideTimer: ReturnType<typeof setTimeout> | undefined;
 let tray: Tray | undefined;
 let resizeController: ResizeController | undefined;
 let quitting = false;
 let clickThrough = false;
 let gameStore: GameStore | undefined;
+let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false };
+let shownVisibility: 'expanded' | 'collapsed' = 'expanded';
+let expandedBounds: WindowBounds | undefined;
+type OpacityAnchor = Extract<OpacityPopoverCommand, { phase: 'show' }>['anchor'];
+let opacityAnchor: OpacityAnchor | undefined;
 const devURL = MAIN_WINDOW_VITE_DEV_SERVER_URL;
 const documentURL = devURL || 'app://molsino/index.html';
+const opacityDocumentURL = new URL('?panel=opacity', documentURL).toString();
+const requestedSnapshotDelay = process.env.MOLSINO_TEST_USER_DATA
+  ? Number(process.env.MOLSINO_TEST_SNAPSHOT_DELAY_MS ?? 0) : 0;
+const snapshotDelayMs = Number.isSafeInteger(requestedSnapshotDelay)
+  && requestedSnapshotDelay >= 0 && requestedSnapshotDelay <= 2_000 ? requestedSnapshotDelay : 0;
+
+function sendGameState(state: GameViewState): void {
+  if (!overlay || overlay.isDestroyed()) return;
+  const contents = overlay.webContents;
+  const frame = contents.isDestroyed() ? null : contents.mainFrame;
+  if (frame && isTrustedDocument(frame.url, documentURL)) {
+    contents.send(channels.state, state);
+  }
+}
+
+function sendOverlayState(): void {
+  for (const [window, expectedURL] of [[overlay, documentURL], [opacityPanel, opacityDocumentURL]] as const) {
+    if (!window || window.isDestroyed()) continue;
+    const contents = window.webContents;
+    const frame = contents.isDestroyed() ? null : contents.mainFrame;
+    if (frame && isTrustedDocument(frame.url, expectedURL)) {
+      contents.send(channels.overlayStateChanged, { ...overlayState });
+    }
+  }
+}
+
+function updateOverlayState(change: Partial<Pick<OverlayViewState, 'visibility' | 'opacityPercent' | 'opacityPopoverVisible'>>): void {
+  overlayState = { ...overlayState, ...change, revision: overlayState.revision + 1 };
+  sendOverlayState();
+}
+
+function clampBounds(bounds: WindowBounds): WindowBounds {
+  const area = screen.getDisplayMatching(bounds).workArea;
+  return {
+    ...bounds,
+    x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - bounds.width)),
+    y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - bounds.height)),
+  };
+}
+
+function clearOpacityHideTimer(): void {
+  if (opacityHideTimer) clearTimeout(opacityHideTimer);
+  opacityHideTimer = undefined;
+}
+
+function hideOpacityPanel(): void {
+  clearOpacityHideTimer();
+  opacityAnchor = undefined;
+  if (opacityPanel && !opacityPanel.isDestroyed()) opacityPanel.hide();
+  if (overlayState.opacityPopoverVisible) updateOverlayState({ opacityPopoverVisible: false });
+}
+
+function scheduleOpacityPanelHide(): void {
+  clearOpacityHideTimer();
+  opacityHideTimer = setTimeout(hideOpacityPanel, 250);
+}
+
+function placeOpacityPanel(anchor: OpacityAnchor): boolean {
+  if (!overlay || !opacityPanel || opacityPanel.isDestroyed()) return false;
+  const parent = overlay.getBounds();
+  if (anchor.x + anchor.width > parent.width + 1 || anchor.y + anchor.height > parent.height + 1) return false;
+  const button = { x: parent.x + anchor.x, y: parent.y + anchor.y, width: anchor.width, height: anchor.height };
+  const area = screen.getDisplayMatching(button).workArea;
+  const width = Math.min(176, area.width);
+  const height = Math.min(46, area.height);
+  const right = button.x + button.width + 2;
+  const left = button.x - width - 2;
+  const x = right + width <= area.x + area.width ? right : left >= area.x ? left
+    : Math.max(area.x, Math.min(right, area.x + area.width - width));
+  const y = Math.max(area.y, Math.min(button.y, area.y + area.height - height));
+  opacityPanel.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
+  return true;
+}
+
+async function ensureOpacityPanel(): Promise<BrowserWindow> {
+  if (opacityPanelLoading) return opacityPanelLoading;
+  if (opacityPanel && !opacityPanel.isDestroyed()) return opacityPanel;
+  opacityPanelLoading = (async () => {
+    const panel = new BrowserWindow({
+      width: 176, height: 46, show: false, parent: overlay,
+      frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false,
+      focusable: false, skipTaskbar: true, resizable: false, minimizable: false, maximizable: false,
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
+    });
+    opacityPanel = panel;
+    panel.setAlwaysOnTop(true, process.platform === 'darwin' ? 'floating' : 'normal');
+    panel.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    panel.webContents.on('will-navigate', (event, url) => { if (!isTrustedDocument(url, opacityDocumentURL)) event.preventDefault(); });
+    panel.on('closed', () => { if (opacityPanel === panel) opacityPanel = undefined; });
+    try { await panel.loadURL(opacityDocumentURL); }
+    catch (error) { panel.destroy(); throw error; }
+    return panel;
+  })();
+  try { return await opacityPanelLoading; }
+  finally { opacityPanelLoading = undefined; }
+}
+
+async function showOpacityPanel(anchor: OpacityAnchor): Promise<void> {
+  if (!overlay || !overlay.isVisible() || overlayState.visibility !== 'expanded' || clickThrough) return;
+  clearOpacityHideTimer();
+  opacityAnchor = anchor;
+  const panel = await ensureOpacityPanel();
+  if (!opacityAnchor || overlayState.visibility !== 'expanded' || !overlay.isVisible() || clickThrough) return;
+  if (placeOpacityPanel(opacityAnchor)) {
+    panel.showInactive();
+    if (!overlayState.opacityPopoverVisible) updateOverlayState({ opacityPopoverVisible: true });
+  }
+}
 
 function reveal(): void {
   if (!overlay || overlay.isDestroyed()) return;
   resizeController?.invalidate();
   clickThrough = false;
   overlay.setIgnoreMouseEvents(false);
+  if (overlayState.visibility === 'hidden') updateOverlayState({ visibility: shownVisibility });
   overlay.showInactive();
 }
 function hideOverlay(): void {
   resizeController?.invalidate();
+  hideOpacityPanel();
+  if (overlayState.visibility !== 'hidden') {
+    shownVisibility = overlayState.visibility;
+    updateOverlayState({ visibility: 'hidden' });
+  }
   overlay?.hide();
+}
+function collapseOverlay(): void {
+  if (!overlay || overlayState.visibility !== 'expanded') return;
+  resizeController?.invalidate();
+  hideOpacityPanel();
+  expandedBounds = overlay.getBounds();
+  overlay.setBounds(clampBounds({ ...expandedBounds, width: 140, height: 30 }));
+  shownVisibility = 'collapsed';
+  updateOverlayState({ visibility: 'collapsed' });
+}
+function expandOverlay(): void {
+  if (!overlay || overlayState.visibility !== 'collapsed') return;
+  resizeController?.invalidate();
+  if (expandedBounds) overlay.setBounds(clampBounds(expandedBounds));
+  shownVisibility = 'expanded';
+  updateOverlayState({ visibility: 'expanded' });
 }
 function enableClickThrough(): void {
   resizeController?.invalidate();
+  hideOpacityPanel();
   clickThrough = true;
   overlay?.setIgnoreMouseEvents(true);
 }
 function setSize(width: number, height: number): void {
   if (!overlay) return;
   resizeController?.invalidate();
-  const bounds = overlay.getBounds();
-  const area = screen.getDisplayMatching(bounds).workArea;
-  overlay.setBounds({
-    width, height,
-    x: Math.max(area.x, Math.min(bounds.x, area.x + area.width - width)),
-    y: Math.max(area.y, Math.min(bounds.y, area.y + area.height - height)),
-  });
+  hideOpacityPanel();
+  const bounds = overlayState.visibility === 'expanded' ? overlay.getBounds() : expandedBounds ?? overlay.getBounds();
+  expandedBounds = clampBounds({ ...bounds, width, height });
+  if (overlayState.visibility === 'expanded' || (overlayState.visibility === 'hidden' && shownVisibility === 'expanded')) {
+    overlay.setBounds(expandedBounds);
+  }
 }
 function setupTray(): void {
   // A generated monochrome bitmap avoids font/image dependencies for the starter.
@@ -91,9 +230,7 @@ async function start(): Promise<void> {
       { createShoe: createGameShoe, nextId: () => randomUUID() },
       process.platform, repository, snapshot,
     );
-    unsubscribeGameState = gameStore.subscribe(state => {
-      if (overlay && !overlay.isDestroyed()) overlay.webContents.send(channels.state, state);
-    });
+    unsubscribeGameState = gameStore.subscribe(sendGameState);
     gameStore.resumeDealer();
   };
   if (loaded.kind === 'missing') {
@@ -127,6 +264,7 @@ async function start(): Promise<void> {
     resizable: false, minimizable: false, maximizable: false, fullscreenable: false, show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
   });
+  expandedBounds = overlay.getBounds();
   resizeController = new ResizeController({
     now: () => performance.now(),
     getCursor: () => screen.getCursorScreenPoint(),
@@ -145,6 +283,8 @@ async function start(): Promise<void> {
   });
   configurePlatformWindow(overlay);
   setupTray();
+  const disposeHideShortcut = installHideShortcut(globalShortcut, hideOverlay, message => console.warn(message));
+  app.once('will-quit', disposeHideShortcut);
   const session = overlay.webContents.session;
   session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.webRequest.onHeadersReceived((details, callback) => callback({ responseHeaders: {
@@ -154,10 +294,22 @@ async function start(): Promise<void> {
       : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-src 'none'"],
   } }));
   const requireTrusted = (event: Electron.IpcMainInvokeEvent): void => {
-    if (!overlay || event.sender !== overlay.webContents || event.senderFrame !== overlay.webContents.mainFrame ||
-      !isTrustedDocument(event.senderFrame.url, documentURL)) throw new Error('Untrusted IPC sender');
+    if (!isTrustedIpcSender(event.sender, event.senderFrame, overlay?.webContents, documentURL)) {
+      throw new Error('Untrusted IPC sender');
+    }
   };
-  ipcMain.handle(channels.snapshot, event => { requireTrusted(event); return gameStore?.getSnapshot() ?? recoveryState(); });
+  const requireOpacityTrusted = (event: Electron.IpcMainInvokeEvent): void => {
+    if (!isTrustedIpcSender(event.sender, event.senderFrame, overlay?.webContents, documentURL)
+      && !isTrustedIpcSender(event.sender, event.senderFrame, opacityPanel?.webContents, opacityDocumentURL)) {
+      throw new Error('Untrusted opacity IPC sender');
+    }
+  };
+  ipcMain.handle(channels.snapshot, async event => {
+    requireTrusted(event);
+    const snapshot = gameStore?.getSnapshot() ?? recoveryState();
+    if (snapshotDelayMs > 0) await new Promise(resolve => setTimeout(resolve, snapshotDelayMs));
+    return snapshot;
+  });
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
     const command = userCommandSchema.parse(value);
@@ -182,7 +334,7 @@ async function start(): Promise<void> {
       loaded = { kind: 'ready', snapshot };
       initializeGame(snapshot);
       const state = gameStore!.getSnapshot();
-      overlay?.webContents.send(channels.state, state);
+      sendGameState(state);
       return state;
     } finally { recovering = false; }
   });
@@ -195,7 +347,28 @@ async function start(): Promise<void> {
       case 'small': setSize(240, 180); break;
       case 'default': setSize(280, 180); break;
       case 'large': setSize(360, 240); break;
+      case 'collapse': collapseOverlay(); break;
+      case 'expand': expandOverlay(); break;
     }
+  });
+  ipcMain.handle(channels.overlayState, event => {
+    requireOpacityTrusted(event);
+    return { ...overlayState };
+  });
+  ipcMain.handle(channels.opacity, (event, value: unknown) => {
+    requireOpacityTrusted(event);
+    const opacityPercent = opacityPercentSchema.parse(value);
+    if (overlayState.opacityPercent !== opacityPercent) updateOverlayState({ opacityPercent });
+    return { ...overlayState };
+  });
+  ipcMain.handle(channels.opacityPopover, async (event, value: unknown) => {
+    requireOpacityTrusted(event);
+    const command = opacityPopoverCommandSchema.parse(value);
+    if (command.phase === 'show') {
+      requireTrusted(event);
+      await showOpacityPanel(command.anchor);
+    } else if (command.phase === 'keep') clearOpacityHideTimer();
+    else scheduleOpacityPanelHide();
   });
   ipcMain.handle(channels.resize, (event, value: unknown) => {
     requireTrusted(event);
@@ -203,7 +376,7 @@ async function start(): Promise<void> {
     const command = resizeCommandSchema.parse(value);
     switch (command.phase) {
       case 'start':
-        if (!overlay.isVisible() || clickThrough) throw new Error('Overlay is not interactive');
+        if (!overlay.isVisible() || clickThrough || overlayState.visibility !== 'expanded') throw new Error('Overlay is not interactive');
         return resizeController.start(command.edge);
       case 'update': return resizeController.update(command.token);
       case 'end': return resizeController.end(command.token);
@@ -212,10 +385,13 @@ async function start(): Promise<void> {
   });
   overlay.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   overlay.webContents.on('will-navigate', (event, url) => { if (!isTrustedDocument(url, documentURL)) event.preventDefault(); });
-  overlay.on('hide', () => resizeController?.invalidate());
+  overlay.on('hide', () => { resizeController?.invalidate(); hideOpacityPanel(); });
+  overlay.on('move', () => {
+    if (opacityPanel?.isVisible() && opacityAnchor) placeOpacityPanel(opacityAnchor);
+  });
   overlay.on('close', event => { resizeController?.invalidate(); if (!quitting) { event.preventDefault(); hideOverlay(); } });
   overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState?.(); });
-  overlay.webContents.on('did-start-navigation', () => resizeController?.invalidate());
+  overlay.webContents.on('did-start-navigation', () => { resizeController?.invalidate(); hideOpacityPanel(); });
   overlay.webContents.on('render-process-gone', () => { resizeController?.invalidate(); hideOverlay(); console.error('Renderer exited; restart the app from the tray.'); });
   overlay.once('ready-to-show', reveal);
   await overlay.loadURL(documentURL);
@@ -233,7 +409,7 @@ else {
       });
       return;
     }
-    quitting = true; resizeController?.invalidate(); tray?.destroy();
+    quitting = true; resizeController?.invalidate(); hideOpacityPanel(); tray?.destroy();
   });
   app.on('window-all-closed', () => { /* tray owns application lifetime */ });
   app.whenReady().then(start).catch(error => { console.error(error); app.quit(); });
