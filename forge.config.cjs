@@ -1,3 +1,5 @@
+const path = require('node:path');
+
 module.exports = {
   packagerConfig: {
     ...(process.env.MOLSINO_ELECTRON_ZIP_DIR ? { electronZipDir: process.env.MOLSINO_ELECTRON_ZIP_DIR } : {}),
@@ -5,6 +7,8 @@ module.exports = {
     appBundleId: 'com.molsino.desktop',
     appCategoryType: 'public.app-category.games',
     executableName: 'molsino',
+    icon: path.join(__dirname, 'resources/icons/molsino'),
+    extraResource: [path.join(__dirname, 'resources/icons/molsino.png')],
   },
   rebuildConfig: {},
   makers: [
@@ -15,6 +19,7 @@ module.exports = {
       config: {
         name: 'molsino',
         setupExe: 'molsino-Setup.exe',
+        setupIcon: path.join(__dirname, 'resources/icons/molsino.ico'),
         noMsi: true,
       },
     },

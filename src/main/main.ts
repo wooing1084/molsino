@@ -283,7 +283,12 @@ async function start(): Promise<void> {
     return net.fetch(pathToFileURL(path.join(rendererRoot, relative)).href);
   });
   const area = screen.getPrimaryDisplay().workArea;
+  const applicationIcon = nativeImage.createFromPath(app.isPackaged
+    ? path.join(process.resourcesPath, 'molsino.png')
+    : path.join(app.getAppPath(), 'resources/icons/molsino.png'));
+  if (process.platform === 'darwin') app.dock?.setIcon(applicationIcon);
   overlay = new BrowserWindow({
+    icon: applicationIcon,
     width: 280, height: 180, x: area.x + area.width - 304, y: area.y + area.height - 204,
     frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false,
     alwaysOnTop: true, focusable: false, acceptFirstMouse: true, skipTaskbar: true,
