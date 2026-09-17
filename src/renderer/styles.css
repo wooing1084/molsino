@@ -16,11 +16,16 @@ button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
   height: 100%;
   padding: 4px 6px;
   overflow: hidden;
-  opacity: .65;
-  transition: opacity .15s;
+  opacity: var(--overlay-opacity, .65);
+  transition: opacity .15s .8s;
   text-shadow: 0 1px 2px #000;
 }
-.overlay:hover, .overlay[data-resizing='true'] { opacity: 1; }
+.overlay:hover:not([data-popover-open='true']), .overlay[data-resizing='true'] { opacity: 1; transition-delay: 0s; }
+.overlay[data-popover-open='true'] { transition-delay: 0s; }
+.overlay.collapsed { display: flex; align-items: center; padding: 3px 4px; }
+.collapsed-bar { display: flex; width: 100%; height: 24px; align-items: center; gap: 4px; font-size: 11px; white-space: nowrap; }
+.collapsed-bar span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.collapsed-bar button { flex: 0 0 24px; padding: 0; }
 .ink-dark { color: black; text-shadow: 0 1px 2px #fff; color-scheme: light; }
 
 header, .bet, footer { padding-inline: 20px; }
@@ -44,8 +49,18 @@ header button { flex: 0 0 24px; padding: 0; border: none; }
 .actions { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .bet button { flex: 0 0 24px; padding: 0; }
 .bet button.wide, .actions button { width: auto; min-width: max-content; padding-inline: 5px; }
-.bet output { flex: 1; min-width: 0; overflow: hidden; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.bet button.bet-amount { flex: 1 1 0; min-width: 0; border: 0; }
+.bet output { display: block; min-width: 0; overflow: hidden; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.bet-input-wrap { position: relative; flex: 1 1 0; min-width: 0; }
+.bet-input { width: 100%; height: 24px; padding: 0 12px 0 2px; border: 1px solid currentColor; border-radius: 3px; outline: none; background: transparent; color: inherit; font: inherit; font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; app-region: no-drag; user-select: text; }
+.bet-input:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.bet-input[aria-invalid='true'] { border-width: 2px; }
+.bet-input-error { position: absolute; top: 5px; right: 3px; font-size: 11px; line-height: 14px; }
 footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opacity: .65; text-overflow: ellipsis; white-space: nowrap; }
+.opacity-popover { display: flex; width: 100%; height: 100%; align-items: center; padding: 4px 6px; border: 1px solid #ffffff80; border-radius: 7px; background: #171717ec; color: white; }
+.opacity-control { display: flex; min-width: 0; width: 100%; height: 24px; align-items: center; gap: 4px; font-size: 10px; }
+.opacity-control input { flex: 1; min-width: 0; height: 24px; margin: 0; accent-color: currentColor; app-region: no-drag; }
+.opacity-control .opacity-percent { flex: 0 0 28px; text-align: right; font-variant-numeric: tabular-nums; }
 
 .resize-handle {
   position: absolute;

@@ -6,7 +6,6 @@ export const RULE_SET_ID = 'casino-6d-s17-3to2-v1' as const;
 export const STARTING_BALANCE_CENTS = 10_000;
 export const DEFAULT_BET_CENTS = 100;
 export const BET_STEPS_CENTS = [100, 500, 1_000, 2_500] as const;
-export const MAX_BET_CENTS = 50_000;
 export const MAX_HANDS = 4;
 
 export const ROUND_PHASES = ['insuranceDecision', 'playerTurn', 'dealerTurn', 'result'] as const;

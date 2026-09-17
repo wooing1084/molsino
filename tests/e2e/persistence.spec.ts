@@ -110,7 +110,10 @@ test('S08-06 컷 경계 저장 세션에서 다음 판 시작 시에만 새 슈�
   await expect(launched.page.getByRole('button', { name: '다음 판' })).toBeVisible();
   await launched.page.getByRole('button', { name: '다음 판' }).click();
   await launched.page.getByRole('button', { name: '딜', exact: true }).click();
-  await expect(launched.page.getByRole('button', { name: '스탠드' })).toBeVisible();
+  await expect.poll(async () => {
+    const checkpoint = JSON.parse(await readFile(primaryPath, 'utf8'));
+    return checkpoint.state.shoe.nextIndex as number;
+  }).toBe(4);
   const after = JSON.parse(await readFile(primaryPath, 'utf8'));
   expect(after.state.shoe.nextIndex).toBe(4);
 });

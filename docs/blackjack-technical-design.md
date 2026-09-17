@@ -1,6 +1,6 @@
 # molsino Blackjack 기술 설계 — Electron
 
-버전: 2.1 · 작성일: 2026-09-15 · 갱신일: 2026-09-16 · 상태: P0 일부·P1 구현 완료
+버전: 2.2 · 작성일: 2026-09-15 · 갱신일: 2026-09-17 · 상태: S10.5 패치 구현·검증 완료
 
 기능·카지노 규칙의 기준은 [제품 설계서](blackjack-design.md)다. 본 문서는 Electron 기반의 프로세스, IPC, 창·입력, 엔진, 저장, 빌드·검증 계약을 정의한다. 기존 macOS 네이티브 및 Windows 별도 포팅 설계를 대체한다.
 
@@ -23,7 +23,7 @@
 
 초기 검증 목표는 macOS 14 이상 arm64와 Windows 11 x64다. 선택한 Electron의 지원 범위와 실제 장비 검증을 모두 만족한 범위만 배포 지원으로 표기한다. macOS x64와 Windows arm64는 별도 검증 후 추가한다.
 
-게임은 6덱, $100 시작, 기본 베팅 $1–$500(잔액 이내), 보험·이븐 머니·더블·스플릿·레이트 서렌더를 유지한다. 네트워크·LLM 호출 없이 실행한다. Electron은 여러 프로세스를 사용하지만 앱 인스턴스와 게임 상태의 소유자는 하나다.
+게임은 6덱, $100 시작, 기본 베팅 $1 이상부터 현재 잔액까지, 보험·이븐 머니·더블·스플릿·레이트 서렌더를 유지한다. 네트워크·LLM 호출 없이 실행한다. Electron은 여러 프로세스를 사용하지만 앱 인스턴스와 게임 상태의 소유자는 하나다.
 
 ## 2. 펫 레퍼런스와 적용 범위
 
@@ -146,9 +146,9 @@ await overlay.loadURL('app://molsino/overlay.html');
 // ui:ready 검증 후 overlay.showInactive()
 ```
 
-Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInactive()`를 조합하고 금액 직접 입력은 별도 창에서 처리한다. [Electron 창 API](https://www.electronjs.org/docs/latest/api/base-window)
+Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInactive()`를 조합한다. S10.5 금액 편집은 사용자가 숫자칸을 누를 때만 메인 창의 포커스 가능 상태를 잠시 켠다. [Electron 창 API](https://www.electronjs.org/docs/latest/api/base-window)
 
-루트 HTML·body·React root 배경도 transparent로 둔다. CSS opacity는 정보 레이어에만 적용하고 창 전체 알파는 1로 유지한다. 흐림 효과나 그림자로 배경을 채우지 않는다. 화면 확대율은 1로 고정하고 OS DPI를 별도로 처리한다.
+루트 HTML·body·React root 배경도 transparent로 둔다. CSS opacity는 정보 레이어에만 적용하고 창 전체 알파는 1로 유지한다. 펼친 창의 우측 상단 색상 전환 버튼에 호버하면 작은 별도 조절창이 나타나며, 그 슬라이더는 전경 불투명도를 20–100%(5% 단위, 기본 65%)로 조절한다. 20%는 완전 비표시를 막는 하한이며 배경 알파를 높이는 설정이 아니다. 조절창은 버튼의 좌우 여유와 현재 display의 workArea를 기준으로 위치를 선택하고 최종 bounds를 화면 안에 보정한다. 버튼↔조절창 사이 이동에는 짧은 닫힘 지연을 둔다. 슬라이더 조작 중에는 선택값을 즉시 미리 보고, 게임 창 일반 호버 시 100%·이탈 0.8초 후 선택값으로 돌아간다. 흐림 효과나 그림자로 배경을 채우지 않는다. 화면 확대율은 1로 고정하고 OS DPI를 별도로 처리한다.
 
 ### 4.3 플랫폼별 최소 분기
 
@@ -156,28 +156,31 @@ Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInac
 | --- | --- | --- |
 | 상단 표시 | setAlwaysOnTop(true, 'floating') | setAlwaysOnTop(true) |
 | 작업 공간 | setVisibleOnAllWorkspaces(true, {visibleOnFullScreen:true}) 후보 | 같은 API는 효과 없음. 현재 가상 데스크톱 정책 사용 |
-| 복원 | showInactive, Dock 숨김 정책 | showInactive, skipTaskbar |
+| 복원 | showInactive, 일반 앱 Dock 표시·E2E 전용 숨김 | showInactive, skipTaskbar |
 | 트레이 | 단색 Template 이미지, 메뉴 막대 | ICO, 알림 영역 메뉴 |
-| 직접 입력 창 | focusable:true, 명시적 열기 시 focus | 동일 공통 계약 |
+| 금액 인라인 편집 | 명시적 클릭 중에만 메인 창 `setFocusable(true)`·`focus()` | 동일 공통 계약 |
 | 전체 화면 | Spaces·Stage Manager 확인 | 일반 전체 화면과 독점 전체 화면을 구분 |
 
 공통 상단 표시 기능이 모든 전체 화면·가상 데스크톱에서 같은 결과를 보장하지는 않는다. Windows의 모든 가상 데스크톱에 고정하는 기능은 1차 범위 밖이다. 다른 앱 전체 화면에서 보이지 않을 때도 트레이로 접근 가능해야 한다.
 
-### 4.4 포커스와 입력 창
+macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키지를 반복 실행하는 Playwright E2E에만 `MOLSINO_TEST_HIDE_DOCK=1`을 전달하여 `setVisibleOnAllWorkspaces` 이후 `app.dock.hide()`를 한 번 호출하고, `app.dock.isVisible()`로 숨김을 검증한다. 앱 종료 후 OS Dock 항목을 강제로 조작하거나 사용자 Dock 설정을 바꾸지 않는다. 테스트 프로세스의 정상 종료와 Dock 노출은 서로 다른 검증 대상이다. [Electron Dock API](https://www.electronjs.org/docs/latest/api/dock)
+
+### 4.4 포커스와 인라인 입력
 
 - 기본 오버레이는 마우스 중심이다. 복원·호버·액션 클릭에서 `focus()` 또는 `app.focus()`를 호출하지 않는다.
+- 창 제어 예외인 전역 Alt+백틱은 Electron Main의 `globalShortcut`으로 앱 준비 후 등록한다. 콜백은 기존 `hideOverlay()`만 호출하고 숨김 중에는 복원하지 않는다. 게임 명령·일시정지·키보드 포커스 변경은 없다. 등록 실패(다른 앱 점유 등)는 경고만 남기고 트레이 경로를 유지하며, 실제 종료 시 `will-quit`에서 해제한다. 키보드 배열·OS별 실제 키 조합은 실장비에서 확인한다. [Electron globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut), [Accelerator](https://www.electronjs.org/docs/latest/api/accelerator)
 - `acceptFirstMouse`는 macOS의 비활성 첫 클릭을 위한 설정이다. 아래 업무 창으로 클릭을 통과시키는 설정과 혼동하지 않는다.
-- 금액을 누르면 focusable:true인 작은 UtilityWindow를 생성해 입력한다. 사용자 클릭에 따라 열릴 때만 활성화한다.
-- 입력 완료/취소 후 UtilityWindow를 닫는다. 이전 업무 앱을 강제로 활성화하지 않는다.
+- S10.5에서 베팅 금액 숫자칸을 누르면 같은 자리의 텍스트 필드로 바꾸고 현재 베팅액을 채운다. Main은 신뢰된 메인 창의 명시적 편집 요청에서만 `setFocusable(true)`와 `focus()`를 호출한다. Renderer는 그 뒤 필드에 포커스를 준다. 평소 창은 `focusable:false`이고 복원·호버·일반 게임 액션에서는 포커스를 가져오지 않는다.
+- Enter는 유효한 입력을 기존 `setBet` 명령으로 확정한다. 저장된 새 상태를 받은 뒤 숫자칸으로 돌아간다. Escape·필드 밖 클릭은 입력 초안을 버리고 이전 베팅액을 표시한다. 빈 값이나 잘못된 값에서 Enter를 누르면 필드 옆 오류를 표시하고 편집을 유지한다. 편집 중에는 딜을 막는다.
+- 확정·취소·창 blur·숨김·접힘·클릭 통과·Renderer reload·게임 phase 변경 때는 편집을 종료하고 Main에서 `blur()`와 `setFocusable(false)`를 수행한다. macOS에서는 `setFocusable(false)`만으로 이미 가진 포커스가 해제되지 않으므로 `blur()`를 명시적으로 호출한다. 이전 업무 앱을 강제로 활성화하지 않는다. [Electron BaseWindow 포커스 API](https://www.electronjs.org/docs/latest/api/base-window)
 - 키보드/VoiceOver/Narrator 조작은 트레이의 ‘키보드로 플레이’에서 같은 UI·GameStore를 이용하는 focusable 창으로 제공한다.
-- UtilityWindow의 이동·숨김은 Main이 관리한다. parent 창 상대 좌표가 두 OS에서 동일하게 유지된다고 가정하지 않는다.
-- UtilityWindow는 하나만 열고 오버레이와 동시에 명령이 들어와도 Main에서 직렬 처리한다.
+- 인라인 편집 요청이 중복되거나 GameStore 명령과 겹쳐도 Main에서 편집 상태와 명령을 직렬 처리한다. 금액 필드는 최소 창 크기 220×150 DIP에서 기존 베팅 행을 넘지 않아야 한다.
 
 비활성 오버레이에서 React 버튼이 첫 클릭에 실행되고 업무 입력 포커스가 유지되는지는 양쪽 OS의 P0 합격 조건이다.
 
 ### 4.5 클릭 통과
 
-**1차 필수:** 명시적인 전체 창 클릭 통과. `setIgnoreMouseEvents(true)`를 사용하고 해제는 Tray에서 수행한다. 입력 창과 드래그를 먼저 종료한다. `pointer-events:none`이나 투명 CSS만으로 다른 앱에 클릭이 전달되지는 않는다. [Electron 클릭 통과와 드래그](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)
+**1차 필수:** 명시적인 전체 창 클릭 통과. `setIgnoreMouseEvents(true)`를 사용하고 해제는 Tray에서 수행한다. 인라인 편집과 드래그를 먼저 종료한다. `pointer-events:none`이나 투명 CSS만으로 다른 앱에 클릭이 전달되지는 않는다. [Electron 클릭 통과와 드래그](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)
 
 **선택적 자동 통과:** 컨트롤 외 부분을 통과시키는 실험 기능이다.
 
@@ -212,10 +215,10 @@ Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInac
 - Electron screen의 DIP(device-independent pixel)를 기준으로 창 좌표를 저장한다. zoom=1에서는 UI의 CSS px와 논리 크기를 맞추고 devicePixelRatio를 창 bounds에 곱하지 않는다.
 - `screen.getAllDisplays()`, `getDisplayMatching()`, display의 workArea·scaleFactor를 사용한다.
 - display-added/removed/metrics-changed에서 위치·배율·창 경계를 재검증한다. [Electron screen](https://www.electronjs.org/docs/latest/api/screen)
-- 저장값은 displayId, workArea 대비 정규화 위치, expandedSize. ID가 없으면 현재 주 화면으로 보정한다.
+- 실행 중에는 현재 displayId, workArea 대비 위치, expandedSize를 보유한다. 앱을 새로 켜면 저장 위치를 읽지 않고 주 화면의 기본 위치·280×180 DIP에서 시작한다.
 - 음수 모니터 좌표를 허용한다. 모니터 사이 빈 공간을 유효 화면으로 취급하지 않는다.
 - 드래그 중 다른 화면 진입을 허용하고 종료 후 최종 workArea에 맞춘다.
-- 위치·크기는 250ms debounce 및 정상 종료 시 저장한다.
+- 위치·크기는 실행 중 메모리에만 보관한다. 정상 종료 시에도 디스크에 저장하지 않는다.
 - 접힘 크기는 140×30 DIP, 펼친 크기를 따로 보존한다. 전역 minWidth/minHeight가 접힘을 막지 않도록 상태별 크기 검증을 Main에서 수행한다.
 
 ## 5. 표시 상태와 IPC 계약
@@ -230,15 +233,20 @@ interface OverlayState {
   visibility: Visibility;
   pointerPolicy: PointerPolicy;
   keyboardMode: KeyboardMode;
+  opacityPercent: number;
   isDragging: boolean;
   isResizing: boolean;
   isHovered: boolean;
 }
 ```
 
-숨김·접힘·powerMonitor suspend는 진행 중 저장을 완료하되 다음 딜러 단계 예약을 취소한다. 복원·펼침·resume은 저장 phase를 확인해 한 번만 예약한다. 창이 계속 숨김이면 자동 재개하지 않는다. 놓친 타이머를 몰아서 실행하지 않는다.
+S10 구현은 Main에서 `revision`, `visibility`, `opacityPercent`, `opacityPopoverVisible`을 가진 공개 창 상태를 소유한다. 조절창이 열린 동안 게임 창은 일반 호버의 100% 강제를 잠시 해제해 선택값을 즉시 미리 본다. 접힘 전 펼친 bounds와 숨기기 전 펼침/접힘 모드는 Main 메모리에 별도로 보관한다. 금액 인라인 편집 중 임시 키보드 포커스는 S10.5, 그 밖의 포인터·키보드·드래그 상태 통합은 S12/S13 후속 범위다. 접힘으로 리사이즈 token을 만료하고, 접힌 상태에서 새 리사이즈를 거부한다. 불투명도 조절창은 메인 창의 자식 BrowserWindow이며, 게임 명령은 받지 못하고 정확한 팝업 URL·webContents·mainFrame에서만 창 상태 조회·불투명도 변경·호버 수명 IPC를 받는다. 접힘·숨김·클릭 통과·메인 문서 재로드 시 조절창을 숨긴다.
 
-호버 시 전경 100%, 이탈 0.8초 후 사용자 값(기본 65%, 범위 25–100%)으로 복귀한다. CSS와 취소 가능한 타이머로 처리하고 `prefers-reduced-motion`에서 애니메이션을 제거한다. 메뉴·입력창이 열려 있으면 읽기 쉬운 상태를 유지한다.
+헤더의 `▁` 접기 버튼은 일시정지로 오인되어 제거한다. 기존 `collapsed` 상태·명령은 호환성을 위해 유지하되 메인 창에서는 접기 동작을 노출하지 않는다. `−` 숨기기 버튼과 Alt+백틱 전역 단축키는 모두 같은 숨김 경로로 들어간다.
+
+숨김·접힘은 UI 표시만 바꾸며 Main의 딜러 자동 진행과 단계별 저장을 멈추지 않는다. 복원·펼침은 그 시점의 최신 committedState를 보여 준다. 앱 재실행 후 저장된 phase가 `dealerTurn`이면 별도 사용자 조작 없이 이어간다. OS suspend 동안 실행이 중단될 수 있지만 앱은 수동 일시정지 상태를 만들지 않는다.
+
+호버 시 전경 100%, 이탈 0.8초 후 사용자 값(기본 65%, 범위 20–100%, 5% 단위)으로 복귀한다. 색상 버튼 호버의 별도 조절창 슬라이더를 조작하는 동안에는 선택한 값을 즉시 미리 본다. CSS와 취소 가능한 타이머로 처리하고 `prefers-reduced-motion`에서 애니메이션을 제거한다. 메뉴·입력창이 열려 있으면 읽기 쉬운 상태를 유지한다. 선택값은 실행 중 접힘·펼침과 Renderer 재로드에 유지하되 앱 재실행 시 65%로 초기화한다.
 
 ### 5.2 Preload API
 
@@ -247,27 +255,35 @@ interface BlackjackAPI {
   getSnapshot(): Promise<GameViewState>;
   dispatch(command: UserCommand): Promise<CommandResult>;
   onState(listener: (state: GameViewState) => void): () => void;
-  setOverlayMode(mode: PointerPolicy): Promise<void>;
-  openAmountEditor(): Promise<void>;
-  resize(command: ResizeCommand): Promise<Bounds>;
+  windowCommand(command: WindowCommand): Promise<void>; // collapse, expand, hide, 크기 프리셋 등
+  getOverlayState(): Promise<OverlayViewState>;
+  onOverlayState(listener: (state: OverlayViewState) => void): () => void;
+  setOpacity(percent: number): Promise<OverlayViewState>;
+  opacityPopover(command: OpacityPopoverCommand): Promise<void>; // 색상 버튼 호버·이탈
+  amountEditFocus(phase: 'begin' | 'end'): Promise<void>; // 금액 인라인 편집 중에만 포커스 허용
+  resize(command: ResizeCommand): Promise<ResizeResult>;
 }
 ```
 
-타입은 설계 계약이다. contextBridge는 위처럼 기능별 함수를 노출하며 ipcRenderer 또는 임의 channel invoke를 그대로 노출하지 않는다. onState는 Electron event 객체를 제거하고 payload만 전달하며 해제 함수를 반환한다. Preload는 sandbox 환경에 맞춰 단일 번들로 만들고 임의 Node 모듈을 로드하지 않는다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
+현재 S10.5까지의 API 주요 항목이며 `recover` 등 게임 복구 항목은 `src/shared/contracts.ts`가 기준이다. 메인 창에만 `amountEditFocus(begin|end)` 포커스 전환 API를 추가했고 금액 확정은 기존 `dispatch(setBet)`를 사용한다. Main은 메인 창의 신뢰된 최상위 문서와 베팅 phase·펼침·대화형 상태를 검증하고, 편집 중 `deal`을 거부한다. 편집 종료 요청은 숨김·재로드 등에서도 멱등 처리한다. `setOverlayMode`는 S13 후속 범위다. contextBridge는 기능별 함수만 노출하며 ipcRenderer 또는 임의 channel invoke를 그대로 노출하지 않는다. 구독 함수는 Electron event 객체를 제거하고 payload만 전달하며 해제 함수를 반환한다. Preload는 sandbox 환경에 맞춰 단일 번들로 만들고 임의 Node 모듈을 로드하지 않는다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
 
 | 채널 | 방향 | 검증 / 결과 |
 | --- | --- | --- |
 | game:get-snapshot | Renderer → Main | 등록된 창·main frame, 공개 상태 반환 |
 | game:command | Renderer → Main | Zod, commandId, expectedRevision, action별 권한 |
-| game:state | Main → Renderer | 공개 snapshot + revision |
-| overlay:mode | Renderer → Main | 허용 enum, 드래그 종료 |
+| game:state | Main → Renderer | 현재 최상위 문서 URL 검증 후 공개 snapshot + revision |
+| overlay:command | Renderer → Main | 허용 enum, 접힘·펼침·숨김·크기 프리셋과 resize token 만료 |
+| overlay:amount-edit-focus | Renderer → Main | 신뢰된 메인 문서의 begin/end만 허용, 베팅 phase·창 상태 확인, 종료 시 포커스 해제 |
+| overlay:get-state / overlay:state | 양방향 | Main 소유 창 상태 snapshot/push와 독립 revision |
+| overlay:set-opacity | Renderer → Main | 정수 20–100, 5% 단위 Zod 검증, 창 상태 갱신 |
+| overlay:opacity-popover | Renderer → Main | 신뢰된 메인 창의 anchor로 열기, 메인/조절창의 호버 유지·닫기 |
 | overlay:resize | Renderer → Main | 시작/update/end 구분, 토큰·유한 좌표·크기 제한 |
-| utility:open | Renderer → Main | 허용된 화면 이름만 |
-| ui:ready | Renderer → Main | 등록된 창, 초기 동기화 완료 |
+
+`overlay:mode`, `utility:open`, `ui:ready`는 후속 설계 채널이다. 창 상태의 push보다 늦은 snapshot은 독립 revision으로 무시한다. 조절창은 게임 채널을 호출할 수 없으며 navigation·새 창 열기를 차단한다.
 
 Main은 sender webContents와 senderFrame이 자신이 만든 창의 최상위 프레임인지, 허용된 앱 URL인지 검사한다. TypeScript 타입만 믿지 않고 런타임 스키마로 검사한다. 알 수 없는 필드·명령은 거부한다. advanceDealer·셔플·정산·파일 경로는 Renderer용 명령에 포함하지 않는다.
 
-상태 구독을 먼저 설치한 뒤 snapshot을 요청하고 더 큰 revision만 적용한다. 명령 응답과 push가 역순으로 와도 이전 화면으로 돌아가지 않는다. iframe·새 창·낯선 URL에서 보낸 IPC는 거부한다.
+상태 구독을 먼저 설치한 뒤 snapshot을 요청하고 더 큰 revision을 적용한다. 같은 revision의 복구 완료·저장 실패 표시 갱신은 허용하고 낮은 revision은 버린다. 명령 응답과 push가 역순으로 와도 이전 화면으로 돌아가지 않는다. iframe·새 창·낯선 URL에서 보낸 IPC는 거부하고, 신뢰되지 않는 문서에는 상태 push를 보내지 않는다. S09에서 실제 프로덕션 패키지로 역순 응답·reload·구독 해제·비신뢰 문서 거부를 검증했다.
 
 ## 6. 게임 엔진 계약
 
@@ -290,7 +306,9 @@ interface UserCommand {
 - 모든 금액·revision은 Number.isSafeInteger로 검증한다. 돈은 정수 센트이며 소수 달러를 내부 계산에 쓰지 않는다.
 - 곱셈·덧셈의 중간 결과도 safe integer인지 확인하고 범위를 넘으면 명령을 거부한다. 무제한 누적 잔액 때문에 number 정밀도를 잃지 않게 한다.
 - JSON 호환성을 위해 초기 구현은 bigint를 쓰지 않는다.
-- 기본 베팅 $1 단위, 보험 $0.50 단위, 잔액 음수 금지. 직접 입력에서 소수 금액을 조용히 반올림하지 않는다.
+- S10.5부터 잔액이 100센트 이상일 때 기본 베팅은 정수 센트로 $1.00~현재 사용 가능 잔액이며 1센트 단위 직접 입력을 허용한다. 입력 문자열은 십진수로 파싱해 센트로 정확히 변환한다. 소수 셋째 자리·지수 표기·부호·빈 값·숫자가 아닌 값은 거부하고 입력 자체를 반올림하지 않는다. 기존 −/+ 증감 단위와 보험 $0.50 단위는 유지한다.
+- 현재 베팅액이 잔액을 넘으면 다음 판에 최대 센트 금액으로 낮춘다. 정산 후 잔액이 100센트 미만이면 게임 오버로 `nextRound`·`setBet`·`setBetStep`·`deal`을 거부하고 새 게임만 허용한다. 정확히 100센트면 `nextRound` 이후 $1.00 베팅과 딜을 허용한다. 진행 중인 라운드는 잔액이 100센트 미만이 되어도 정산한다. 저장된 베팅 전 상태의 잔액이 100센트 미만인 경우에도 같은 정책을 적용한다. 게임 오버는 잔액에서 파생한 UI 상태이며 앱 프로세스 종료나 별도 저장 phase가 아니다.
+- 기존 정수 달러 베팅 세션은 그대로 유효하다. 새 센트 베팅을 엔진의 `legalActions`·무결성 검사·저장 복구 검증에도 일관되게 허용하고, 기존 저장 세션을 소리 없이 초기화하지 않는다.
 - RuleSet.id는 `casino-6d-s17-3to2-v1`. 진행 중 규칙은 버전 고정한다.
 - phase·activeHandId·revision을 검증한다. UI 버튼 비활성화는 엔진 검사를 대체하지 않는다.
 
@@ -340,7 +358,7 @@ stateDiagram-v2
 | 보험 적중 | insuranceWager × 3 |
 | 이븐 머니 | originalWager × 2 |
 
-비율 계산 전 입력 단위를 검증해 정수 나눗셈 절삭이 생기지 않게 한다. 보험은 즉시 정산할 수 있고 핸드는 마지막에 정산한다. 원장 키는 `(roundId, componentId)`이며 componentId는 insurance 또는 handId다. 이미 존재하는 키는 다시 잔액에 반영하지 않는다.
+3:2 자연 블랙잭과 절반 반환 서렌더에서 반환금이 반 센트가 되면 정수 산술로 가장 가까운 센트로 반올림하고, 정확히 반 센트는 올림한다. 예를 들어 $1.01 베팅의 자연 블랙잭 총 반환금 $2.525는 $2.53, 서렌더 반환금 $0.505는 $0.51이다. 그 밖의 배당은 정수 센트로 계산하고 원장에는 반올림 완료된 반환금만 기록한다. 보험은 즉시 정산할 수 있고 핸드는 마지막에 정산한다. 원장 키는 `(roundId, componentId)`이며 componentId는 insurance 또는 handId다. 이미 존재하는 키는 다시 잔액에 반영하지 않는다.
 
 라운드 순손익 = 모든 반환 합계 − 기본 베팅 − 보험 − 더블 추가금 − 스플릿 추가금. 스냅샷에는 차감 내역도 보존해 복원 후 계산할 수 있게 한다.
 
@@ -368,13 +386,13 @@ Main의 GameStore만 committedState를 소유한다. Node가 단일 스레드여
 4. nextState와 revision 증가·처리 ID·원장 변경을 하나의 스냅샷으로 저장한다.
 5. 저장 성공 후에만 committedState를 교체하고 공개 상태를 push한다.
 6. 저장 실패 시 이전 committedState를 유지한다. 계산된 pendingTransition을 보존하고 같은 내용으로 재시도한다. 새 슈를 다시 섞거나 카드를 다시 뽑지 않는다.
-7. busy를 해제하고 딜러 phase·표시 상태·generationToken을 확인해 다음 내부 명령을 한 번 예약한다.
+7. busy를 해제하고 딜러 phase라면 창 표시 상태와 무관하게 다음 내부 명령을 한 번 예약한다.
 
 오래된 commandId가 캐시에서 사라졌어도 revision 검사가 중복 실행을 막는다. Renderer가 멈추거나 응답을 놓쳐도 저장된 판이 기준이다. InternalAction도 동일한 직렬 경로를 통과하며 Renderer에서 호출할 수 없다.
 
 ### 7.2 저장 형식
 
-`app.getPath('userData')` 아래 `session.json`, `session.backup.json`, `preferences.json`을 사용한다. 제품 표시명 변경과 무관하게 저장 경로 식별자를 고정한다. LocalStorage/IndexedDB에는 게임 원장을 저장하지 않는다.
+`app.getPath('userData')` 아래 `session.json`, `session.backup.json`을 사용한다. 제품 표시명 변경과 무관하게 저장 경로 식별자를 고정한다. LocalStorage/IndexedDB에는 게임 원장을 저장하지 않는다. 창 표시 설정용 `preferences.json`은 만들지 않는다.
 
 Session에는 schemaVersion, revision, ruleSetId, balanceCents, pendingBet, betStep, shoe, round, ledger, lastResult, lastAppliedCommand가 포함된다. shoe는 312장 순서와 소비 인덱스, round는 보험 결정·정산 상태·핸드별 베팅·상태·활성 ID를 보존한다.
 
@@ -389,11 +407,11 @@ S08 구현은 최상위 `{ schemaVersion: 1, revision, state, lastAppliedCommand
 - S08에서는 손상/미래 버전 primary를 발견하면 recovery 화면에서 입력을 막고 백업 복구 또는 새 게임을 명시적으로 선택하게 한다. 선택한 후 덮어쓰기 전에 원본 primary를 `session.recovery-<UUID>.json`으로 복사한다. 백업이 유효하지 않으면 백업 버튼은 제공하지 않는다.
 - 저장 중 정상 종료 요청은 완료를 기다린다. 실패하면 오류를 표시하고 재시도/종료 선택을 제공한다.
 
-Preferences는 창·불투명도·베팅 표시 설정 등을 별도 원자 저장한다. 게임에 영향을 주는 pendingBet·betStep은 Session이 기준이다. 로컬 파일은 평문이므로 딜러 카드 은닉은 UI 경계이며 부정행위 방지는 범위 밖이다.
+위치·크기·색상 모드·불투명도·접힘·클릭 통과는 실행 중 상태이며 앱 재실행 시 각각 기본 위치·280×180 DIP·기본 색상·65%·펼침·대화형으로 초기화한다. 창을 숨겼다가 복원하거나 Renderer를 재로드할 때는 현재 실행 중 값을 유지한다. 게임에 영향을 주는 pendingBet·betStep과 진행 중 판·잔액은 Session이 기준이며 재실행 후 복원한다. 로컬 파일은 평문이므로 딜러 카드 은닉은 UI 경계이며 부정행위 방지는 범위 밖이다.
 
 ### 7.3 Renderer 장애
 
-render-process-gone 또는 unresponsive 발생 시 자동 게임 진행을 멈추고 Tray 복구 메뉴를 유지한다. 창 재생성 후 committedState로 재동기화한다. 새 Renderer는 layout·resize 토큰을 새로 받고 기존 드래그 상태는 버린다. 클릭 통과/숨김 여부는 Main에서 관리하므로 재로드가 임의로 해제하지 않는다.
+render-process-gone 또는 unresponsive 발생 시 Tray 복구 메뉴를 유지한다. Main의 저장·딜러 자동 진행은 창 장애 때문에 일시정지하지 않는다. 창 재생성 후 최신 committedState로 재동기화한다. 새 Renderer는 layout·resize 토큰을 새로 받고 기존 드래그 상태는 버린다. 클릭 통과/숨김 여부는 Main에서 관리하므로 재로드가 임의로 해제하지 않는다.
 
 ## 8. 화면 컴포넌트와 레이아웃
 
@@ -403,14 +421,15 @@ render-process-gone 또는 unresponsive 발생 시 자동 게임 진행을 멈�
 | HeaderView | 사용 가능 잔액, 드래그 핸들, 접기, 메뉴 |
 | DealerRow | 공개 카드 또는 ?, 공개 정보 기준 합계 |
 | PlayerHandView | 활성 핸드 카드·소프트 합계·베팅·핸드 번호 |
-| BetControl | −/+, 현재 금액, 증감 단위, 딜 |
+| BetControl | −/+, 현재 금액, 증감 단위, 딜. S10.5에서 금액 숫자칸을 같은 자리의 텍스트 필드로 전환 |
 | InsuranceControl | 50센트 증감, 구매/거절 또는 이븐 머니/유지 |
 | ActionBar | 히트/스탠드/더블, 스플릿·서렌더 메뉴 |
 | ResultView | 라운드 순손익, 상세 원장 팝오버, 다음 판 |
 | CollapsedView | 잔액·진행 상태·펼치기 |
+| OpacityControl | 색상 전환 버튼 호버의 별도 조절창: 20–100% 슬라이더·값 표시 |
 
 - 11 DIP 미만 글씨로 축소하지 않는다. 컨트롤은 최소 24 DIP 높이로 유지한다.
-- 최소 크기 220×150에서는 Header 24 / Dealer 26 / Player 32 / Context 24 / Action 28 DIP를 예산으로 두고, 나머지는 간격에 사용한다. 실제 폰트로 레이아웃 검증 후 미세 조정한다.
+- 최소 크기 220×150에서는 Header 24 / Balance 22 / Card 28 이상 / Action 24 / Status 14 DIP와 간격을 예산으로 둔다. 불투명도 조절창은 메인 창 레이아웃을 차지하지 않는다. 실제 폰트로 레이아웃 검증 후 미세 조정한다.
 - 카드가 많으면 카드 행만 스크롤한다. 합계와 액션은 고정한다.
 - 스플릿 핸드를 세로로 전부 펼치지 않는다. 활성 핸드와 나머지 핸드의 요약만 표시한다.
 - 패널을 호버만으로 펼치거나 접지 않는다. 사용자가 누르기 직전 버튼 위치가 바뀌지 않게 한다.
@@ -455,7 +474,7 @@ src/
   preload/index.ts
   renderer/
     overlay.html
-    utility.html
+    keyboard.html             # 후속 접근성 창 후보; 금액 편집에는 사용하지 않음
     components/
     styles/
   core/{models,rules,engine,scoring,settlement,shoe}.ts
@@ -485,23 +504,24 @@ maker와 서명 구성은 채택한 Forge 버전에서 확인해 고정한다. �
 
 | ID | 시나리오 | 합격 조건 |
 | --- | --- | --- |
-| O-01 | 밝은/어두운 화면 | 투명 배경·흑백 정보·불투명도 정상 |
+| O-01 | 밝은/어두운 화면 | 투명 배경·흑백 정보·창 안 슬라이더 20–100% 불투명도 조절 정상, 20% 미만 불가 |
 | O-02 | 업무 앱 입력 중 복원·호버·히트 | 자동 포커스 이동 없음, 버튼 첫 클릭 실행 |
-| O-03 | 금액 입력·접근성 창 | 명시적으로 열 때만 포커스, 종료 후 입력 정상 |
+| O-03 | 금액 인라인 입력·접근성 창 | 숫자칸을 명시적으로 누를 때만 임시 포커스, 편집 종료 후 비집중·비활성 복귀 |
 | O-04 | 전체 클릭 통과 | 아래 앱 클릭·스크롤 가능, Tray로 복귀 |
 | O-05 | 사용자 정의 리사이즈·접기 | 실제 창 크기 변경, 투명도 유지, 잘림 없음 |
 | O-06 | 모니터 분리·음수 좌표·배율 | workArea 안으로 복원, 좌표 튐 없음 |
 | O-07 | Spaces·가상 데스크톱·전체 화면 | OS별 동작 기록, Tray 복구 가능 |
-| O-08 | suspend/resume·재실행 | 중복 창·타이머·잘못된 위치 없음 |
+| O-08 | suspend/resume·재실행 | 중복 창·타이머·잘못된 위치 없음, 재실행 시 창 설정 기본값·게임 세션 복원 |
 | O-09 | Renderer 재로드·종료 | 게임 보존, 공개 상태 재동기화 |
 | O-10 | 자동 부분 클릭 통과 실험 | 빠른 진입·클릭·스크롤 오입력 없음 |
+| O-11 | 전역 Alt+백틱 창 숨기기 | 다른 앱 사용 중 숨김, 숨김 중 재입력은 복원하지 않음, 트레이 복원 가능. 충돌·키보드 배열은 OS별 기록 |
 
-O-01~O-09는 제품 검증 조건이고 O-10은 별도 실험이다. 특히 O-05 실패를 고정 크기 UI로 대체해 완료 처리하지 않는다. DevTools가 열린 투명 창은 문서상 제약이 있으므로 투명도 최종 판정은 DevTools를 닫은 패키지에서 한다.
+O-01~O-09와 O-11은 제품 검증 조건이고 O-10은 별도 실험이다. 특히 O-05 실패를 고정 크기 UI로 대체해 완료 처리하지 않는다. DevTools가 열린 투명 창은 문서상 제약이 있으므로 투명도 최종 판정은 DevTools를 닫은 패키지에서 한다.
 
 ### 11.2 코어·저장·IPC
 
 - 코어: A 여러 장, S17, 자연/스플릿 21, 양쪽 블랙잭, 보험 전 피크 금지, 이븐 머니·서렌더, 4핸드·A 제한·DAS, 혼합 승패.
-- 금액: $1 베팅의 3:2·보험 $0.50·서렌더 $0.50, 베팅 상한·증감·잔액 부족, safe integer 경계.
+- 금액: $1 베팅의 3:2·보험 $0.50·서렌더 $0.50, $1.01·$1.25 직접 입력과 반 센트 반환금 반올림, 베팅 상한·증감·잔액 부족, safe integer 경계. 정산 후 잔액 $1.00에서는 다음 판 가능, $0.99에서는 게임 오버, 진행 중 판은 정산 완료되는지 검증한다.
 - 원장: 동일 commandId 재전송, 같은 revision 동시 명령, 오래된 handId, 보험 중복 지급, await 중 재진입.
 - 슈: 312개 고유 ID, 75% 컷, 판 사이 유지, 판 중 재셔플 금지.
 - 복원: 보험 정산 직후, 스플릿 사이, 딜러 카드 직후, 정산 전후, 저장 성공 후 응답 유실.
@@ -517,7 +537,7 @@ Vitest로 순수 엔진·저장·IPC 서비스 테스트를 수행한다. [Playw
 - 모든 앱 프로세스의 60초 평균 CPU 합계를 한 코어 기준 1% 미만 목표로 측정한다.
 - 메모리는 Main만 보지 않고 Renderer·GPU 등 앱 프로세스를 함께 기록한다. OS별 RSS/working set은 공유 페이지 중복 가능성을 명시한다. 초기 합계 목표는 300MB 이하이며 실제 측정 후 조정한다.
 - 입력부터 저장 완료·화면 반영 p95 100ms 이하, 이미 실행 중인 창 복원 150ms 이하를 목표로 둔다.
-- OS·장비·Electron 버전·DevTools 비활성 상태를 결과에 기록한다. 열린 UtilityWindow의 추가 비용도 측정한다.
+- OS·장비·Electron 버전·DevTools 비활성 상태를 결과에 기록한다. 인라인 편집 중 포커스 전환 비용도 측정한다.
 - 애니메이션은 짧은 상태 변화에만 사용한다. 렌더러의 지속 requestAnimationFrame 루프는 두지 않는다.
 
 ### 11.4 구현 순서
@@ -533,4 +553,4 @@ Windows 단계는 엔진 재작성이나 별도 UI 개발이 아니라 공통 �
 
 두 OS에서 공통 코드로 작은 투명 창을 실행하고, 사용자가 크기를 조절하며, 필요한 입력만 받고, 카지노 규칙 전체를 플레이할 수 있어야 한다. 숨김·클릭 통과·Renderer 장애·앱 재실행 후에도 같은 판과 잔액이 복원되어야 한다.
 
-현재 S01 커스텀 리사이즈, P1 순수 Blackjack core, S07 플레이 수직 경로, S08 SessionRepository와 대표 복원 E2E가 완료됐다. E2E-17의 나머지 체크포인트·전체 게임 E2E, 나머지 창 기능, 포커스·전체 화면·자동 부분 통과 실험, 실제 Windows 테스트와 성능 측정은 후속 단계에서 수행한다.
+현재 S01 커스텀 리사이즈, P1 순수 Blackjack core, S07 플레이 수직 경로, S08 SessionRepository와 대표 복원 E2E, S09 IPC·상태 구독 회귀가 완료됐다. E2E-17의 나머지 체크포인트·전체 게임 E2E, 나머지 창 기능, 포커스·전체 화면·자동 부분 통과 실험, 실제 Windows 테스트와 성능 측정은 후속 단계에서 수행한다.

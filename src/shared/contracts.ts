@@ -10,6 +10,11 @@ export const channels = {
   state: 'game:state',
   window: 'overlay:command',
   resize: 'overlay:resize',
+  overlayState: 'overlay:get-state',
+  overlayStateChanged: 'overlay:state',
+  opacity: 'overlay:set-opacity',
+  opacityPopover: 'overlay:opacity-popover',
+  amountEditFocus: 'overlay:amount-edit-focus',
   recovery: 'game:recovery',
 } as const;
 
@@ -39,7 +44,18 @@ export const userCommandSchema = z.object({
   action: userActionSchema,
 }).strict();
 
-export const windowCommandSchema = z.enum(['hide', 'quit', 'small', 'default', 'large', 'passthrough']);
+export const windowCommandSchema = z.enum(['hide', 'quit', 'small', 'default', 'large', 'passthrough', 'collapse', 'expand']);
+export const opacityPercentSchema = z.number().int().min(20).max(100).refine(value => value % 5 === 0);
+export const amountEditFocusSchema = z.enum(['begin', 'end']);
+const anchorSchema = z.object({
+  x: z.number().finite().nonnegative(), y: z.number().finite().nonnegative(),
+  width: z.number().finite().positive().max(100), height: z.number().finite().positive().max(100),
+}).strict();
+export const opacityPopoverCommandSchema = z.discriminatedUnion('phase', [
+  z.object({ phase: z.literal('show'), anchor: anchorSchema }).strict(),
+  z.object({ phase: z.literal('keep') }).strict(),
+  z.object({ phase: z.literal('hide') }).strict(),
+]);
 export const resizeEdgeSchema = z.enum(['nw', 'ne', 'sw', 'se']);
 export const resizeCommandSchema = z.discriminatedUnion('phase', [
   z.object({ phase: z.literal('start'), edge: resizeEdgeSchema }).strict(),
@@ -53,6 +69,9 @@ export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew']);
 export type RecoveryChoice = z.infer<typeof recoveryChoiceSchema>;
 export type UserCommand = z.infer<typeof userCommandSchema>;
 export type WindowCommand = z.infer<typeof windowCommandSchema>;
+export type OverlayVisibility = 'expanded' | 'collapsed' | 'hidden';
+export interface OverlayViewState { revision: number; visibility: OverlayVisibility; opacityPercent: number; opacityPopoverVisible: boolean; }
+export type OpacityPopoverCommand = z.infer<typeof opacityPopoverCommandSchema>;
 export type ResizeEdge = z.infer<typeof resizeEdgeSchema>;
 export type ResizeCommand = z.infer<typeof resizeCommandSchema>;
 
@@ -128,5 +147,10 @@ export interface BlackjackAPI {
   recover(choice: RecoveryChoice): Promise<GameViewState>;
   onState(listener: (state: GameViewState) => void): () => void;
   windowCommand(command: WindowCommand): Promise<void>;
+  getOverlayState(): Promise<OverlayViewState>;
+  onOverlayState(listener: (state: OverlayViewState) => void): () => void;
+  setOpacity(percent: number): Promise<OverlayViewState>;
+  opacityPopover(command: OpacityPopoverCommand): Promise<void>;
+  amountEditFocus(phase: 'begin' | 'end'): Promise<void>;
   resize(command: ResizeCommand): Promise<ResizeResult>;
 }

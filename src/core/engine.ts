@@ -4,7 +4,6 @@ import {
   DEFAULT_BET_CENTS,
   HAND_STATUSES,
   INSURANCE_DECISIONS,
-  MAX_BET_CENTS,
   ROUND_PHASES,
   RULE_SET_ID,
   STARTING_BALANCE_CENTS,
@@ -136,6 +135,7 @@ function setBet(state: SessionState, amountCents: number): TransitionResult {
 
 function setBetStep(state: SessionState, stepCents: number): TransitionResult {
   assertBetting(state, 'Bet step can only be changed between rounds');
+  if (state.balanceCents < 100) throw new BlackjackError('INVALID_ACTION', 'Game over: balance is below $1');
   if (!isBetStep(stepCents)) throw new BlackjackError('INVALID_AMOUNT', 'Unsupported bet step');
   return { nextState: { ...state, betStepCents: stepCents }, events: [] };
 }
@@ -425,8 +425,8 @@ function advanceDealer(state: SessionState): TransitionResult {
 
 function nextRound(state: SessionState): TransitionResult {
   requireRoundPhase(state, 'result');
-  const maximum = Math.min(MAX_BET_CENTS, Math.floor(state.balanceCents / 100) * 100);
-  const pendingBetCents = maximum < 100 ? 0 : Math.min(state.pendingBetCents, maximum);
+  if (state.balanceCents < 100) throw new BlackjackError('INVALID_ACTION', 'Game over: balance is below $1');
+  const pendingBetCents = Math.max(100, Math.min(state.pendingBetCents, state.balanceCents));
   return { nextState: { ...state, pendingBetCents, round: null }, events: [] };
 }
 
@@ -688,8 +688,7 @@ export function validateState(state: SessionState): void {
   if (state.ruleSetId !== RULE_SET_ID) throw new BlackjackError('INTEGRITY_ERROR', 'Unknown rule set');
   assertSafeCents(state.balanceCents, 'Balance');
   assertSafeCents(state.pendingBetCents, 'Pending bet');
-  if (state.pendingBetCents !== 0
-    && (state.pendingBetCents < 100 || state.pendingBetCents > MAX_BET_CENTS || state.pendingBetCents % 100 !== 0)) {
+  if (state.pendingBetCents !== 0 && state.pendingBetCents < 100) {
     throw new BlackjackError('INTEGRITY_ERROR', 'Pending bet is invalid');
   }
   if (!isBetStep(state.betStepCents)) throw new BlackjackError('INTEGRITY_ERROR', 'Bet step is invalid');
@@ -719,7 +718,7 @@ export function validateState(state: SessionState): void {
     throw new BlackjackError('INTEGRITY_ERROR', 'Round shape is invalid');
   }
   assertSafeCents(round.originalWagerCents, 'Original wager');
-  if (round.originalWagerCents < 100 || round.originalWagerCents % 100 !== 0) {
+  if (round.originalWagerCents < 100) {
     throw new BlackjackError('INTEGRITY_ERROR', 'Original wager is invalid');
   }
   const handIds = new Set<string>();
@@ -733,7 +732,7 @@ export function validateState(state: SessionState): void {
     }
     handIds.add(hand.handId);
     assertSafeCents(hand.wagerCents, 'Hand wager');
-    if (hand.wagerCents < 100 || hand.wagerCents % 100 !== 0 || hand.cards.length < 1) {
+    if (hand.wagerCents < 100 || hand.cards.length < 1) {
       throw new BlackjackError('INTEGRITY_ERROR', 'Hand wager or cards are invalid');
     }
     if (!(HAND_STATUSES as readonly string[]).includes(hand.status)) {

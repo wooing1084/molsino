@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resizeCommandSchema, userCommandSchema } from '../../src/shared/contracts';
+import { amountEditFocusSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema } from '../../src/shared/contracts';
 
 const token = '11111111-1111-4111-8111-111111111111';
 
@@ -70,7 +70,37 @@ describe('game command contract', () => {
     { commandId: token, expectedRevision: 0, action: { type: 'advanceDealer' } },
     { commandId: token, expectedRevision: 0, action: { type: 'hit' } },
     { commandId: token, expectedRevision: 0, action: { type: 'deal', extra: true } },
+    { commandId: token, expectedRevision: Number.NaN, action: { type: 'deal' } },
+    { commandId: token, expectedRevision: Number.MAX_SAFE_INTEGER + 1, action: { type: 'deal' } },
+    { commandId: token, expectedRevision: 0, action: { type: 'setBet', amountCents: 1.5 } },
+    { commandId: token, expectedRevision: 0, action: { type: 'setBet', amountCents: -100 } },
+    { commandId: token, expectedRevision: 0, action: { type: 'deal' }, internal: true },
+    { commandId: token, expectedRevision: 0, action: { type: 'deal' }, filePath: '/tmp/session.json' },
+    null,
   ])('rejects malformed or internal commands', value => {
     expect(userCommandSchema.safeParse(value).success).toBe(false);
+  });
+});
+
+describe('other IPC command contracts', () => {
+  it('accepts only begin and end for inline bet editing focus', () => {
+    expect(amountEditFocusSchema.safeParse('begin').success).toBe(true);
+    expect(amountEditFocusSchema.safeParse('end').success).toBe(true);
+    expect(amountEditFocusSchema.safeParse({ phase: 'begin' }).success).toBe(false);
+  });
+  it.each(['restoreBackup', 'startNew'])('accepts the recovery choice %s', choice => {
+    expect(recoveryChoiceSchema.safeParse(choice).success).toBe(true);
+  });
+
+  it.each(['restoreAll', { choice: 'startNew' }, null])('rejects a malformed recovery choice', choice => {
+    expect(recoveryChoiceSchema.safeParse(choice).success).toBe(false);
+  });
+
+  it.each(['hide', 'quit', 'passthrough'])('accepts the overlay command %s', command => {
+    expect(windowCommandSchema.safeParse(command).success).toBe(true);
+  });
+
+  it.each(['showDevTools', { command: 'quit' }, null])('rejects an unsupported overlay command', command => {
+    expect(windowCommandSchema.safeParse(command).success).toBe(false);
   });
 });
