@@ -1,6 +1,6 @@
 # E2E 테스트 스위트 구현 현황
 
-> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-17(S09 PR 검토 후 상태 push 경계 보강).
+> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-17(macOS E2E Dock 정리 완료).
 > 게임 E2E-01~21은 [`e2e-test-plan.md`](./e2e-test-plan.md), P0 세션 순서는 [`work-session-roadmap.md`](./work-session-roadmap.md)를 기준으로 한다.
 
 ## 1. 목표와 접근 원칙
@@ -139,17 +139,38 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - 검증: `npm run test:e2e` — 2개 spec, 기존 리사이즈 4건 + 플레이 1건, 총 5/5 통과.
 - 특수 행동은 UI와 core에 연결됐지만 각 분기의 대표 E2E는 S14에서 추가한다.
 
-### 2.10 S09 IPC·상태 구독 회귀 — 완료
+### 2.10 S09 IPC·상태 구독 E2E — 완료
 
-- `tests/e2e/ipc-subscription.spec.ts` 6건: 캡처된 구형 snapshot보다 새 push 우선, 동일 revision의 복구 snapshot 역순, 구독 해제와 reload 뒤 revision 복원, snapshot/응답/push의 홀 카드·슈 비공개, Node 격리·내부 명령·비정상 payload 거부, 비신뢰 문서로의 상태 push 차단.
-- 격리된 E2E userData가 있을 때만 `MOLSINO_TEST_SNAPSHOT_DELAY_MS`를 적용해 순서 역전을 결정론적으로 만든다.
-- 최상위 등록 frame/URL 검증은 `tests/main/trust.test.ts`, 엄격한 명령 schema는 `tests/shared/contracts.test.ts`에서도 확인한다.
-- 공식 검증: `npm run test:e2e` — Node 22.22.1, macOS arm64 프로덕션 패키지, 전체 17/17 통과, 실패/스킵 0. S08-06은 무작위 새 슈의 게임 phase 대신 저장된 소비 인덱스를 기다린다.
+- `tests/e2e/ipc-state.spec.ts` 5건: 늦은 초기 snapshot과 최신 push 역순, 구독 해제·reload, E2E-21 Node 격리·strict 명령, 슈·홀 카드 비공개, 직접 로드한 비신뢰 문서 IPC 거부.
+- 격리된 E2E `userData`에서만 첫 snapshot 캡처 후 응답을 지연시키는 옵션을 사용해 실제 역순을 재현한다. 프로덕션 동작의 상태 계산이나 보안 판정은 바꾸지 않는다.
+- `npm run test:e2e`: 프로덕션 패키지 전체 16/16 통과. 상세는 [`session-reports/S09-ipc-state-sync.md`](session-reports/S09-ipc-state-sync.md).
+
+### 2.11 병합 PR #1의 S09 회귀 보강 — 완료
+
+- `tests/e2e/ipc-subscription.spec.ts` 6건: 구형 snapshot보다 새 push 우선, 동일 revision의 복구 snapshot 역순, 구독 해제·reload, 홀 카드·슈 비공개, Node 격리·비정상 payload 거부, 비신뢰 문서로의 상태 push 차단.
+- 최상위 frame/URL 검증과 명령 schema는 단위 테스트에서도 확인한다. 병합 당시 프로덕션 패키지 E2E 17/17 통과. 상세는 [`session-reports/S09-ipc-subscription.md`](session-reports/S09-ipc-subscription.md).
+
+### 2.12 S10 접힘·불투명도·전역 숨기기 E2E — 완료
+
+- `tests/e2e/overlay-state.spec.ts` 9건: 140×30 내부 접힘·펼친 크기 복원·중복 전환, 진행 중 판 보존, 색상 버튼 호버 조절창의 20–100% 슬라이더와 접힘/reload 유지·재실행 초기화, 화면 경계에서 방향 선택·호버 유지/닫힘·게임/창 명령 차단, 숨김/접힘 중 딜러 계속 진행, 헤더 접기 버튼 부재·전역 Alt+백틱 등록·재숨김·복원 경로.
+- 불투명도 조절창은 별도 작은 창이므로 `overlay-resize.spec.ts`의 220×150 메인 창 레이아웃을 침범하지 않는다.
+- `npm run test:e2e`: macOS arm64 프로덕션 패키지 전체 25/25 통과. `npm run check`: 12파일 110/110 통과. 상세는 [`session-reports/S10-overlay-state-opacity.md`](session-reports/S10-overlay-state-opacity.md).
+- 오해를 낳은 헤더 접기 버튼은 제거했다. 기존 접힘 상태·명령은 유지한다. 물리 Alt+백틱 입력과 실제 Tray 클릭은 자동 확인 범위 밖이다.
+
+### 2.13 macOS E2E Dock 정리 — 완료
+
+- 선작성 패키지 E2E는 `dock.isVisible() === true`로 실패했다. 일반 앱은 기존 Dock 표시를 유지하고 E2E 런처에만 `MOLSINO_TEST_HIDE_DOCK=1`을 전달해 `setVisibleOnAllWorkspaces` 뒤 Dock 아이콘을 숨긴다.
+- `tests/e2e/dock-lifecycle.spec.ts`에서 실행 중 `dock.isVisible() === false`와 테스트 전용 플래그를 확인한다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 26/26, `npm run check` 12파일 110/110 통과.
+- 이미 OS의 최근 사용 앱 영역에 남은 항목을 자동 삭제하거나 사용자 Dock 설정을 바꾸지는 않는다. 테스트가 끝난 뒤 최근 앱 목록에 새 항목이 생기는지까지 OS UI로 검증한 것은 아니다.
+
+### 2.14 최신 DEV 병합 검증 — 완료
+
+- 병합된 S09 spec의 Preload API 기대 목록을 S10에서 추가된 오버레이 API까지 포함하도록 갱신했다. macOS arm64 프로덕션 패키지 전체 `npm run test:e2e` 32/32, `npm run check` 12파일 114/114 통과.
 
 ## 3. 아직 안 된 작업 (재개 시 순서대로)
 
-1. **S10 창 상태 모델** — 접힘·펼침의 창 크기, 게임 상태 보존, 중복 전이와 복원 회귀를 검증한다.
-2. **게임용 spec 확장** — S14/S15에서 실제 배관과 UI 계약에 맞춰 작성한다. S08 `persistence.spec.ts` 6건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18은 미완료다.
+1. **S11~S13 창 기능 E2E** — S10 접힘·펼침과 색상 버튼 호버 불투명도 조절창(20–100%)은 완료했다. 위치/다중 모니터·시작 기본값, UtilityWindow, 클릭 통과 회귀를 로드맵 순서대로 추가한다. 재실행 때 창 설정은 기본값으로 돌아가고 게임 세션만 복원한다.
+2. **게임용 spec 확장** — S14/S15에서 실제 배관과 UI 계약에 맞춰 작성한다. S08 `persistence.spec.ts` 6건과 S09 두 spec 11건은 완료됐지만 E2E-17 전체 10개 체크포인트와 E2E-18 창 설정 초기화는 미완료다.
    계약(`window-api.d.ts`, `support/*.ts`)과 15개 픽스처, 대표 플레이 spec은 준비돼 있다.
    플랜대로 그룹당 1개씩 병렬 서브에이전트에 위임 가능:
    - `tests/e2e/betting.spec.ts` — E2E-01(초기 기동 스냅샷), E2E-02(베팅 조정 경계)
@@ -158,12 +179,11 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
    - `tests/e2e/side-rules.spec.ts` — E2E-07~13(보험 구매/거절, 이븐머니 수락/거절, 더블다운, 스플릿,
      A스플릿, 레이트 서렌더) — 7개
    - `tests/e2e/integrity.spec.ts` — E2E-14(연속 클릭 거부), E2E-15(잔액 부족), E2E-16(새 게임 초기화)
-   - `tests/e2e/persistence.spec.ts` — E2E-17(저장 복원 10-checkpoint 반복문), E2E-18(설정 복원),
+   - `tests/e2e/persistence.spec.ts` — E2E-17(저장 복원 10-checkpoint 반복문), E2E-18(창 설정 재실행 초기화),
      E2E-19(저장 손상/미래 스키마), E2E-20(슈 재셔플 경계)
-   - E2E-21 기본 경계는 `ipc-subscription.spec.ts`에서 검증했다. 향후 새 창·frame 기능을 추가하면 해당 경계 회귀를 확장한다.
+   - E2E-21 Node 격리·비정상 명령 거부 — 두 S09 spec에서 검증했다. 새 창·frame 기능 추가 시 경계 회귀를 확장한다.
 
-4. **S10~S13 창 기능 E2E** — 접힘, 위치/다중 모니터, UtilityWindow, 클릭 통과 회귀를 로드맵 순서대로 추가한다.
-5. **검증:** 각 세션 마지막에 `npm run test:e2e`를 실행하고 통과·실패·스킵 수를 있는 그대로 문서화한다.
+3. **검증:** 각 세션 마지막에 `npm run test:e2e`를 실행하고 통과·실패·스킵 수를 있는 그대로 문서화한다.
 
 ## 4. 신규/수정 파일 전체 목록 (현재까지)
 
@@ -173,7 +193,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - `tests/e2e/window-api.d.ts`
 - `tests/e2e/support/app.ts`, `support/game.ts`, `support/format.ts`, `support/fixtures.ts`
 - `tests/e2e/support/resize.ts`, `tests/e2e/overlay-resize.spec.ts`
-- `tests/e2e/playable-mvp.spec.ts`, `tests/e2e/persistence.spec.ts`, `tests/e2e/ipc-subscription.spec.ts`
+- `tests/e2e/playable-mvp.spec.ts`, `tests/e2e/persistence.spec.ts`, `tests/e2e/ipc-state.spec.ts`, `tests/e2e/ipc-subscription.spec.ts`, `tests/e2e/overlay-state.spec.ts`, `tests/e2e/dock-lifecycle.spec.ts`
 - `fixtures/blackjack/*.json` × 15
 - `docs/e2e-implementation-status.md`(이 문서)
 - `src/main/game/game-store.ts`, `src/main/game/shoe-source.ts`
@@ -186,11 +206,13 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 - `scripts/smoke.cjs`
 
 **아직 미생성**
-- `tests/e2e/betting.spec.ts`, `standard-rounds.spec.ts`, `side-rules.spec.ts`, `integrity.spec.ts`는 미생성이다. 저장 체크포인트와 설정 복원은 기존 `persistence.spec.ts`에 후속 추가한다.
+- `tests/e2e/betting.spec.ts`, `standard-rounds.spec.ts`, `side-rules.spec.ts`, `integrity.spec.ts`와
+  `persistence.spec.ts`의 E2E-17 전체 체크포인트·E2E-18 확장
 
 ## 5. 알려진 이슈
 
-- 전체 E2E-01~21 전용 spec은 아직 미작성이다. 현재 green은 S01 리사이즈 4건, 대표 플레이 1건, S08 저장 6건, S09 IPC·보안 6건이다.
-- 재실행 복원 대표 경로는 통과했지만 10개 체크포인트 전체·Preferences 복원은 아직 통과 조건을 충족하지 않는다.
+- 전체 E2E-01~21 전용 spec은 아직 미완료다. 현재 green은 S01 리사이즈 4건, S07 대표 플레이 1건, S08 복원 6건, S09 IPC·보안 11건, S10 오버레이 9건, macOS Dock 1건이다.
+- 재실행 게임 복원 대표 경로는 통과했지만 10개 체크포인트 전체·창 설정 재실행 초기화는 아직 통과 조건을 충족하지 않는다.
 - E2E는 실제 데스크톱 투명도 합성, 외부 앱 포커스, Windows 실장비 동작을 판정하지 않는다.
 - `npm install`이 high severity 취약점 17개를 보고했다. 자동 수정은 수행하지 않았다.
+- 현재 변경은 Git 저장소의 PR 브랜치에서 추적한다.

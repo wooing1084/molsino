@@ -9,13 +9,16 @@ export function isTrustedDocument(candidate: string, expected: string): boolean 
   } catch { return false; }
 }
 
-/** Match the registered webContents and its current top-level frame. */
+interface FrameIdentity { readonly url: string; }
+interface ContentsIdentity { readonly mainFrame: FrameIdentity | null; }
+
+/** IPC requires the exact overlay contents and its current main frame, not merely a matching URL. */
 export function isTrustedIpcSender(
-  event: { sender: unknown; senderFrame: { url: string } | null },
-  registered: { mainFrame: { url: string } | null } | undefined,
-  documentURL: string,
+  sender: unknown,
+  senderFrame: FrameIdentity | null | undefined,
+  overlayContents: ContentsIdentity | null | undefined,
+  expectedDocumentURL: string,
 ): boolean {
-  return Boolean(registered && event.sender === registered && event.senderFrame &&
-    event.senderFrame === registered.mainFrame &&
-    isTrustedDocument(event.senderFrame.url, documentURL));
+  return Boolean(overlayContents && sender === overlayContents && senderFrame &&
+    senderFrame === overlayContents.mainFrame && isTrustedDocument(senderFrame.url, expectedDocumentURL));
 }

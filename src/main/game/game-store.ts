@@ -17,6 +17,7 @@ export class GameStore {
   private readonly commandCache = new Map<string, CommandResult>();
   private readonly listeners = new Set<(state: GameViewState) => void>();
   private readonly idleWaiters = new Set<() => void>();
+  private dealerTimer: ReturnType<typeof setTimeout> | undefined;
 
   public constructor(
     initialState: SessionState,
@@ -111,13 +112,13 @@ export class GameStore {
     const result: CommandResult = { ok: true, state };
     if (pending.commandId) this.cache(pending.commandId, result);
     this.publish(state);
-    if (state.phase === 'dealerTurn') setTimeout(() => { void this.advanceDealer(); }, 0);
+    if (state.phase === 'dealerTurn') this.scheduleDealer();
     return result;
   }
 
   private async advanceDealer(): Promise<void> {
     if (this.busy) {
-      setTimeout(() => { void this.advanceDealer(); }, 0);
+      void this.whenIdle().then(() => this.scheduleDealer());
       return;
     }
     if (this.pending || this.committedState.round?.phase !== 'dealerTurn') return;
@@ -143,7 +144,15 @@ export class GameStore {
   }
 
   public resumeDealer(): void {
-    if (this.committedState.round?.phase === 'dealerTurn') setTimeout(() => { void this.advanceDealer(); }, 0);
+    this.scheduleDealer();
+  }
+
+  private scheduleDealer(): void {
+    if (this.dealerTimer || this.pending || this.committedState.round?.phase !== 'dealerTurn') return;
+    this.dealerTimer = setTimeout(() => {
+      this.dealerTimer = undefined;
+      void this.advanceDealer();
+    }, 0);
   }
 
   private publish(state: GameViewState): void {

@@ -4,9 +4,10 @@ export function configurePlatformWindow(window: BrowserWindow): void {
   if (process.platform === 'darwin') {
     window.setAlwaysOnTop(true, 'floating');
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    // setVisibleOnAllWorkspaces can flip activation policy to accessory,
-    // which hides the Dock icon. Re-assert it explicitly.
-    void app.dock?.show();
+    // setVisibleOnAllWorkspaces can change the process type and hide the Dock icon.
+    // Repeated E2E launches should not leave Dock icons; keep the normal app policy.
+    if (process.env.MOLSINO_TEST_HIDE_DOCK === '1') app.dock?.hide();
+    else void app.dock?.show();
   } else {
     window.setAlwaysOnTop(true);
   }
