@@ -259,7 +259,7 @@ interface BlackjackAPI {
 | --- | --- | --- |
 | game:get-snapshot | Renderer → Main | 등록된 창·main frame, 공개 상태 반환 |
 | game:command | Renderer → Main | Zod, commandId, expectedRevision, action별 권한 |
-| game:state | Main → Renderer | 공개 snapshot + revision |
+| game:state | Main → Renderer | 현재 최상위 문서 URL 검증 후 공개 snapshot + revision |
 | overlay:mode | Renderer → Main | 허용 enum, 드래그 종료 |
 | overlay:resize | Renderer → Main | 시작/update/end 구분, 토큰·유한 좌표·크기 제한 |
 | utility:open | Renderer → Main | 허용된 화면 이름만 |
@@ -267,7 +267,7 @@ interface BlackjackAPI {
 
 Main은 sender webContents와 senderFrame이 자신이 만든 창의 최상위 프레임인지, 허용된 앱 URL인지 검사한다. TypeScript 타입만 믿지 않고 런타임 스키마로 검사한다. 알 수 없는 필드·명령은 거부한다. advanceDealer·셔플·정산·파일 경로는 Renderer용 명령에 포함하지 않는다.
 
-상태 구독을 먼저 설치한 뒤 snapshot을 요청하고 더 큰 revision만 적용한다. 명령 응답과 push가 역순으로 와도 이전 화면으로 돌아가지 않는다. iframe·새 창·낯선 URL에서 보낸 IPC는 거부한다.
+상태 구독을 먼저 설치한 뒤 snapshot을 요청하고 더 큰 revision만 적용한다. 같은 revision에서는 복구 완료와 저장 실패 알림을 우선한다. 명령 응답과 push가 역순으로 와도 이전 화면으로 돌아가지 않는다. iframe·새 창·낯선 URL에서 보낸 IPC는 거부하고, 신뢰되지 않는 문서에는 상태 push를 보내지 않는다.
 
 ## 6. 게임 엔진 계약
 

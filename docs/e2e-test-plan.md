@@ -102,7 +102,7 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 
 | ID | 목적 | 핵심 단계 | 기대 결과 |
 | --- | --- | --- | --- |
-| E2E-21 | Node 격리·신뢰 경계 유지 | `window.require` 미존재 확인, 임의 채널 invoke 차단 확인 | 기존 `scripts/smoke.cjs` 내용을 정식 E2E 스위트로 승격 |
+| E2E-21 | Node 격리·신뢰 경계 유지 | `window.require` 미존재, 비정상 명령 거부, 비신뢰 문서의 snapshot 요청과 상태 push 차단 확인 | Preload·Main 양방향 경계를 실제 Electron에서 검증 |
 
 ## 4. MVP 완료 기준 매핑
 
@@ -150,5 +150,5 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 1. ~~`BlackjackCore` 순수 엔진 + 결정론적 `ShuffleSource` 주입 지점~~ — P1 완료.
 2. ~~`GameStore` 직렬화 + IPC(`dispatch`, `onState`) + React 플레이 UI + 결정론적 앱 슈 주입~~ — S07과 S09/S14 일부 완료.
 3. ~~`SessionRepository` 원자 저장·복구와 GameStore checkpoint 연결~~ — S08 완료.
-4. snapshot/push 역순과 reload 회귀, 특수 행동 대표 UI E2E 확장 — S09/S14.
-5. E2E-17~20 저장 복원 체크포인트와 E2E-21 보안 회귀를 완성해 MVP 게이트로 사용 — S15.
+4. ~~snapshot/push 역순과 reload·기본 보안 경계 회귀~~ — S09 완료. 특수 행동 대표 UI E2E는 S14에서 확장한다.
+5. E2E-17~20 저장 복원 체크포인트를 완성해 MVP 게이트로 사용 — S15. E2E-21의 Node 격리·내부 명령 거부는 S09에서 검증했다.
