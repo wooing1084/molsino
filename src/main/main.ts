@@ -27,6 +27,15 @@ const documentURL = devURL || 'app://molsino/index.html';
 const snapshotDelayMs = process.env.MOLSINO_TEST_USER_DATA
   ? Number(process.env.MOLSINO_TEST_SNAPSHOT_DELAY_MS ?? 0) : 0;
 
+function sendGameState(state: GameViewState): void {
+  if (!overlay || overlay.isDestroyed()) return;
+  const contents = overlay.webContents;
+  const frame = contents.isDestroyed() ? null : contents.mainFrame;
+  if (frame && isTrustedDocument(frame.url, documentURL)) {
+    contents.send(channels.state, state);
+  }
+}
+
 function reveal(): void {
   if (!overlay || overlay.isDestroyed()) return;
   resizeController?.invalidate();
@@ -94,9 +103,7 @@ async function start(): Promise<void> {
       { createShoe: createGameShoe, nextId: () => randomUUID() },
       process.platform, repository, snapshot,
     );
-    unsubscribeGameState = gameStore.subscribe(state => {
-      if (overlay && !overlay.isDestroyed()) overlay.webContents.send(channels.state, state);
-    });
+    unsubscribeGameState = gameStore.subscribe(sendGameState);
     gameStore.resumeDealer();
   };
   if (loaded.kind === 'missing') {
@@ -191,7 +198,7 @@ async function start(): Promise<void> {
       loaded = { kind: 'ready', snapshot };
       initializeGame(snapshot);
       const state = gameStore!.getSnapshot();
-      overlay?.webContents.send(channels.state, state);
+      sendGameState(state);
       return state;
     } finally { recovering = false; }
   });

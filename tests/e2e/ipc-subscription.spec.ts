@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { closeApp, launchApp, relaunchApp, type LaunchedApp } from './support/app';
 import { fixturePath } from './support/fixtures';
@@ -140,4 +140,39 @@ test('E2E-21 격리된 Preload API가 내부 명령과 잘못된 payload를 거�
   await expect(page.evaluate(() => window.blackjack.windowCommand('openDevTools' as never))).rejects.toThrow();
   await expect(page.evaluate(() => window.blackjack.resize({ phase: 'update', token: 'bad' }))).rejects.toThrow();
   expect(await page.evaluate(() => window.blackjack.getSnapshot())).toMatchObject({ revision: 0, phase: 'betting' });
+});
+
+test('S09-05 비신뢰 문서에는 이후 게임 상태 push를 보내지 않는다', async () => {
+  launched = await launchApp({ shoeFixture: fixturePath('dealer-many-steps') });
+  const page = launched.page;
+  await expect(page.getByRole('button', { name: '딜', exact: true })).toBeEnabled();
+  const dealt = await page.evaluate(() => window.blackjack.dispatch({
+    commandId: crypto.randomUUID(), expectedRevision: 0, action: { type: 'deal' },
+  }));
+  expect(dealt).toMatchObject({ ok: true, state: { phase: 'playerTurn', revision: 1 } });
+
+  await page.addInitScript(() => {
+    if (location.href !== 'about:blank') return;
+    const probe = window as typeof window & { __receivedStates?: GameViewState[] };
+    probe.__receivedStates = [];
+    window.blackjack.onState(state => probe.__receivedStates?.push(state));
+  });
+  await page.evaluate(({ revision, handId }) => {
+    void window.blackjack.dispatch({
+      commandId: crypto.randomUUID(), expectedRevision: revision, action: { type: 'stand', handId },
+    }).then(result => { if (result.ok) location.href = 'about:blank'; });
+  }, { revision: dealt.state.revision, handId: dealt.state.playerHands[0]!.handId });
+  await page.waitForURL('about:blank');
+  await expect(page.evaluate(() => window.blackjack.getSnapshot())).rejects.toThrow('Untrusted IPC sender');
+
+  const sessionPath = join(launched.userDataDir, 'session.json');
+  const atNavigation = JSON.parse(await readFile(sessionPath, 'utf8'));
+  expect(atNavigation.revision).toBeLessThan(9);
+  await expect.poll(async () => {
+    const saved = JSON.parse(await readFile(sessionPath, 'utf8'));
+    return { revision: saved.revision, phase: saved.state.round.phase };
+  }).toEqual({ revision: 9, phase: 'result' });
+  expect(await page.evaluate(() =>
+    (window as typeof window & { __receivedStates?: GameViewState[] }).__receivedStates?.map(state => state.revision),
+  )).toEqual([]);
 });

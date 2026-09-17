@@ -102,7 +102,7 @@ E2E는 규칙의 모든 조합(예: 모든 배당 표 행, A 재스플릿 금지
 
 | ID | 목적 | 핵심 단계 | 기대 결과 |
 | --- | --- | --- | --- |
-| E2E-21 | Node 격리·신뢰 경계 유지 | `window.require` 미존재 확인, 임의 채널 invoke 차단 확인 | 기존 `scripts/smoke.cjs` 내용을 정식 E2E 스위트로 승격 |
+| E2E-21 | Node 격리·신뢰 경계 유지 | `window.require` 미존재, 비정상 명령 거부, 비신뢰 문서의 snapshot 요청과 상태 push 차단 확인 | Preload·Main 양방향 경계를 실제 Electron에서 검증 |
 
 ## 4. MVP 완료 기준 매핑
 

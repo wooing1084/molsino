@@ -68,7 +68,7 @@ Electron 44.3 + TypeScript 7 + React 19 + Vite 8.3 + Electron Forge 7.11.2
 - 베팅, 딜, 보험, 이븐 머니, 히트, 스탠드, 더블, 스플릿, 서렌더, 다음 판, 새 게임 UI 연결
 - 결정론적 E2E 슈 fixture 주입과 자연 블랙잭 대표 여정 검증
 - `SessionRepository`: versioned `session.json`, 원자 교체·검증된 primary backup, 손상/미래 schema 복구 선택, 실패 후보 재시도, 재기동 복원
-- S09: 등록된 최상위 frame·URL별 IPC 송신자 검증, 늦은 snapshot보다 새 revision의 push 유지, 구독 해제·reload, 비정상 payload 거부와 공개 상태 경계 E2E
+- S09: 등록된 최상위 frame·URL별 IPC 송신자 검증과 신뢰 문서로만 상태 push, 늦은 snapshot보다 새 revision의 push 유지, 구독 해제·reload, 비정상 payload 거부와 공개 상태 경계 E2E
 
 ---
 
@@ -135,7 +135,7 @@ tests/
   e2e/overlay-resize.spec.ts ← S01 E2E 4건 완료
   e2e/playable-mvp.spec.ts   ← 베팅→딜→자연 블랙잭→다음 판 E2E
   e2e/persistence.spec.ts    ← S08 복원·손상·미래 버전·컷 경계 E2E 6건
-  e2e/ipc-subscription.spec.ts ← S09 snapshot 역순·복구·구독/reload·공개 상태·보안 E2E 5건
+  e2e/ipc-subscription.spec.ts ← S09 snapshot 역순·복구·구독/reload·공개 상태·보안 E2E 6건
   main/resize-controller.test.ts ← 리사이즈 하위 테스트
   main/trust.test.ts         ← 완료
 
@@ -167,7 +167,7 @@ docs/
 | P1 순수 Blackjack core | ✅ `npm run check` 9파일 78/78 + macOS arm64 `npm run package` 통과 | S02~S06 묶음 예외 검증 |
 | S07 인메모리 플레이 MVP | ✅ `npm run check` 10파일 87/87, `npm run test:e2e` 5/5, `npm run smoke` 통과 | S07 + S09/S14 일부 |
 | S08 세션 저장·재기동 복원 | ✅ `npm run check` 11파일 92/92, macOS arm64 프로덕션 `npm run test:e2e` 11/11, `npm run smoke` | S08, E2E-17/19/20 일부 |
-| S09 IPC·Preload·상태 구독 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 16/16 (S09 신규 5건) | S09, E2E-21 보안 경계 |
+| S09 IPC·Preload·상태 구독 | ✅ macOS arm64 프로덕션 `npm run test:e2e` 17/17 (S09 신규 6건) | S09, E2E-21 보안 경계 |
 | 데스크톱 배포 산출물 | ✅ macOS Universal ZIP·Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과 | Windows GUI는 실장비 미검증 |
 | 10개 체크포인트·Preferences 복원 | ⬜ S15/S11에서 완성 | E2E-17~18 |
 | 실제 OS 투명도·외부 앱 포커스 | ⬜ E2E 범위 밖, 통과로 추정하지 않음 | O-02, O-05 |

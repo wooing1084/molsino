@@ -1,6 +1,6 @@
 # E2E 테스트 스위트 구현 현황
 
-> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-16(S09 IPC·상태 구독 회귀 완료).
+> 최초 작성: 2026-09-15 · 최근 갱신: 2026-09-17(S09 PR 검토 후 상태 push 경계 보강).
 > 게임 E2E-01~21은 [`e2e-test-plan.md`](./e2e-test-plan.md), P0 세션 순서는 [`work-session-roadmap.md`](./work-session-roadmap.md)를 기준으로 한다.
 
 ## 1. 목표와 접근 원칙
@@ -141,10 +141,10 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 ### 2.10 S09 IPC·상태 구독 회귀 — 완료
 
-- `tests/e2e/ipc-subscription.spec.ts` 5건: 캡처된 구형 snapshot보다 새 push 우선, 동일 revision의 복구 snapshot 역순, 구독 해제와 reload 뒤 revision 복원, snapshot/응답/push의 홀 카드·슈 비공개, Node 격리·내부 명령·비정상 payload 거부.
+- `tests/e2e/ipc-subscription.spec.ts` 6건: 캡처된 구형 snapshot보다 새 push 우선, 동일 revision의 복구 snapshot 역순, 구독 해제와 reload 뒤 revision 복원, snapshot/응답/push의 홀 카드·슈 비공개, Node 격리·내부 명령·비정상 payload 거부, 비신뢰 문서로의 상태 push 차단.
 - 격리된 E2E userData가 있을 때만 `MOLSINO_TEST_SNAPSHOT_DELAY_MS`를 적용해 순서 역전을 결정론적으로 만든다.
 - 최상위 등록 frame/URL 검증은 `tests/main/trust.test.ts`, 엄격한 명령 schema는 `tests/shared/contracts.test.ts`에서도 확인한다.
-- 공식 검증: `npm run test:e2e` — Node 22.22.1, macOS arm64 프로덕션 패키지, 전체 16/16 통과, 실패/스킵 0.
+- 공식 검증: `npm run test:e2e` — Node 22.22.1, macOS arm64 프로덕션 패키지, 전체 17/17 통과, 실패/스킵 0. S08-06은 무작위 새 슈의 게임 phase 대신 저장된 소비 인덱스를 기다린다.
 
 ## 3. 아직 안 된 작업 (재개 시 순서대로)
 
@@ -190,7 +190,7 @@ usd(cents: number): string  // `$${(cents/100).toFixed(2)}`
 
 ## 5. 알려진 이슈
 
-- 전체 E2E-01~21 전용 spec은 아직 미작성이다. 현재 green은 S01 리사이즈 4건, 대표 플레이 1건, S08 저장 6건, S09 IPC·보안 5건이다.
+- 전체 E2E-01~21 전용 spec은 아직 미작성이다. 현재 green은 S01 리사이즈 4건, 대표 플레이 1건, S08 저장 6건, S09 IPC·보안 6건이다.
 - 재실행 복원 대표 경로는 통과했지만 10개 체크포인트 전체·Preferences 복원은 아직 통과 조건을 충족하지 않는다.
 - E2E는 실제 데스크톱 투명도 합성, 외부 앱 포커스, Windows 실장비 동작을 판정하지 않는다.
 - `npm install`이 high severity 취약점 17개를 보고했다. 자동 수정은 수행하지 않았다.
