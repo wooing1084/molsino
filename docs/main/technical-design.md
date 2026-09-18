@@ -14,6 +14,7 @@
 - [6. Electron 실행 경계](#6-electron-실행-경계)
 - [7. 프로젝트 구조와 패키징](#7-프로젝트-구조와-패키징)
 - [8. 검증과 완료 기준](#8-검증과-완료-기준)
+- [9. 여러 게임과 공용 잔액의 신규 계약](#9-여러-게임과-공용-잔액의-신규-계약)
 
 ## 1. 기술 선택과 책임 경계
 
@@ -94,9 +95,9 @@ flowchart LR
 ### 4.1 수명과 초기 표시
 
 1. `app.requestSingleInstanceLock()`을 확보한다. 실패하면 종료한다. `second-instance`는 기존 창을 비활성 복원한다.
-2. 앱 준비 후 현재 블랙잭 세션을 읽고 투명 BrowserWindow, 트레이, 창 단축키를 만든다. 위치·다중 모니터 복원 확장은 보류 상태다.
+2. 앱 준비 후 현재 블랙잭 세션을 읽고 투명 BrowserWindow, 트레이, 창 단축키를 만든다. 모니터 변경 자동 보정은 미구현이며 구 일정은 폐기했다.
 3. `show:false` 창에 로컬 `app://molsino/index.html` UI를 로드한다. 현재 코드는 `ready-to-show`에서 `showInactive()`를 호출한다.
-4. Renderer의 초기 구독·상태 동기화를 완료한 뒤 표시하는 `ui:ready` 절차와 제한 시간·오류 트레이 경로는 후속 설계다. 현재 구현의 표시 시점을 이 목표와 혼동하지 않는다.
+4. 현재 초기 표시에는 별도 `ui:ready` 채널이 없다. 초기 로딩 결함이 재현되면 새 로드맵의 버그 분석에서 평가한다.
 
 닫기는 숨김으로 처리하고 명시적 종료에서만 실제 창을 파괴한다. window-all-closed 이벤트로 자동 종료하지 않는다. 종료 플래그를 사용해 close → hide 루프를 막는다. Tray 객체는 Main에서 강하게 참조해 수명을 유지한다.
 
@@ -157,7 +158,7 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 - 창 제어 예외인 전역 Alt+백틱은 Electron Main의 `globalShortcut`으로 앱 준비 후 등록한다. 콜백 `toggleOverlay()`는 보이는 상태면 숨기고, 숨김 상태면 트레이 복원과 같은 `reveal()`(`showInactive`)을 호출한다. 게임 명령·일시정지·키보드 포커스 변경은 없다. 등록 실패는 경고만 남기고 트레이 경로를 유지하며 종료 시 해제한다. 키보드 배열·OS별 실제 조합은 실장비에서 확인한다. [Electron globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut), [Accelerator](https://www.electronjs.org/docs/latest/api/accelerator)
 - `acceptFirstMouse`는 macOS의 비활성 첫 클릭을 위한 설정이다. 아래 앱으로 클릭을 통과시키는 설정과 구분한다.
 - 현재 임시 키보드 포커스는 블랙잭 베팅액 편집에만 연결돼 있다. Main은 신뢰된 메인 창·베팅 phase·펼침·대화형 상태를 검사하고 `setFocusable(true)`와 `focus()`를 호출한다. 편집 종료·창 blur·숨김·접힘·클릭 통과·reload·phase 변경 때는 `blur()` 뒤 `setFocusable(false)`로 돌아온다. 이전 업무 앱을 강제로 활성화하지 않는다. 금액의 파싱·확정·취소와 게임 명령 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)에 둔다. [Electron BaseWindow 포커스 API](https://www.electronjs.org/docs/latest/api/base-window)
-- 키보드·VoiceOver·Narrator용 별도 접근성 창은 후속 설계다. 현재 제공 기능으로 간주하지 않는다.
+- 키보드·VoiceOver·Narrator용 별도 접근성 창은 현재 제공하지 않는다. 기존 미진행 계획은 폐기했으며 구현 일정은 없다.
 
 비활성 오버레이의 버튼이 첫 클릭에 실행되고 업무 입력 포커스가 유지되는지는 양쪽 OS에서 확인할 조건이다.
 
@@ -165,18 +166,9 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 
 **1차 필수:** 명시적인 전체 창 클릭 통과. `setIgnoreMouseEvents(true)`를 사용하고 해제는 Tray에서 수행한다. 현재 블랙잭 인라인 편집과 드래그를 먼저 종료한다. `pointer-events:none`이나 투명 CSS만으로 다른 앱에 클릭이 전달되지는 않는다. [Electron 클릭 통과와 드래그](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)
 
-**선택적 자동 통과:** 컨트롤 외 부분을 통과시키는 실험 기능이다.
+자동 부분 클릭 통과는 현재 구현하지 않았다. 구 실험 계획은 폐기했으며 새로운 사용자 요구나 문제를 근거로 별도 선정해야 한다.
 
-- Renderer가 안정적인 컨트롤 직사각형 목록과 layoutRevision을 보고한다. 숨겨진 메뉴·잘린 카드 영역은 제외한다.
-- `setIgnoreMouseEvents(true, {forward:true})`로 이동 이벤트를 전달하는 패턴을 검증한다. forward는 모든 클릭·키보드 이벤트 전달을 의미하지 않는다.
-- pointer 상태 변경 요청은 프레임과 layoutRevision을 검증한다. 드래그·리사이즈 중에는 interactive를 고정한다.
-- 빠른 진입 후 첫 클릭, 스크롤, Renderer 멈춤과 재로드에서 아래 앱으로 오클릭이 새는지 확인한다.
-- 통과 상태에서 이벤트가 끊겨도 Tray 복원 경로를 유지한다. 상시 60Hz 전역 포인터 폴링을 기본 구현으로 두지 않는다.
-- 로컬 펫의 `setInputShape`는 사용 예정 API가 아니다. 채택한 공식 Electron 릴리스에 존재하고 지원되는 것이 확인될 때 별도 검토한다.
-
-합격 전에는 수동 전체 통과를 기본으로 제공한다. 자동 부분 통과의 미완성은 명시적으로 남기며 수동 모드를 같은 기능으로 설명하지 않는다.
-
-### 4.6 이동과 크기 조절 — P0 우선 검증
+### 4.6 이동과 크기 조절
 
 상단 드래그 영역은 `app-region: drag`, 버튼·크기 핸들은 `app-region: no-drag`로 구현한다. 드래그 영역의 클릭 이벤트가 게임 명령으로 이어지지 않게 한다.
 
@@ -195,16 +187,9 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 
 ### 4.7 화면 좌표와 복원
 
-일정 결정(2026-09-17): 이 절의 S11 확장 범위(다중 모니터 변화 대응과 전체 창 설정 재실행 초기화)는 TOBE로 보류한다. 아래 내용은 향후 구현 계약으로 유지한다.
+현재 Main은 시작할 때 주 화면 workArea를 읽고 280×180 DIP 창을 배치한다. 리사이즈·프리셋·접힘 경로는 대상 화면의 workArea에 맞춘다. 위치·크기는 메모리에 보관하고 접힘 전 펼친 bounds를 별도로 유지한다. 창 설정을 게임 저장 파일에 넣지 않는다.
 
-- Electron screen의 DIP(device-independent pixel)를 기준으로 창 좌표를 저장한다. zoom=1에서는 UI의 CSS px와 논리 크기를 맞추고 devicePixelRatio를 창 bounds에 곱하지 않는다.
-- `screen.getAllDisplays()`, `getDisplayMatching()`, display의 workArea·scaleFactor를 사용한다.
-- display-added/removed/metrics-changed에서 위치·배율·창 경계를 재검증한다. [Electron screen](https://www.electronjs.org/docs/latest/api/screen)
-- 실행 중에는 현재 displayId, workArea 대비 위치, expandedSize를 보유한다. 앱을 새로 켜면 저장 위치를 읽지 않고 주 화면의 기본 위치·280×180 DIP에서 시작한다.
-- 음수 모니터 좌표를 허용한다. 모니터 사이 빈 공간을 유효 화면으로 취급하지 않는다.
-- 드래그 중 다른 화면 진입을 허용하고 종료 후 최종 workArea에 맞춘다.
-- 위치·크기는 실행 중 메모리에만 보관한다. 정상 종료 시에도 디스크에 저장하지 않는다.
-- 접힘 크기는 140×30 DIP, 펼친 크기를 따로 보존한다. 전역 minWidth/minHeight가 접힘을 막지 않도록 상태별 크기 검증을 Main에서 수행한다.
+디스플레이 추가·제거·배율 변경 이벤트의 자동 위치 보정은 미구현이다. 구 S11의 상세 설계와 보류 일정은 2026-09-18에 폐기했다. 현재 기능의 실제 결함 또는 새 사용자 요구가 있을 때 다시 설계한다.
 
 ## 5. 창 상태와 IPC 신뢰 경계
 
@@ -212,13 +197,11 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 
 Main의 현재 `OverlayViewState`는 `revision`, `visibility`(`expanded | collapsed | hidden`), `opacityPercent`, `opacityPopoverVisible`을 가진다. 창 상태는 게임 상태와 별도의 revision으로 구독한다. 접힘 전 펼친 bounds와 숨기기 전 표시 모드는 Main 메모리에 보관하고, 접힘·숨김·클릭 통과로 활성 resize token과 조절창을 정리한다. 헤더의 드래그·색상 전환·숨기기·종료 조작과 접힘/펼침 창 동작은 메인 기능의 책임이다. 현재 헤더의 `BLACKJACK` 표시·잔액과 접힌 막대의 잔액·진행 상태 문구는 블랙잭 공개 상태에서 가져온다. 헤더의 `▁` 접기 버튼은 제거됐지만 `collapsed` 상태·명령은 유지한다. `−`와 Alt+백틱은 같은 숨김 경로로 연결된다.
 
-숨김·접힘은 표시만 바꾼다. 현재 블랙잭의 딜러 진행과 저장은 Main에서 계속되며 복원 시 최신 공개 상태를 다시 보여 준다. 창 표시 설정은 게임 세션과 별개로 실행 중 메모리에 보관한다. 현재 시작값은 주 화면 오른쪽 아래의 280×180 DIP, 흰색 전경, 불투명도 65%, 펼침, 대화형 입력이다. 위치·크기·색상·불투명도·접힘·클릭 통과의 **전체** 재실행 초기화와 다중 모니터 보정은 S11과 함께 보류된 검증 목표다. `preferences.json`은 만들지 않는다.
+숨김·접힘은 표시만 바꾼다. 현재 블랙잭의 딜러 진행과 저장은 Main에서 계속되며 복원 시 최신 공개 상태를 다시 보여 준다. 창 표시 설정은 게임 세션과 별개로 실행 중 메모리에 보관한다. 현재 시작값은 주 화면 오른쪽 아래의 280×180 DIP, 흰색 전경, 불투명도 65%, 펼침, 대화형 입력이다. 전체 창 설정 재실행 초기화에 대한 구 E2E-18 일괄 검증 계획은 폐기했다. 미검증 OS 동작을 보장으로 해석하지 않는다. `preferences.json`은 만들지 않는다.
 
 OS suspend 중에는 실행 자체가 멈출 수 있지만 앱이 별도의 수동 일시정지 상태를 만들지는 않는다.
 
-후속 설계의 통합 창 모델은 현재 공개 상태에 `pointerPolicy`(`interactive | passthrough`), `keyboardMode`(`none | amountEditor | accessibleGame`), 드래그·리사이즈·호버 여부를 더한다. 이 필드들은 아직 현재 `OverlayViewState`의 계약이 아니다. 특히 `accessibleGame`은 접근성 창 후보이고, 임시 금액 편집만 현재 블랙잭에 연결돼 있다.
-
-전경 불투명도는 기본 65%, 20–100%의 5% 단위다. 일반 호버 중 100%로 보여 주고 이탈 0.8초 후 설정값으로 돌아간다. 별도 자식 BrowserWindow인 불투명도 조절창에서 슬라이더를 조작하면 선택값을 즉시 미리 본다. 조절창이 열려 있는 동안에는 일반 호버의 100% 강제를 잠시 해제한다. CSS 전환과 취소 가능한 조절창 닫힘 타이머를 사용하며 `prefers-reduced-motion`에서는 전환을 제거한다. 메뉴·입력창이 열린 동안 정보의 가독성을 유지하는 것이 설계 조건이다. 선택한 불투명도는 실행 중 접힘·펼침과 Renderer reload 뒤에도 유지하고 앱 재실행 시 65%로 시작한다. 조절창은 게임 명령을 받지 않으며, 접힘·숨김·클릭 통과·메인 문서 재로드 때 숨긴다. 전체 포인터·키보드 모드 통합과 자동 부분 클릭 통과는 S12/S13의 후속 범위다.
+전경 불투명도는 기본 65%, 20–100%의 5% 단위다. 일반 호버 중 100%로 보여 주고 이탈 0.8초 후 설정값으로 돌아간다. 별도 자식 BrowserWindow인 불투명도 조절창에서 슬라이더를 조작하면 선택값을 즉시 미리 본다. 조절창이 열려 있는 동안에는 일반 호버의 100% 강제를 잠시 해제한다. CSS 전환과 취소 가능한 조절창 닫힘 타이머를 사용하며 `prefers-reduced-motion`에서는 전환을 제거한다. 메뉴·입력창이 열린 동안 정보의 가독성을 유지하는 것이 설계 조건이다. 선택한 불투명도는 실행 중 접힘·펼침과 Renderer reload 뒤에도 유지하고 앱 재실행 시 65%로 시작한다. 조절창은 게임 명령을 받지 않으며, 접힘·숨김·클릭 통과·메인 문서 재로드 때 숨긴다. 포인터·키보드 입력 정책의 추가 변경은 새 게임의 실제 입력 요구에 맞춰 설계한다.
 
 창이나 메뉴는 호버만으로 펼치거나 접지 않는다. 사용자가 조작하려는 버튼의 위치가 포인터 접근 중 바뀌지 않도록 한다.
 
@@ -233,13 +216,15 @@ OS suspend 중에는 실행 자체가 멈출 수 있지만 앱이 별도의 수�
 | `overlay:resize` | Renderer → Main | start/update/end/cancel, UUID token과 좌표·크기 제한 |
 | `overlay:amount-edit-focus` | Renderer → Main | 현재 블랙잭 베팅액 편집에만 사용하며 창·게임 상태 모두 검사 |
 
-현재 Preload는 `window.blackjack`에 창 API와 게임 API를 함께 노출한다. 이 이름과 묶음은 실제 구현을 설명하며 앱 공통 API로 분리됐다는 뜻이 아니다. `contextBridge`는 기능별 메서드만 제공하고 raw `ipcRenderer`나 임의 channel invoke를 노출하지 않는다. 구독은 Electron event 객체를 제거한 payload를 전달하고 해제 함수를 반환한다. Renderer는 창 상태 구독을 먼저 설치한 뒤 snapshot을 요청하며, 늦게 도착한 낮은 revision의 snapshot이나 push를 버린다. 이 창 revision은 게임 revision과 독립적이다. Preload는 sandbox 호환 단일 번들이다. `overlay:mode`, `utility:open`, `ui:ready`는 설계된 후속 채널이다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
+현재 Preload는 `window.blackjack`에 창 API와 게임 API를 함께 노출한다. 이 이름과 묶음은 실제 구현을 설명하며 앱 공통 API로 분리됐다는 뜻이 아니다. `contextBridge`는 기능별 메서드만 제공하고 raw `ipcRenderer`나 임의 channel invoke를 노출하지 않는다. 구독은 Electron event 객체를 제거한 payload를 전달하고 해제 함수를 반환한다. Renderer는 창 상태 구독을 먼저 설치한 뒤 snapshot을 요청하며, 늦게 도착한 낮은 revision의 snapshot이나 push를 버린다. 이 창 revision은 게임 revision과 독립적이다. Preload는 sandbox 호환 단일 번들이다. 구 초안의 `overlay:mode`, `utility:open`, `ui:ready`는 현재 채널이 아니며 신규 구현 목록에서 제외했다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
 
 Main은 sender `webContents`, `senderFrame`, 최상위 프레임과 허용된 앱 URL을 함께 검사한다. TypeScript 타입만 믿지 않고 Zod로 입력을 검증하며 알 수 없는 필드와 명령을 거부한다. 조절창은 정확한 팝업 URL에 대해 허용한 창 상태 API만 호출한다. 신뢰되지 않는 문서에는 상태 push도 보내지 않는다. 게임 명령·공개 상태·홀 카드 은닉 계약은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#2-게임-명령과-공개-상태)를 따른다.
 
 ### 5.3 Renderer 장애
 
-현재 `render-process-gone`은 오버레이를 숨기고 오류를 기록한다. `unresponsive` 감지와 복구는 아직 구현되지 않았다. 두 장애 모두에서 목표 동작은 트레이 복구 메뉴를 유지하면서 새 창을 생성하고 Main에 저장된 최신 공개 상태를 다시 동기화하는 것이다. 새 Renderer는 기존 드래그와 resize token을 버려야 한다. Main의 게임 저장과 딜러 진행은 화면 장애로 일시정지하지 않으며, 숨김·클릭 통과 상태도 reload 때문에 임의로 해제하지 않는다. 새 창 생성과 재동기화는 아직 완료되지 않았으며 [메인 구현 현황](implementation-status.md)에 남은 범위로 기록한다.
+현재 `render-process-gone`은 오버레이를 숨기고 오류를 기록한다. `unresponsive` 감지와 새 창 생성은 구현되지 않았다. 트레이 복원은 기존 창의 `showInactive()` 경로이며 새 Renderer를 만드는 복구를 보장하지 않는다.
+
+이 동작의 실제 진행 불능 여부는 새 로드맵 N01에서 재현·영향을 평가한다. 구 S16의 자동 창 재생성 설계를 무조건 구현하는 일정은 폐기했다. 정상 reload에서 게임 상태를 재구독하는 기존 동작은 유지한다.
 
 ## 6. Electron 실행 경계
 
@@ -263,7 +248,7 @@ Electron Forge + Vite로 Main·Preload·Renderer를 각각 빌드한다. macOS�
 
 ### 8.1 오버레이 검증 범위
 
-투명 합성·비활성 첫 클릭·트레이 복구·사용자 정의 크기 조절·접힘·OS 작업 공간·단축키는 실제 앱과 해당 OS에서 확인한다. 고정 크기 프리셋만으로 사용자 정의 크기 조절을 통과 처리하지 않는다. 투명도 최종 판정은 DevTools를 닫은 패키지에서 한다. O-01~O-11의 단계와 기대 결과, 보류 범위는 [메인 기능 E2E 테스트 설계](e2e-test-plan.md)가 기준이다.
+투명 합성·비활성 첫 클릭·트레이 복구·사용자 정의 크기 조절·접힘·OS 작업 공간·단축키는 실제 앱과 해당 OS에서 확인한다. 고정 크기 프리셋만으로 사용자 정의 크기 조절을 통과 처리하지 않는다. 투명도 최종 판정은 DevTools를 닫은 패키지에서 한다. 현재 적용 시나리오와 폐기된 구 계획의 식별자는 [메인 기능 E2E 테스트 설계](e2e-test-plan.md)가 기준이다.
 
 ### 8.2 공통 IPC·창 검증
 
@@ -272,17 +257,90 @@ Electron Forge + Vite로 Main·Preload·Renderer를 각각 빌드한다. macOS�
 - 창 상태의 구독 설치·해제, snapshot과 push의 역순 도착, Renderer reload 뒤 최신 창 revision 적용을 검증한다. 게임 상태의 revision·명령 중복과 비공개 정보는 [블랙잭 기술 설계](../games/blackjack/technical-design.md#6-검증과-완료-기준)가 담당한다.
 - Playwright Electron은 UI 자동화의 보조 수단이다. 다른 앱 포커스·실제 클릭 통과·투명 합성은 DOM 검사만으로 통과 처리하지 않고 macOS·Windows GUI에서 확인한다.
 
-### 8.3 성능 목표 — 측정 전
+### 8.3 성능과 OS 확인의 범위
 
-- 대기 중 앱 코드의 지속 게임 루프 0개. Electron 내부 타이머까지 0개라고 주장하지 않는다.
-- 모든 앱 프로세스의 60초 평균 CPU 합계를 한 코어 기준 1% 미만 목표로 측정한다.
-- 메모리는 Main만 보지 않고 Renderer·GPU 등 앱 프로세스를 함께 기록한다. OS별 RSS/working set은 공유 페이지 중복 가능성을 명시한다. 초기 합계 목표는 300MB 이하이며 실제 측정 후 조정한다.
-- 입력부터 저장 완료·화면 반영 p95 100ms 이하, 이미 실행 중인 창 복원 150ms 이하를 목표로 둔다.
-- OS·장비·Electron 버전·DevTools 비활성 상태를 결과에 기록한다. 인라인 편집 중 포커스 전환 비용도 측정한다.
-- 애니메이션은 짧은 상태 변화에만 사용한다. 렌더러의 지속 requestAnimationFrame 루프는 두지 않는다.
+현재 측정·미확인 범위는 [구현 현황](implementation-status.md)과 당시 보고서를 따른다. 구 계획의 고정 CPU·메모리·응답 시간 목표 및 일괄 측정 세션은 폐기했다. 실제 지연·자원 문제가 확인되면 장비·OS·Electron 버전·재현 장면을 기준으로 새 개선을 선정한다.
 
 ### 8.4 완료 범위
 
-P0는 투명 창·포커스·크기 조절·트레이와 두 OS 빌드, P3는 장애 복구·접근성·DPI·성능·설치본 검증과 서명을 다룬다. 이 표기는 완료 판정 범주이며 세션 실행 순서는 [작업 세션 로드맵](../work-session-roadmap.md)을 따른다. P1 블랙잭 코어와 P2 블랙잭 앱 통합은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#6-검증과-완료-기준)에 둔다.
+현재 동작과 검증 사실은 영역별 구현 현황에 기록한다. 구 P0~P3의 잔여 완료 게이트는 폐기했으며 앞으로의 완료 조건은 [새 세션 로드맵](../work-session-roadmap.md)을 따른다. 기존 보안·잔액 보존·플레이 규칙을 완화하는 의미는 아니다.
 
-두 OS에서 작은 투명 창을 실행하고, 사용자가 크기·표시·클릭 통과를 제어하며, 복원할 때 다른 앱 입력을 방해하지 않는 것이 앱 공통 완료 조건이다. 게임 판·잔액 보존과 규칙 플레이의 완료 조건은 블랙잭 문서가 담당한다. 현재 구현과 미구현 범위는 [메인 구현 현황](implementation-status.md)을 확인한다.
+## 9. 여러 게임과 공용 잔액의 신규 계약
+
+**상태:** N02~N05의 구현 목표다. 이 절의 타입·API·파일은 아직 구현되지 않았다. 사용자 동작은 [메인 제품 설계](product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계)가 기준이다.
+
+### 9.1 소유권과 상태
+
+Main의 앱 단위 작성자가 공용 잔액, 게임별 상태, 화면 선택, 진행 중 판을 소유한다. 기존 블랙잭 GameStore 두 개를 만들어 각각 잔액을 저장하지 않는다. BlackjackCore와 BaccaratCore는 서로의 규칙·슈를 변경하지 않는다.
+
+새 저장 스냅샷의 개념 구조는 다음과 같다. 정확한 TypeScript·Zod 정의는 구현 시 `src/shared`와 저장 모듈에 함께 반영한다.
+
+```ts
+type GameId = 'blackjack' | 'baccarat';
+interface AppSessionV2 {
+  schemaVersion: 2;
+  sessionId: string;                 // 전체 새 시작마다 새 UUID
+  revision: number;                  // 앱 전체의 확정 상태 순서
+  screen: 'menu' | GameId;
+  wallet: { balanceCents: number };  // 잔액의 유일한 저장 위치
+  activeRoundGameId: GameId | null;
+  games: {
+    blackjack: BlackjackStateWithoutBalance | null;
+    baccarat: BaccaratStateWithoutBalance | null;
+  };
+  lastAppliedCommand: {
+    sessionId: string; commandId: string; revision: number;
+  } | null;
+}
+```
+
+- `activeRoundGameId`는 미완료 판이 있는 게임과 일치한다. 다른 게임은 베팅 전 또는 정산된 결과 상태여야 한다. 동시에 두 판이 진행되거나 잠금과 phase가 다르면 손상 상태로 판정한다.
+- 베팅은 딜 시 잔액에서 차감하며 차감·배분 상태·게임 잠금을 함께 저장한다. 블랙잭 보험·더블·스플릿 추가금도 같은 공용 작성자에서 처리한다.
+- 정산 완료는 지급·결과·원장·게임 잠금 해제를 같은 스냅샷에 저장한다. 저장 전에는 메뉴 이동을 허용하지 않는다.
+- 게임별 슈·베팅 설정·결과·원장은 게임 상태에 둔다. 잔액을 게임 상태에 중복 저장하지 않는다.
+- 현재 BlackjackCore는 `SessionState.balanceCents`를 입력으로 요구한다. 어댑터가 공용 잔액을 일시적으로 주입해 기존 전이를 실행하고 결과 잔액과 잔액을 뺀 게임 상태를 하나의 후보로 추출한다. 이 임시 객체는 별도 작성자·저장 상태가 아니다.
+- 메뉴 복귀와 게임 진입은 정산·슈를 다시 만들지 않는다. 이전 게임의 베팅액이 현재 잔액보다 커졌으면 새 베팅 상태에서 현재 잔액에 맞춰 조정한다. 과거 판의 wager·원장을 수정해 검증을 통과시키지 않는다.
+
+### 9.2 명령과 공개 상태
+
+Preload 목표 API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 게임 행동은 `gameId`를 판별자로 갖는 별도 스키마를 사용한다. 예: `selectGame`, `goToMenu`, `resetAll`, `retrySave`, 게임별 `setBet`·`deal`·행동. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. 기존 `window.blackjack` 호출은 N02에서 Renderer·테스트와 함께 옮기고 두 개의 독립 작성자를 유지하지 않는다.
+
+모든 변경 명령은 `sessionId`, `commandId`, `expectedRevision`을 검증한다. 게임 명령은 현재 화면과 `gameId`, 허용 행동을 함께 검사한다. 등록되지 않은 게임과 준비 중 게임 선택은 거부한다. 메뉴·딜·초기화·자동 진행은 같은 busy/직렬 경로를 통과하며, 늦게 도착한 이전 게임의 명령은 현재 게임에 적용하지 않는다.
+
+중복 명령은 재실행하지 않는다. 새 시작 이전 sessionId의 명령은 거부한다. 다만 직전 확정된 resetAll의 동일 commandId·요청 sessionId 재전송은 저장된 처리 기록으로 먼저 식별해 이미 완료됐음을 반환하고 다시 초기화하지 않는다. 동일 명령의 캐시 응답과 최신 snapshot을 구분하며 낮은 revision 응답이 화면을 되돌리지 않게 한다. 정상 종료 대기는 앱 작성자 전체의 저장을 대상으로 한다.
+
+공개 snapshot은 공용 잔액·화면·현재 게임의 공개 상태·허용 동작·저장/복구 상태를 제공한다. 창 revision은 계속 게임과 독립이다. 저장 실패처럼 확정 revision을 올리지 않는 상태도 전달할 수 있도록 공개 이벤트에는 별도 단조 증가 `viewSequence`를 둔다. Renderer는 구독을 먼저 설치하고 초기 snapshot을 요청하며 늦은 이벤트를 버린다. `viewSequence`는 구독 연결 수명 안에서 비교하고 새 연결에서는 기준을 초기화한다. 성공한 공용 저장만 durable revision을 증가시킨다.
+
+기존 IPC 최상위 문서·sender·URL 검사, strict 스키마, 조절창 권한 제한은 새 API에도 적용한다. 미공개 카드·남은 슈·내부 원장은 공개하지 않는다.
+
+### 9.3 게임 이동과 앱 시작
+
+- Main은 베팅 전 또는 저장된 결과에서만 `goToMenu`·`selectGame`을 허용한다. 진행 중 판·busy·pending save·복구 필요 상태는 거부한다.
+- 이동하기 전에 인라인 편집·불투명도 팝업·resize token을 정리한다. 저장된 베팅은 유지하고 미확정 초안만 취소한다.
+- 화면 이동도 공용 revision의 변경으로 직렬화한다. UI의 disabled 상태만으로 경합을 방지하지 않는다.
+- 저장된 `screen`은 Renderer reload의 복원에 사용한다. 앱 프로세스 재시작 시 미완료 판이 있으면 해당 게임, 없으면 메뉴로 정규화한다. 화면이 달라지면 내부 명령으로 저장·revision을 갱신한 뒤 표시한다. 게임 카드·금액은 바꾸지 않는다.
+- 자동 진행 예약은 저장된 active game과 phase에만 연결한다. 숨김·접힘은 예약을 취소하거나 판을 초기화하지 않는다.
+
+### 9.4 저장과 구 형식 이전
+
+새 파일은 같은 userData 아래 `app-session.json`과 `app-session.backup.json`을 사용한다. 두 게임과 지갑을 분리된 파일로 동시에 갱신하지 않는다. 기존 원자 쓰기·검증된 백업·실패 후보 재시도 원리를 재사용하되 스키마는 별도로 정의한다.
+
+1. 새 primary가 있으면 새 형식만 읽는다. 손상·미래 버전이면 새 백업 복구 화면으로 보내고 과거 블랙잭 파일로 자동 후퇴하지 않는다.
+2. 새 primary가 없고 새 backup이 있으면 신규 초기화나 구 형식 재이관 대신 새 백업 복구를 안내한다.
+3. 새 파일 쌍이 모두 없으면 기존 `session.json`·`session.backup.json`을 기존 검증기로 확인한다. 손상·미래 버전이면 원본을 유지하고 명시적인 복구 선택을 받는다.
+4. 유효한 기존 세션은 공용 잔액으로 **그 금액 그대로** 옮긴다. 블랙잭 슈·카드·phase·베팅·원장·revision·직전 처리 명령을 보존하고 바카라는 null로 둔다. 기존 플레이 중 금액은 이미 차감됐으므로 다시 차감하지 않는다.
+5. 새 sessionId를 만들고 직전 명령을 새 envelope의 중복 처리 계약에 맞춰 연결한다. 이관 성공 후 새 primary를 다시 읽어 검증하고 기존 파일은 변경·삭제하지 않는다. 구 파일이 유효하면 반복 변환의 입력도 동일하므로 미완료 이관의 임시 파일은 승격하지 않고 다시 이관한다.
+6. 새 primary 생성이 끝났다면 이후 실행은 1번을 따르므로 초기 금액이나 정산을 다시 적용하지 않는다. 보존한 구 파일은 수동 호환성 자료이며 자동 동기화하지 않는다. 구 앱과 신 앱을 번갈아 실행해 생기는 두 형식의 진행을 자동 합치지 않는다.
+7. 어떤 형식의 저장도 없을 때만 신규 공용 $100 세션을 만든다. 복구 중 새 시작은 사용자의 명시적 선택과 원본 보존 후에 수행한다.
+
+새 primary·backup은 앱 스키마와 게임별 규칙·카드·원장·잠금 일관성을 모두 검사한다. 한 게임 데이터가 손상됐다고 공용 잔액을 추정 복구하지 않는다. 파일 sync·원자 교체의 OS 한계는 기존 저장 정책과 같다.
+
+### 9.5 실패·초기화
+
+저장 실패 시 마지막 확정 상태와 계산된 후보를 구분한다. 같은 후보를 재시도하고 카드를 다시 뽑거나 잔액을 다시 차감하지 않는다. 메뉴 이동·다른 게임·초기화를 막고 오류와 저장 재시도 경로를 제공한다. 명시적 종료를 선택하면 미확정 후보가 사라질 수 있음을 표시하며 재기동은 마지막 확정 상태로 복원한다.
+
+`resetAll`은 미완료 판이 없는 메뉴에서만 가능하다. 사용자 확인 뒤 새 sessionId, $100, 기본 베팅 설정, 빈 결과·원장·바카라 기록과 미생성 게임 상태를 한 번에 저장한다. revision은 기존 값에서 증가시키고 sessionId가 바뀌면 이전 명령을 거부한다. 새 시작 명령 자체의 응답 유실은 저장된 직전 처리 명령으로 성공을 식별해 같은 초기화를 반복하지 않는다. 실패하면 기존 세션·금액·기록을 유지한다.
+
+### 9.6 구현 경계
+
+새 앱 작성자·저장 검증·게임 어댑터는 책임별로 분리하되 실제 파일 이름은 구현 때 확정한다. 블랙잭 전체 소스 이동이나 범용 게임 플러그인 프레임워크를 선행 조건으로 삼지 않는다. 바카라 코어는 블랙잭 `SHOE_SIZE=312`·규칙 상수를 그대로 재사용하지 않는다. 게임별 신규 계약은 [바카라 기술 설계](../games/baccarat/technical-design.md), 검증은 [메인 E2E 설계](e2e-test-plan.md)를 따른다.
