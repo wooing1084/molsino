@@ -2,7 +2,7 @@
 
 **목적:** 현재 구현된 블랙잭의 엔진, 게임 명령, 공개 상태, 세션 저장과 화면 계약을 정의한다.
 
-**요약:** 순수 TypeScript 블랙잭 규칙과 정산, Main의 `GameStore`·`SessionRepository`, 베팅·플레이 화면과 검증 기준을 다룬다. 오버레이 창·플랫폼·IPC 신뢰 경계·패키징은 [메인 기능 기술 설계](../../main/technical-design.md)가 담당한다. 카지노 규칙의 기준은 [블랙잭 제품 설계](product-design.md), 현재 파일과 완료 상태는 [블랙잭 구현 현황](implementation-status.md)을 따른다.
+**요약:** 순수 TypeScript 블랙잭 규칙과 정산, 공용 AppStore에 연결하는 블랙잭 어댑터, 베팅·플레이 화면과 검증 기준을 다룬다. 오버레이 창·플랫폼·IPC 신뢰 경계·패키징은 [메인 기능 기술 설계](../../main/technical-design.md)가 담당한다. 카지노 규칙의 기준은 [블랙잭 제품 설계](product-design.md), 현재 파일과 완료 상태는 [블랙잭 구현 현황](implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -16,17 +16,13 @@
 
 ## 1. 현재 코드 경계
 
-현재 블랙잭은 `src/core/`의 규칙·점수·슈·정산, `src/main/game/game-store.ts`의 단일 작성자, `src/main/persistence/session-repository.ts`의 블랙잭 세션 스키마, `src/shared/contracts.ts`의 `GameViewState`·`UserAction`, `src/renderer/main.tsx`의 게임 화면으로 연결된다. 결정론적 카드 픽스처는 `fixtures/blackjack/`에 있다. Main·Preload·Renderer의 프로세스 경계는 [메인 기술 설계](../../main/technical-design.md#3-프로세스와-모듈)에 있다.
-
-`GameStore`의 revision·명령 직렬화와 `SessionRepository`의 원자 저장·백업 방식은 향후에도 참고할 수 있다. 그러나 현재 타입과 유효성 검사는 `SessionState`, 블랙잭 카드·핸드, `RULE_SET_ID`에 직접 연결돼 있다. 이 코드가 이미 다른 게임의 세션을 처리하는 공통 저장 계층이라는 의미로 해석하지 않는다. Renderer의 `window.blackjack` API 이름도 현재 구현 그대로다.
-
-Main만 완전한 게임 상태를 소유한다. Renderer에는 딜러 비공개 카드, 남은 슈, 내부 원장을 포함한 전체 `SessionState`를 보내지 않는다. 공개용 `GameViewState`와 결과 상세만 전달하고, Renderer reload가 게임 세션을 초기화하지 않는다. 네트워크·LLM 호출 없이 로컬에서 플레이한다.
+현재 블랙잭은 `src/core/`의 순수 규칙·점수·슈·정산, `src/main/game/blackjack-adapter.ts`의 잔액 주입·결과 추출·공개 상태, `src/renderer/games/blackjack.tsx`의 플레이 화면으로 나뉜다. 공용 작성자·저장·메뉴·복구는 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)가 소유한다.
 
 ## 2. 게임 명령과 공개 상태
 
-`src/shared/contracts.ts`가 실제 채널 이름, Zod 스키마, TypeScript DTO의 기준이다. 게임 채널은 `game:get-snapshot`, `game:command`, `game:state`, `game:recovery`다. `getSnapshot()`과 `onState()`가 공개 `GameViewState`를 전달하고, `dispatch()`는 `commandId`, `expectedRevision`, 판별된 `UserAction`을 받는다. `recover()`는 손상·미래 스키마 저장을 발견했을 때 백업 복원 또는 새 게임을 선택한다. 딜러 진행·셔플·정산·파일 경로는 Renderer용 명령이 아니다.
+앱 envelope의 `action: {type: 'blackjack', action: ...}`으로 베팅·딜·보험·이븐 머니·히트·스탠드·더블·스플릿·서렌더·다음 판을 요청한다. 순수 코어의 `resetSession`은 공개 게임 명령에 포함하지 않는다. 전체 초기화와 저장 재시도는 앱 명령이다.
 
-상태 구독을 먼저 설치하고 snapshot을 요청하며 더 큰 revision을 적용한다. 같은 revision의 복구 완료·저장 실패 표시 갱신은 허용하고 낮은 revision은 버린다. 응답과 push가 역순으로 와도 이전 화면으로 돌아가지 않는다. IPC sender·최상위 문서·허용 URL 검사와 raw IPC 제한은 [메인 기술 설계](../../main/technical-design.md#5-창-상태와-ipc-신뢰-경계)가 기준이다.
+`AppView.blackjack`은 현재 선택된 블랙잭의 `GameViewState`이며 메뉴에서는 null이다. 공개 카드·합계·허용 행동·결과만 포함하며 남은 슈·딜러 홀 카드는 보내지 않는다. 전체 앱 revision과 viewSequence·sessionId는 앱 envelope에 속한다.
 
 ## 3. 순수 게임 엔진 계약
 
@@ -110,7 +106,7 @@ stateDiagram-v2
 P1 구현은 `src/core` 아래의 JSON 호환 readonly 데이터와 순수 전이로 확정했다.
 
 - `Shoe`는 `{ cards, nextIndex }`이며 draw는 다음 Shoe를 반환한다. 슈 생성은 `randomInt(maxExclusive)`를 필수로 주입받고 코어가 OS 난수나 `Math.random`을 직접 호출하지 않는다.
-- `SessionState`는 ruleSet, balance, pending bet, bet step, shoe, current round, ledger, last result를 가진다. revision과 처리한 command ID는 S07 `GameStore`가 감싼다.
+- `SessionState`는 ruleSet, balance, pending bet, bet step, shoe, current round, ledger, last result를 가진다. revision과 처리 명령은 AppStore의 앱 envelope가 감싼다.
 - 저장 가능한 phase는 `betting | insuranceDecision | playerTurn | dealerTurn | result`다. `initialDeal`, `peekAndNaturals`, `settlement`는 단일 transition 내부에서 끝나는 일시적 단계라 스냅샷에 남기지 않는다.
 - 최초 pending bet은 테이블 최소와 같은 $1이다. 보험 거절은 `chooseInsurance`의 0센트로 표현하고, hit/stand/double/split/surrender는 모두 `handId`를 받는다.
 - 상태 전후에 safe integer, 312장/6덱 구성·슈 인덱스·카드 ID와 소비 prefix, phase/active hand, 원장 키·net·last result 일관성을 검사한다. 새 세션·reset·재셔플 공급원은 `nextIndex: 0`이어야 하며, 예상 밖 슈 소진은 `INTEGRITY_ERROR`로 중지한다.
@@ -119,38 +115,11 @@ P1 구현은 `src/core` 아래의 JSON 호환 readonly 데이터와 순수 전�
 
 ## 4. 명령 직렬화와 세션 저장
 
-### 4.1 단일 작성자
+명령·자동 딜러 진행·공용 잔액·화면 이동은 AppStore의 한 직렬 저장 경로를 사용한다. 어댑터는 현재 wallet.balanceCents를 임시 SessionState에 주입하고 순수 전이 결과에서 잔액을 추출한다. 별도 GameStore나 게임별 지갑 파일에 다시 쓰지 않는다.
 
-Main의 GameStore만 committedState를 소유한다. Node가 단일 스레드여도 await 사이에 다른 IPC가 들어오므로 busy와 명시적 직렬 실행 경로가 필요하다.
+`app-session.json`의 `games.blackjack`은 `SessionState`에서 balanceCents를 뺀 상태다. 슈 312장 순서·소비 인덱스·보험 결정·핸드별 베팅·원장·결과를 보존한다. 실제 잔액은 `wallet.balanceCents`에만 저장한다. 실패한 저장은 계산된 동일 후보로 재시도하며 재드로우·재차감을 하지 않는다. dealerTurn 복원 시 저장된 단계에서 자동 진행한다.
 
-1. commandId 중복을 먼저 검사한다. 현재 세션의 직전 처리 ID·결과는 저장하고 최근 결과 캐시도 둔다. 재전송이면 이미 처리된 결과를 돌려준다.
-2. busy 또는 expectedRevision 불일치면 각각 BUSY/STALE_STATE를 반환한다. 실패한 클릭을 임의로 큐에 쌓아 나중에 실행하지 않는다.
-3. busy를 동기적으로 설정하고 committedState 복사본에 전이를 계산한다.
-4. nextState와 revision 증가·처리 ID·원장 변경을 하나의 스냅샷으로 저장한다.
-5. 저장 성공 후에만 committedState를 교체하고 공개 상태를 push한다.
-6. 저장 실패 시 이전 committedState를 유지한다. 계산된 pendingTransition을 보존하고 같은 내용으로 재시도한다. 새 슈를 다시 섞거나 카드를 다시 뽑지 않는다.
-7. busy를 해제하고 딜러 phase라면 창 표시 상태와 무관하게 다음 내부 명령을 한 번 예약한다.
-
-오래된 commandId가 캐시에서 사라졌어도 revision 검사가 중복 실행을 막는다. Renderer가 멈추거나 응답을 놓쳐도 저장된 판이 기준이다. InternalAction도 동일한 직렬 경로를 통과하며 Renderer에서 호출할 수 없다.
-
-### 4.2 저장 형식
-
-`app.getPath('userData')` 아래 `session.json`, `session.backup.json`을 사용한다. 제품 표시명 변경과 무관하게 저장 경로 식별자를 고정한다. LocalStorage/IndexedDB에는 게임 원장을 저장하지 않는다. 창 표시 설정용 `preferences.json`은 만들지 않는다.
-
-Session에는 schemaVersion, revision, ruleSetId, balanceCents, pendingBet, betStep, shoe, round, ledger, lastResult, lastAppliedCommand가 포함된다. shoe는 312장 순서와 소비 인덱스, round는 보험 결정·정산 상태·핸드별 베팅·상태·활성 ID를 보존한다.
-
-S08 구현은 최상위 `{ schemaVersion: 1, revision, state, lastAppliedCommand }` wrapper를 사용한다. `state`가 위 게임 필드 전체를 담고 `lastAppliedCommand`는 `{commandId, revision}` 또는 `null`이다. 저장 실패 시 동일한 후보 스냅샷을 보존해 같은 ID 재전송이나 `retrySave`로 재시도하며, 저장 성공 전에는 revision·공개 화면을 변경하지 않는다. 복원 직후 `dealerTurn`이면 저장된 상태에서 내부 행동을 한 단계씩 다시 진행한다.
-
-- 같은 폴더의 임시 파일을 새로 생성해 JSON 기록 → 파일 sync → close → 기존 파일 교체 순으로 처리한다.
-- 이전에 검증된 주 파일은 backup 임시 파일을 통해 교체한다. 주 파일을 먼저 삭제하는 방식은 사용하지 않는다.
-- rename/교체의 세부 동작은 macOS·Windows에서 검증한다. Windows 잠금·EPERM에는 제한된 재시도를 하고 계속 실패하면 게임 입력을 멈춘다.
-- 임시 파일은 주 파일과 같은 볼륨에 둔다. 전원 차단에 대한 완전한 내구성을 rename만으로 보장하지 않는다.
-- primary/backup은 스키마뿐 아니라 카드 ID·슈 인덱스·잔액·원장·phase 일관성을 검사한다. 남은 tmp 파일을 임의의 최신 상태로 승격하지 않는다.
-- 손상 시 백업 복구를 안내하고, 미래 schemaVersion이면 원본을 보존한다. 자동 초기화하지 않는다.
-- S08에서는 손상/미래 버전 primary를 발견하면 recovery 화면에서 입력을 막고 백업 복구 또는 새 게임을 명시적으로 선택하게 한다. 선택한 후 덮어쓰기 전에 원본 primary를 `session.recovery-<UUID>.json`으로 복사한다. 백업이 유효하지 않으면 백업 버튼은 제공하지 않는다.
-- 저장 중 정상 종료 요청은 완료를 기다린다. 실패하면 오류를 표시하고 재시도/종료 선택을 제공한다.
-
-창 표시 설정의 실행 중 수명과 재실행 초기화 목표는 [메인 기술 설계](../../main/technical-design.md#5-창-상태와-ipc-신뢰-경계)를 따른다. 게임에 영향을 주는 pendingBet·betStep, 진행 중 판·잔액은 이 세션 파일에서 복원한다. 저장 파일은 평문이므로 딜러 카드 은닉은 UI 경계이며 부정행위 방지는 범위 밖이다.
+구 `session.json`·`session.backup.json`의 v1 검증기는 이전 입력과 과거 테스트를 위해 남아 있다. 새 파일 생성 후 구 파일을 변경하거나 자동 동기화하지 않는다. 원자 저장·복구 선택·이전 우선순위·정상 종료 계약은 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)에서 관리한다.
 
 ## 5. 게임 화면과 입력
 
@@ -169,7 +138,7 @@ S08 구현은 최상위 `{ schemaVersion: 1, revision, state, lastAppliedCommand
 - 스플릿 핸드를 세로로 전부 펼치지 않는다. 활성 핸드와 나머지 핸드의 요약만 표시한다.
 - 결과와 오류는 흑백 텍스트로 표현하고 접근성 라벨을 제공한다. 한글 이름과 카드 문양의 글꼴 폴백을 확인한다.
 
-헤더의 드래그·색상·숨기기·종료 조작과 접힌 창의 펼치기 동작은 [메인 기술 설계](../../main/technical-design.md#5-창-상태와-ipc-신뢰-경계)가 맡는다. 현재 헤더의 잔액·게임 이름과 접힌 막대의 잔액·진행 상태 문구는 블랙잭 `GameViewState`에서 만든다.
+헤더의 드래그·색상·숨기기·종료 조작과 접힌 창의 펼치기 동작은 [메인 기술 설계](../../main/technical-design.md#5-창-상태와-ipc-신뢰-경계)가 맡는다. 헤더·메뉴·공용 잔액·접힌 막대는 앱 공개 상태에서 만든다.
 
 베팅 금액 숫자칸을 누르면 같은 자리에 텍스트 필드를 연다. 현재 베팅액을 채우고 명시적 편집 동안에만 Main에 임시 키보드 포커스를 요청한다. Enter는 정확히 센트로 파싱한 유효 금액을 `dispatch(setBet)`으로 확정하며, 저장된 새 상태를 받은 뒤 숫자칸으로 돌아간다. Escape와 필드 밖 클릭은 초안을 버리고 이전 금액을 표시한다. 빈 값·문자·부호·지수 표기·소수 셋째 자리·범위 밖 값은 오류를 보여 주고 편집을 유지한다. 편집 중에는 딜을 막는다.
 
@@ -197,7 +166,7 @@ P1/P2는 과거 구현 단계 표기다. 2026-09-18 이후 잔여 단계의 일�
 
 ## 7. 공용 게임 상태로의 전환
 
-**신규·미구현:** N02에서 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)의 공용 작성자·잔액·v2 저장·앱 API를 연결한다. 위 §1~5의 GameStore·v1 저장·window.blackjack은 현재 구현 경계를 기록한다. 전환 후 앱 공통 소유권과 저장 계약은 메인 문서가 기준이다.
+**구현됨:** N02에서 공용 작성자·잔액·v2 저장·앱 API를 연결했다. 게임 코드와 앱 소유권의 현재 경계는 위 §1~4를 따른다.
 
 기존 순수 규칙은 공용 잔액을 주입하는 어댑터로 활용하고 결과 잔액과 게임 상태를 함께 커밋한다. `resetSession`을 게임 전용 공개 초기화로 유지하지 않는다. 새 시작은 앱의 `resetAll`로 라우팅하며 진행 중 직접 IPC 초기화도 차단한다.
 

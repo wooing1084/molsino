@@ -2,7 +2,7 @@
 
 **목적:** 현재 블랙잭 게임의 구현 범위, 남은 작업, 실제 파일 위치를 개발 전에 확인한다.
 
-**요약:** 2026-09-18 소스 기준으로 6덱 규칙 코어, 베팅부터 정산까지의 화면, Main의 명령 처리와 세션 저장·복구가 연결돼 있다. 게임·저장 E2E에는 미검증 분기가 있다. 구 잔여 세션은 폐기했고 새 공용 잔액·메뉴 연결은 설계 단계다. 오버레이와 앱 공통 기반은 [메인 기능 구현 현황](../../main/implementation-status.md)에서 관리한다.
+**요약:** 2026-09-18 소스 기준으로 6덱 규칙 코어, 베팅부터 정산까지의 화면, Main의 명령 처리와 세션 저장·복구가 연결돼 있다. 게임·저장 E2E에는 미검증 분기가 있다. 구 잔여 세션은 폐기했고 N02에서 공용 작성자·메뉴에 연결하고 블랙잭 화면을 분리했다. 오버레이와 앱 공통 기반은 [메인 기능 구현 현황](../../main/implementation-status.md)에서 관리한다.
 
 ## 목차
 
@@ -25,8 +25,8 @@
 | 영역 | 현재 코드에서 확인한 범위 | 상세 기록 |
 | --- | --- | --- |
 | 블랙잭 규칙 | 6덱 슈, 점수·허용 행동·정산 원장, 보험·이븐 머니·서렌더·더블·스플릿을 순수 코어로 구현했다. 센트 단위 베팅과 잔액 부족 시 게임 오버도 처리한다. | [P1 보고서](../../session-reports/P1-blackjack-core.md), [S10.5 보고서](../../session-reports/S10.5-inline-bet-input.md) |
-| 플레이 화면 | `GameViewState`에 따라 베팅부터 결과·새 게임·복구 화면까지 연결했다. 금액 제자리 입력은 편집하는 동안에만 창 포커스를 허용한다. 공통 창 포커스 회귀는 [메인 기능 구현 현황](../../main/implementation-status.md)을 따른다. | [S07 보고서](../../session-reports/S07-playable-mvp.md), [S10.5 보고서](../../session-reports/S10.5-inline-bet-input.md) |
-| 게임 상태·저장 | Main의 `GameStore`가 블랙잭 명령과 revision을 관리하고 `SessionRepository`가 게임 세션을 파일에 저장·복원한다. 딜러 진행은 단계별로 저장하며 손상·미래 버전 파일은 복구 선택 화면으로 보낸다. | [S08 보고서](../../session-reports/S08-session-repository.md) |
+| 플레이 화면 | `GameViewState`에 따라 베팅부터 결과까지 별도 BlackjackGame에 연결했다. 새 시작·복구는 메인 화면이 담당한다. 금액 제자리 입력은 편집하는 동안에만 창 포커스를 허용한다. 공통 창 포커스 회귀는 [메인 기능 구현 현황](../../main/implementation-status.md)을 따른다. | [S07 보고서](../../session-reports/S07-playable-mvp.md), [S10.5 보고서](../../session-reports/S10.5-inline-bet-input.md) |
+| 게임 상태·저장 | Main의 AppStore가 블랙잭 어댑터를 호출하고 공용 AppSessionRepository가 게임 상태와 잔액을 함께 저장한다. 딜러 진행은 단계별로 저장하며 손상·미래 버전 파일은 복구 선택 화면으로 보낸다. | [S08 보고서](../../session-reports/S08-session-repository.md) |
 | 게임 공개 상태 | Renderer에 공개하는 상태와 명령 응답에는 슈와 미공개 딜러 카드가 없다. 신뢰된 문서와 IPC 구독의 공통 경계는 [메인 기능 구현 현황](../../main/implementation-status.md)을 따른다. | [S09 상태 동기화](../../session-reports/S09-ipc-state-sync.md), [S09 구독 보강](../../session-reports/S09-ipc-subscription.md) |
 
 이 표는 코드의 존재와 연결 상태를 나타낸다. 세션별 통과 수·실행 환경·당시 한계는 [세션 보고서](../../session-reports/session-list.md), 현재 E2E 범위는 [블랙잭 E2E 현황](e2e-implementation-status.md)에서 확인한다.
@@ -39,7 +39,7 @@
 | 저장 복원 E2E | 정상·강제 종료와 손상 파일의 대표 경로는 자동화됐지만 E2E-17의 모든 저장 체크포인트를 확인하지 않았다. 재셔플 경계와 비공개 게임 상태 은닉의 현재 범위는 [블랙잭 E2E 현황](e2e-implementation-status.md)을 따른다. 공통 신뢰 경계 E2E-21은 [메인 E2E 설계](../../main/e2e-test-plan.md)를 따른다. |
 | 게임 입력의 OS 상호작용 | 베팅 금액 편집은 코드에 있다. 실제 외부 앱 포커스·접근성의 미확인 범위는 남아 있다. S12 일정은 폐기했으며 관련 변경이나 재현된 문제에 맞춰 검증한다. [메인 기능 구현 현황](../../main/implementation-status.md) |
 
-공용 잔액 전환은 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)의 N02 목표이며, 현재 블랙잭 저장 파일·게임별 새 게임 동작은 아직 바뀌지 않았다.
+공용 잔액·v2 저장·메뉴 초기화는 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다. 구 GameStore는 런타임에서 연결하지 않고 v1 SessionRepository는 이전 검증에 사용한다.
 
 ## 실제 파일 지도
 
@@ -61,12 +61,13 @@ src/
     errors.ts                      도메인 오류·안전한 산술
   main/
     main.ts                        게임 세션 시작·명령 연결
-    game/game-store.ts             블랙잭 명령·공개 상태·딜러 진행
+    game/blackjack-adapter.ts       블랙잭 전이 어댑터·공개 상태
+    game/app-store.ts               앱 공용 명령·딜러 진행
     game/shoe-source.ts            실제 슈 공급과 E2E 카드 픽스처 주입
-    persistence/session-repository.ts  게임 세션 파일 저장·복구
+    persistence/session-repository.ts  구 v1 세션 검증·이전 입력
   preload/preload.ts               게임 명령·상태 구독 API 연결
   renderer/
-    main.tsx                      블랙잭 화면·베팅 입력
+    games/blackjack.tsx            블랙잭 화면·베팅 입력
     styles.css                    카드·핸드·베팅 화면 레이아웃
   shared/
     contracts.ts                  게임 공개 상태·명령 스키마/타입

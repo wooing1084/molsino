@@ -1,17 +1,11 @@
 import { StrictMode, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { CardView, GameViewState, OverlayViewState, SettlementOutcome, UserAction } from '../shared/contracts';
-import { parseBetInput } from '../shared/bet-input';
+import type { OverlayViewState } from '../shared/contracts';
+import type { AppAction, AppView } from '../shared/app-contracts';
+import { BlackjackGame } from './games/blackjack';
 import './styles.css';
 
 const usd = (value: number) => `$${(value / 100).toFixed(2)}`;
-const signedUsd = (value: number) => `${value >= 0 ? '+' : '−'}${usd(Math.abs(value))}`;
-const suitSymbol: Record<CardView['suit'], string> = { S: '♠', H: '♥', D: '♦', C: '♣' };
-const outcomeLabel: Record<SettlementOutcome, string> = {
-  win: '승', loss: '패', push: '무', blackjack: 'BJ', bust: '버스트', surrender: '서렌더',
-  'insurance-win': '보험 승', 'insurance-loss': '보험 패', 'even-money': '이븐',
-};
-
 const resizeHandles = [
   { edge: 'nw', label: '왼쪽 위 모서리로 창 크기 조절' },
   { edge: 'ne', label: '오른쪽 위 모서리로 창 크기 조절' },
@@ -35,36 +29,30 @@ interface ResizeGesture {
   updateTimer?: number;
 }
 
-function newerState(current: GameViewState | undefined, incoming: GameViewState): GameViewState {
-  if (!current || incoming.revision > current.revision) return incoming;
-  if (incoming.revision < current.revision) return current;
-  // Recovery and save failure can change without incrementing the committed revision.
-  if (current.phase === 'recovery' && incoming.phase !== 'recovery') return incoming;
-  if (current.phase !== 'recovery' && incoming.phase === 'recovery') return current;
-  return !current.saveError && incoming.saveError ? incoming : current;
+function newerState(current: AppView | undefined, incoming: AppView): AppView {
+  if (!current || current.recovery && !incoming.recovery) return incoming;
+  return incoming.viewSequence > current.viewSequence ? incoming : current;
 }
 
 function App() {
-  const [state, setState] = useState<GameViewState>();
+  const [state, setState] = useState<AppView>();
+  const [confirmReset, setConfirmReset] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [dark, setDark] = useState(false);
   const [overlayView, setOverlayView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false });
   const [resizingEdge, setResizingEdge] = useState<ResizeEdge>();
-  const [betEditing, setBetEditing] = useState(false);
-  const [betDraft, setBetDraft] = useState('');
-  const [betError, setBetError] = useState('');
-  const betEditingRef = useRef(false);
-  const betInputRef = useRef<HTMLInputElement>(null);
   const resizeGesture = useRef<ResizeGesture | undefined>(undefined);
+
+  useEffect(() => { setConfirmReset(false); }, [state?.sessionId]);
 
   useEffect(() => {
     let active = true;
-    const applyState = (nextState: GameViewState) => {
+    const applyState = (nextState: AppView) => {
       if (active) setState(current => newerState(current, nextState));
     };
-    const unsubscribe = window.blackjack.onState(applyState);
-    void window.blackjack.getSnapshot().then(applyState).catch(() => {
+    const unsubscribe = window.molsino.onState(applyState);
+    void window.molsino.getSnapshot().then(applyState).catch(() => {
       if (active) setError('앱 연결 실패 · 다시 실행해 주세요');
     });
     return () => { active = false; unsubscribe(); };
@@ -74,24 +62,9 @@ function App() {
     const applyOverlay = (next: OverlayViewState) => {
       setOverlayView(current => next.revision >= current.revision ? next : current);
     };
-    const unsubscribe = window.blackjack.onOverlayState(applyOverlay);
-    void window.blackjack.getOverlayState().then(applyOverlay).catch(() => setError('창 설정을 불러올 수 없습니다.'));
+    const unsubscribe = window.molsino.onOverlayState(applyOverlay);
+    void window.molsino.getOverlayState().then(applyOverlay).catch(() => setError('창 설정을 불러올 수 없습니다.'));
     return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (betEditing) {
-      betInputRef.current?.focus();
-      betInputRef.current?.select();
-    }
-  }, [betEditing]);
-
-  useEffect(() => {
-    const release = () => {
-      if (betEditingRef.current) void window.blackjack.amountEditFocus('end').catch(() => {});
-    };
-    window.addEventListener('pagehide', release);
-    return () => { window.removeEventListener('pagehide', release); release(); };
   }, []);
 
   function showResizeError(): void {
@@ -123,7 +96,7 @@ function App() {
     if (!gesture.token || !gesture.finishPhase || gesture.remoteFinished) return;
     gesture.remoteFinished = true;
     if (gesture.updateTimer !== undefined) window.clearTimeout(gesture.updateTimer);
-    void window.blackjack.resize({ phase: gesture.finishPhase, token: gesture.token })
+    void window.molsino.resize({ phase: gesture.finishPhase, token: gesture.token })
       .catch(showResizeError)
       .finally(() => completeRemoteGesture(gesture));
   }
@@ -153,7 +126,7 @@ function App() {
       gesture.pendingUpdate = false;
       gesture.updateInFlight = true;
       gesture.lastUpdateAt = performance.now();
-      void window.blackjack.resize({ phase: 'update', token: gesture.token })
+      void window.molsino.resize({ phase: 'update', token: gesture.token })
         .catch(() => {
           gesture.finishPhase = 'cancel';
           detachGesture(gesture);
@@ -209,7 +182,7 @@ function App() {
       return;
     }
 
-    void window.blackjack.resize({ phase: 'start', edge })
+    void window.molsino.resize({ phase: 'start', edge })
       .then(result => {
         if (!result.token) throw new Error('Resize start did not return a token');
         gesture.token = result.token;
@@ -263,11 +236,12 @@ function App() {
     };
   }, []);
 
-  async function runAction(action: UserAction): Promise<boolean> {
+  async function runAction(action: AppAction): Promise<boolean> {
     if (!state || busy) return false;
     setBusy(true);
     try {
-      const result = await window.blackjack.dispatch({
+      const result = await window.molsino.dispatch({
+        sessionId: state.sessionId,
         commandId: crypto.randomUUID(),
         expectedRevision: state.revision,
         action,
@@ -282,130 +256,32 @@ function App() {
     finally { setBusy(false); }
   }
 
-  async function recover(choice: 'restoreBackup' | 'startNew'): Promise<void> {
+  async function recover(choice: 'restoreBackup' | 'startNew' | 'retryLoad'): Promise<void> {
     setBusy(true);
     try {
-      const recovered = await window.blackjack.recover(choice);
+      const recovered = await window.molsino.recover(choice);
       setState(current => newerState(current, recovered));
       setError('');
     } catch { setError('저장 복구에 실패했습니다. 다시 시도해 주세요.'); }
     finally { setBusy(false); }
   }
 
-  function changeBet(delta: number): void {
-    if (!state) return;
-    const maximum = state.balanceCents;
-    const amountCents = Math.max(100, Math.min(maximum, state.pendingBetCents + delta));
-    void runAction({ type: 'setBet', amountCents });
-  }
-
-  async function beginBetEdit(): Promise<void> {
-    if (!state || busy || betEditingRef.current || state.phase !== 'betting' || state.balanceCents < 100) return;
-    try {
-      await window.blackjack.amountEditFocus('begin');
-      betEditingRef.current = true;
-      setBetDraft((state.pendingBetCents / 100).toFixed(2));
-      setBetError('');
-      setBetEditing(true);
-    } catch { setError('베팅 금액을 편집할 수 없습니다.'); }
-  }
-
-  function endBetEdit(): void {
-    if (!betEditingRef.current) return;
-    betEditingRef.current = false;
-    setBetEditing(false);
-    setBetError('');
-    void window.blackjack.amountEditFocus('end').catch(() => {});
-  }
-
-  async function commitBetEdit(): Promise<void> {
-    if (!state || !betEditingRef.current || busy) return;
-    const parsed = parseBetInput(betDraft, state.balanceCents);
-    if (!parsed.ok) { setBetError(parsed.message); return; }
-    if (await runAction({ type: 'setBet', amountCents: parsed.cents })) endBetEdit();
-  }
-
-  useEffect(() => {
-    if (betEditing && (state?.phase !== 'betting' || state.balanceCents < 100
-      || state.saveError || overlayView.visibility !== 'expanded')) endBetEdit();
-  }, [betEditing, state?.phase, state?.balanceCents, state?.saveError, overlayView.visibility]);
-
   function showOpacityPopover(target: HTMLElement): void {
     const rect = target.getBoundingClientRect();
-    void window.blackjack.opacityPopover({ phase: 'show', anchor: {
+    void window.molsino.opacityPopover({ phase: 'show', anchor: {
       x: rect.x, y: rect.y, width: rect.width, height: rect.height,
     } });
   }
 
-  const activeHand = state?.playerHands.find(hand => hand.active);
-  const can = (action: GameViewState['legalActions'][number]) => state?.legalActions.includes(action) ?? false;
-  const controls = !state ? null : state.phase === 'recovery' ? <>
-    {state.recovery?.backupAvailable && <button className="wide" disabled={busy} onClick={() => void recover('restoreBackup')}>백업 복구</button>}
-    <button className="wide" disabled={busy} onClick={() => void recover('startNew')}>새 게임 시작</button>
-  </> : state.saveError || error.includes('저장에 실패') ? <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>저장 재시도</button>
-    : state.phase === 'betting' ? state.balanceCents < 100
-    ? <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'resetSession' })}>새 게임</button>
-    : <>
-      <span>BET</span>
-      <button aria-label="베팅 줄이기" disabled={busy || betEditing || state.pendingBetCents <= 100} onClick={() => changeBet(-state.betStepCents)}>−</button>
-      {betEditing ? <div className="bet-input-wrap">
-        <input ref={betInputRef} className="bet-input" type="text" inputMode="decimal" aria-label="베팅 금액"
-          aria-invalid={Boolean(betError)} value={betDraft} spellCheck={false} autoComplete="off"
-          onChange={event => { setBetDraft(event.currentTarget.value); setBetError(''); }}
-          onKeyDown={event => {
-            if (event.key === 'Enter') { event.preventDefault(); void commitBetEdit(); }
-            if (event.key === 'Escape') { event.preventDefault(); endBetEdit(); }
-          }}
-          onBlur={endBetEdit}/>
-        {betError && <span className="bet-input-error" title={betError} aria-label={betError}>!</span>}
-      </div> : <button className="bet-amount" aria-label="베팅 금액" disabled={busy} onClick={() => void beginBetEdit()}><output>{usd(state.pendingBetCents)}</output></button>}
-      <button aria-label="베팅 올리기" disabled={busy || betEditing || state.pendingBetCents >= state.balanceCents} onClick={() => changeBet(state.betStepCents)}>+</button>
-      <button aria-label="딜" disabled={busy || betEditing || !can('deal')} onClick={() => void runAction({ type: 'deal' })}>딜</button>
-    </>
-    : state.phase === 'insuranceDecision' ? can('acceptEvenMoney')
-      ? <>
-        <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'acceptEvenMoney' })}>이븐 머니</button>
-        <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'keepBlackjack' })}>BJ 유지</button>
-      </>
-      : <>
-        <button className="wide" disabled={busy || !state.insurance || state.insurance.maxWagerCents < 50} onClick={() => void runAction({ type: 'chooseInsurance', amountCents: state.insurance?.maxWagerCents ?? 0 })}>보험 {usd(state.insurance?.maxWagerCents ?? 0)}</button>
-        <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'chooseInsurance', amountCents: 0 })}>안 함</button>
-      </>
-    : state.phase === 'playerTurn' && activeHand ? <>
-      <button disabled={busy || !can('hit')} onClick={() => void runAction({ type: 'hit', handId: activeHand.handId })}>히트</button>
-      <button disabled={busy || !can('stand')} onClick={() => void runAction({ type: 'stand', handId: activeHand.handId })}>스탠드</button>
-      {can('doubleDown') && <button disabled={busy} onClick={() => void runAction({ type: 'doubleDown', handId: activeHand.handId })}>더블</button>}
-      {can('split') && <button disabled={busy} onClick={() => void runAction({ type: 'split', handId: activeHand.handId })}>스플릿</button>}
-      {can('surrender') && <button disabled={busy} onClick={() => void runAction({ type: 'surrender', handId: activeHand.handId })}>서렌더</button>}
-    </>
-    : state.phase === 'result'
-      ? state.balanceCents < 100
-        ? <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'resetSession' })}>새 게임</button>
-        : <button className="wide" disabled={busy} onClick={() => void runAction({ type: 'nextRound' })}>다음 판</button>
-      : <span>딜러 진행 중…</span>;
-
-  const status = !state ? '앱 연결 중…'
-    : state.saveError ? '저장에 실패했습니다 · 재시도하거나 종료하세요'
-    : state.phase === 'recovery' ? state.recovery?.issue === 'futureSchema'
-      ? '지원하지 않는 저장 버전 · 원본을 보존했습니다'
-      : '저장 파일이 손상되었습니다 · 복구 방법을 선택하세요'
-    : (state.phase === 'betting' || state.phase === 'result') && state.balanceCents < 100
-      ? '게임 오버 · 새 게임을 시작하세요'
-    : state.phase === 'result' && state.lastResult ? `라운드 ${signedUsd(state.lastResult.netCents)}`
-    : state.phase === 'insuranceDecision' ? '보험 또는 이븐 머니를 선택하세요'
-    : state.phase === 'playerTurn' ? '행동을 선택하세요'
-    : state.phase === 'betting' ? '베팅 후 딜하세요'
-    : '딜러 진행 중…';
-
   const overlayStyle = { '--overlay-opacity': overlayView.opacityPercent / 100 } as CSSProperties;
   if (overlayView.visibility === 'collapsed') return <main className={dark ? 'overlay collapsed ink-dark' : 'overlay collapsed'} style={overlayStyle}>
     <section className="collapsed-bar">
-      <span>{state ? usd(state.balanceCents) : '…'} · {state && state.phase !== 'betting' && state.phase !== 'result' ? '진행 중' : '대기'}</span>
-      <button type="button" aria-label="펼치기" onClick={() => void window.blackjack.windowCommand('expand')}>▣</button>
+      <span>{state ? usd(state.balanceCents) : '…'} · {state?.activeRoundGameId ? '진행 중' : '대기'}</span>
+      <button type="button" aria-label="펼치기" onClick={() => void window.molsino.windowCommand('expand')}>▣</button>
     </section>
   </main>;
 
-  return <main className={dark ? 'overlay ink-dark' : 'overlay'} style={overlayStyle} data-popover-open={overlayView.opacityPopoverVisible} data-resizing={resizingEdge !== undefined}>
+  return <main className={dark ? 'overlay ink-dark' : 'overlay'} style={overlayStyle} data-screen={state?.screen} data-popover-open={overlayView.opacityPopoverVisible} data-resizing={resizingEdge !== undefined}>
     {resizeHandles.map(({ edge, label }) => <button
       key={edge}
       type="button"
@@ -419,20 +295,34 @@ function App() {
       onPointerCancel={cancelResize}
       onLostPointerCapture={cancelResize}
     />)}
-    <header><span className="drag">⠿ <strong>molsino</strong><span className="game-label">BLACKJACK</span></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.blackjack.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.blackjack.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.blackjack.windowCommand('quit')}>×</button></header>
-    <section className="balance"><span>BANKROLL</span><strong>{state ? usd(state.balanceCents) : '…'}</strong></section>
-    <section className="cards" aria-label="게임 카드">
-      {state?.dealerHand.cards.length ? <div className="hand dealer"><small>DEALER {state.dealerHand.total}</small><div>{state.dealerHand.cards.map(card => <span className={`card ${card.suit === 'H' || card.suit === 'D' ? 'red' : ''}`} key={card.cardId}>{card.rank}{suitSymbol[card.suit]}</span>)}{state.dealerHand.hiddenCardCount > 0 && <span className="card">?</span>}</div></div> : <p>베팅을 정하고<br/>첫 카드를 받아보세요.</p>}
-      {state?.playerHands.map(hand => {
-        const result = state.lastResult?.entries.find(entry => entry.componentId === hand.handId);
-        return <div className={`hand player ${hand.active ? 'active' : ''}`} key={hand.handId}>
-          <small>{hand.active ? 'YOU · ' : ''}{hand.total}{hand.isSoft ? 's' : ''} · {usd(hand.wagerCents)}{result ? ` · ${outcomeLabel[result.outcome]}` : ''}</small>
-          <div>{hand.cards.map(card => <span className={`card ${card.suit === 'H' || card.suit === 'D' ? 'red' : ''}`} key={card.cardId}>{card.rank}{suitSymbol[card.suit]}</span>)}</div>
-        </div>;
-      })}
-    </section>
-    <section className="bet actions">{controls}</section>
-    <footer role="status">{betError || error || status}</footer>
+    <header><span className="drag">⠿ <strong>molsino</strong><span className="game-label">{state?.screen === 'blackjack' ? 'BLACKJACK' : 'MENU'}</span></span><button title="흰색/검정 전환" aria-label="흰색/검정 전환" onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.molsino.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.molsino.windowCommand('quit')}>×</button></header>
+    <section className="balance">{state?.screen === 'blackjack' ? <button aria-label="메뉴" title="한 판을 마친 뒤 이동할 수 있습니다" disabled={busy || !state.canNavigate} onClick={() => void runAction({ type: 'goToMenu' })}>‹ 메뉴</button> : <span>BANKROLL</span>}<strong>{state ? usd(state.balanceCents) : '…'}</strong></section>
+    {state?.recovery ? <>
+      <section className="game-menu"><p>{state.recovery?.issue === 'unavailable' ? '저장 파일을 읽거나 저장할 수 없습니다' : state.recovery?.issue === 'futureSchema' ? '지원하지 않는 저장 버전' : '저장 파일을 복구해야 합니다'}<br/>원본을 보존하고 복구 방법을 선택하세요.</p></section>
+      <section className="bet actions">
+        {state.recovery?.issue === 'unavailable' ? <button disabled={busy} onClick={() => void recover('retryLoad')}>불러오기 재시도</button> : <>
+        {state.recovery?.backupAvailable && <button disabled={busy} onClick={() => void recover('restoreBackup')}>백업 복구</button>}
+        <button disabled={busy} onClick={() => void recover('startNew')}>새 게임 시작</button></>}
+      </section><footer role="status">{error || '복구 방법을 선택하세요'}</footer>
+    </> : state?.screen === 'blackjack' && state.blackjack ? <BlackjackGame state={{ ...state.blackjack, saveError: state.saveError, internalError: state.internalError }} busy={busy} error={error}
+      runAction={action => runAction({ type: 'blackjack', action })} onRetry={() => runAction({ type: 'retrySave' })}
+      onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
+    : <>
+      <section className="game-menu">
+        {confirmReset ? <p>잔액을 $100으로 초기화하고<br/>모든 게임의 판·슈·기록을 새로 시작합니다.</p> : <>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'blackjack' })}>블랙잭</button>
+          <button disabled aria-label="바카라 준비 중">바카라 <small>준비 중</small></button>
+        </>}
+      </section>
+      <section className="bet actions">{state?.saveError ? <button disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>저장 재시도</button>
+        : confirmReset ? <>
+          <button disabled={busy} onClick={() => setConfirmReset(false)}>취소</button>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'resetAll' }).then(ok => { if (ok) setConfirmReset(false); })}>초기화 확정</button>
+        </> : <button disabled={busy || !state?.canNavigate} onClick={() => setConfirmReset(true)}>새 시작</button>}
+      </section>
+      <footer role="status">{error || (state?.saveError ? '저장에 실패했습니다 · 재시도하세요' : state ? '게임을 선택하세요' : '앱 연결 중…')}</footer>
+    </>}
+
   </main>;
 }
 
@@ -443,15 +333,15 @@ function OpacityPanel() {
 
   useEffect(() => {
     const apply = (state: OverlayViewState) => setView(current => state.revision >= current.revision ? state : current);
-    const unsubscribe = window.blackjack.onOverlayState(apply);
-    void window.blackjack.getOverlayState().then(apply);
+    const unsubscribe = window.molsino.onOverlayState(apply);
+    void window.molsino.getOverlayState().then(apply);
     return unsubscribe;
   }, []);
 
   function change(percent: number): void {
     const requestId = ++latestRequest.current;
     setDraft(percent);
-    void window.blackjack.setOpacity(percent).then(state => {
+    void window.molsino.setOpacity(percent).then(state => {
       setView(current => state.revision >= current.revision ? state : current);
       if (requestId === latestRequest.current) setDraft(null);
     }).catch(() => {
@@ -460,8 +350,8 @@ function OpacityPanel() {
   }
 
   const value = draft ?? view.opacityPercent;
-  return <main className="opacity-popover" onMouseEnter={() => void window.blackjack.opacityPopover({ phase: 'keep' })}
-    onMouseLeave={() => void window.blackjack.opacityPopover({ phase: 'hide' })}>
+  return <main className="opacity-popover" onMouseEnter={() => void window.molsino.opacityPopover({ phase: 'keep' })}
+    onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })}>
     <label className="opacity-control"><span aria-hidden="true">◐</span><input type="range" aria-label="불투명도" min="20" max="100" step="5" value={value} onChange={event => change(Number(event.currentTarget.value))}/><span className="opacity-percent">{value}%</span></label>
   </main>;
 }

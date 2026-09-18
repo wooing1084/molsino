@@ -1,0 +1,36 @@
+import { mkdtemp, readFile, writeFile, rm, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import { createSession } from '../../src/core/engine';
+import { AppSessionRepository, newAppSession } from '../../src/main/persistence/app-session-repository';
+import { fixtureShoe } from '../core/helpers';
+let dir: string;
+afterEach(async () => { if (dir) await rm(dir, { recursive: true, force: true }); });
+it('retries interrupted migration without promoting temp files or changing legacy bytes', async () => {
+  dir = await mkdtemp(join(tmpdir(), 'molsino-app-repo-'));
+  const old = JSON.stringify({ schemaVersion: 1, revision: 7, state: createSession(fixtureShoe([]), { balanceCents: 11111, pendingBetCents: 101 }), lastAppliedCommand: null });
+  await writeFile(join(dir, 'session.json'), old);
+  await writeFile(join(dir, 'app-session.json.abandoned.tmp'), JSON.stringify(newAppSession()));
+  await mkdir(join(dir, 'app-session.backup.json'));
+  const repo = new AppSessionRepository(dir);
+  await expect(repo.load()).rejects.toThrow();
+  await rm(join(dir, 'app-session.backup.json'), { recursive: true });
+  const loaded = await repo.load();
+  expect(loaded).toMatchObject({ kind: 'ready', snapshot: { revision: 7, wallet: { balanceCents: 11111 }, games: { blackjack: { pendingBetCents: 101 } } } });
+  expect(await repo.load()).toEqual(loaded);
+  expect(await readFile(join(dir, 'session.json'), 'utf8')).toBe(old);
+});
+it('new primary/backup always take precedence over valid legacy data', async () => {
+  dir = await mkdtemp(join(tmpdir(), 'molsino-app-repo-'));
+  const old = JSON.stringify({ schemaVersion: 1, revision: 7, state: createSession(fixtureShoe([])), lastAppliedCommand: null });
+  await writeFile(join(dir, 'session.json'), old);
+  const repo = new AppSessionRepository(dir);
+  const fresh = newAppSession(); fresh.wallet.balanceCents = 4567;
+  await repo.save(fresh);
+  await repo.save({ ...fresh, revision: 1 });
+  await writeFile(join(dir, 'app-session.json'), JSON.stringify({ schemaVersion: 99 }));
+  expect(await repo.load()).toMatchObject({ kind: 'recovery', issue: 'futureSchema', backup: { wallet: { balanceCents: 4567 } } });
+  await rm(join(dir, 'app-session.json'));
+  expect(await repo.load()).toMatchObject({ kind: 'recovery', backup: { wallet: { balanceCents: 4567 } } });
+});

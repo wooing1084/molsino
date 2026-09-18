@@ -94,3 +94,8 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .resize-handle-se::after { right: 4px; bottom: 4px; border-right: 1px solid; border-bottom: 1px solid; }
 
 @media (prefers-reduced-motion: reduce) { .overlay { transition: none; } }
+
+.game-menu { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 0; }
+.game-menu button { flex: 1; max-width: 150px; height: 32px; }
+.game-menu p { margin: 0; font-size: 11px; line-height: 14px; }
+.balance button { height: 24px; min-width: 48px; padding: 0 5px; font-size: 11px; }

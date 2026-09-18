@@ -65,7 +65,7 @@ export const resizeCommandSchema = z.discriminatedUnion('phase', [
 ]);
 
 export type UserAction = z.infer<typeof userActionSchema>;
-export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew']);
+export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew', 'retryLoad']);
 export type RecoveryChoice = z.infer<typeof recoveryChoiceSchema>;
 export type UserCommand = z.infer<typeof userCommandSchema>;
 export type WindowCommand = z.infer<typeof windowCommandSchema>;
@@ -112,7 +112,7 @@ export interface GameViewState {
   revision: number;
   platform: string;
   phase: 'betting' | 'insuranceDecision' | 'playerTurn' | 'dealerTurn' | 'result' | 'recovery';
-  recovery?: { issue: 'corrupt' | 'futureSchema'; backupAvailable: boolean };
+  recovery?: { issue: 'corrupt' | 'futureSchema' | 'unavailable'; backupAvailable: boolean };
   saveError?: boolean;
   balanceCents: number;
   pendingBetCents: number;
@@ -141,11 +141,14 @@ export type CommandResult =
 export interface WindowBounds { x: number; y: number; width: number; height: number; }
 export interface ResizeResult { token?: string; bounds: WindowBounds; }
 
-export interface BlackjackAPI {
+export interface BlackjackAPI extends OverlayAPI {
   getSnapshot(): Promise<GameViewState>;
   dispatch(command: UserCommand): Promise<CommandResult>;
   recover(choice: RecoveryChoice): Promise<GameViewState>;
   onState(listener: (state: GameViewState) => void): () => void;
+}
+
+export interface OverlayAPI {
   windowCommand(command: WindowCommand): Promise<void>;
   getOverlayState(): Promise<OverlayViewState>;
   onOverlayState(listener: (state: OverlayViewState) => void): () => void;
