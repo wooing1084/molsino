@@ -1,13 +1,13 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createSession } from '../core/engine';
-import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
-import { GameStore } from './game/game-store';
+import { appCommandSchema, type AppView } from '../shared/app-contracts';
+import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, windowCommandSchema, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
+import { AppStore } from './game/app-store';
 import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
-import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
+import { AppSessionRepository, newAppSession, type AppSession, type AppLoadResult } from './persistence/app-session-repository';
 import { configurePlatformWindow } from './platform/adapter';
 import { installToggleShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
@@ -23,9 +23,11 @@ let opacityHideTimer: ReturnType<typeof setTimeout> | undefined;
 let tray: Tray | undefined;
 let resizeController: ResizeController | undefined;
 let quitting = false;
+let quitConfirmed = false;
+let quitPromptOpen = false;
 let clickThrough = false;
 let amountEditing = false;
-let gameStore: GameStore | undefined;
+let appStore: AppStore | undefined;
 let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false };
 let shownVisibility: 'expanded' | 'collapsed' = 'expanded';
 let expandedBounds: WindowBounds | undefined;
@@ -39,8 +41,8 @@ const requestedSnapshotDelay = process.env.MOLSINO_TEST_USER_DATA
 const snapshotDelayMs = Number.isSafeInteger(requestedSnapshotDelay)
   && requestedSnapshotDelay >= 0 && requestedSnapshotDelay <= 2_000 ? requestedSnapshotDelay : 0;
 
-function sendGameState(state: GameViewState): void {
-  if (amountEditing && state.phase !== 'betting') endAmountEdit();
+function sendAppState(state: AppView): void {
+  if (amountEditing && (state.blackjack?.phase !== 'betting' || state.screen === 'menu')) endAmountEdit();
   if (!overlay || overlay.isDestroyed()) return;
   const contents = overlay.webContents;
   const frame = contents.isDestroyed() ? null : contents.mainFrame;
@@ -88,10 +90,11 @@ function endAmountEdit(): void {
 }
 
 function beginAmountEdit(): void {
-  const snapshot = gameStore?.getSnapshot();
+  const snapshot = appStore?.getSnapshot();
   if (!overlay || overlay.isDestroyed() || !overlay.isVisible() || clickThrough
-    || overlayState.visibility !== 'expanded' || snapshot?.phase !== 'betting'
-    || snapshot.saveError || !snapshot.legalActions.includes('setBet')) {
+    || overlayState.visibility !== 'expanded' || snapshot?.blackjack?.phase !== 'betting'
+    || snapshot.saveError || snapshot.screen === 'menu' || appStore?.isBusy()
+    || !snapshot.blackjack.legalActions.includes('setBet')) {
     throw new Error('Bet editing is unavailable');
   }
   if (amountEditing) return;
@@ -250,32 +253,49 @@ function setupTray(): void {
 }
 
 async function start(): Promise<void> {
-  const createGameShoe = createShoeFactory(process.env.BLACKJACK_TEST_SHOE_FIXTURE);
-  const repository = new SessionRepository(app.getPath('userData'));
-  let loaded = await repository.load();
-  let unsubscribeGameState: (() => void) | undefined;
-  const initializeGame = (snapshot: SavedSession): void => {
-    unsubscribeGameState?.();
-    gameStore = new GameStore(
-      snapshot.state,
+  const testing = Boolean(process.env.MOLSINO_TEST_USER_DATA);
+  const createGameShoe = createShoeFactory(testing ? process.env.BLACKJACK_TEST_SHOE_FIXTURE : undefined);
+  const repository = new AppSessionRepository(app.getPath('userData'));
+  let loaded: AppLoadResult = { kind: 'missing' };
+  let startupUnavailable = false;
+  let unsubscribeAppState: (() => void) | undefined;
+  const initializeSession = (snapshot: AppSession): void => {
+    unsubscribeAppState?.();
+    const delay = testing ? Number(process.env.MOLSINO_TEST_AUTO_DELAY_MS ?? 0) : 0;
+    appStore = new AppStore(snapshot,
       { createShoe: createGameShoe, nextId: () => randomUUID() },
-      process.platform, repository, snapshot,
-    );
-    unsubscribeGameState = gameStore.subscribe(sendGameState);
-    gameStore.resumeDealer();
+      process.platform, repository,
+      Number.isSafeInteger(delay) && delay >= 0 && delay <= 30000 ? delay : 0);
+    unsubscribeAppState = appStore.subscribe(sendAppState);
+    appStore.resumeDealer();
   };
-  if (loaded.kind === 'missing') {
-    const state = createSession(createGameShoe());
-    const snapshot: SavedSession = { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0, state, lastAppliedCommand: null };
-    await repository.save(snapshot);
-    loaded = { kind: 'ready', snapshot };
-  }
-  if (loaded.kind === 'ready') initializeGame(loaded.snapshot);
-  const recoveryState = (): GameViewState => ({
-    revision: 0, platform: process.platform, phase: 'recovery', balanceCents: 0,
-    pendingBetCents: 0, betStepCents: 100, playerHands: [], activeHandIndex: null,
-    dealerHand: { cards: [], hiddenCardCount: 0 }, legalActions: [],
-    recovery: { issue: loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
+  const loadSession = async (): Promise<void> => {
+    try {
+      loaded = await repository.load();
+      if (loaded.kind === 'missing') {
+        const snapshot = newAppSession();
+        await repository.save(snapshot);
+        loaded = { kind: 'ready', snapshot };
+      }
+      if (loaded.kind === 'ready') {
+        const screen = loaded.snapshot.activeRoundGameId ?? 'menu';
+        if (loaded.snapshot.screen !== screen) {
+          loaded.snapshot.screen = screen; loaded.snapshot.revision++;
+          await repository.save(loaded.snapshot);
+        }
+        initializeSession(loaded.snapshot);
+      }
+      startupUnavailable = false;
+    } catch {
+      startupUnavailable = true;
+    }
+  };
+  await loadSession();
+  const recoveryState = (): AppView => ({
+    revision: 0, sessionId: '00000000-0000-4000-8000-000000000000', viewSequence: 0,
+    screen: 'menu', activeRoundGameId: null, canNavigate: false,
+    platform: process.platform, balanceCents: 0, saveError: false, blackjack: null,
+    recovery: { issue: startupUnavailable ? 'unavailable' : loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
       backupAvailable: loaded.kind === 'recovery' && Boolean(loaded.backup) },
   });
   const rendererRoot = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
@@ -342,19 +362,21 @@ async function start(): Promise<void> {
   };
   ipcMain.handle(channels.snapshot, async event => {
     requireTrusted(event);
-    const snapshot = gameStore?.getSnapshot() ?? recoveryState();
+    const snapshot = appStore?.getSnapshot() ?? recoveryState();
     if (snapshotDelayMs > 0) await new Promise(resolve => setTimeout(resolve, snapshotDelayMs));
     return snapshot;
   });
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
-    const command = userCommandSchema.parse(value);
-    if (amountEditing && command.action.type === 'deal' && gameStore) {
+    const command = appCommandSchema.parse(value);
+    if (amountEditing && command.action.type === 'blackjack' && command.action.action.type === 'deal' && appStore) {
       return { ok: false, error: 'INVALID_ACTION' as const,
-        message: '베팅 금액 입력을 먼저 완료하세요.', state: gameStore.getSnapshot() };
+        message: '베팅 금액 입력을 먼저 완료하세요.', state: appStore.getSnapshot() };
     }
-    if (amountEditing && command.action.type === 'resetSession') endAmountEdit();
-    return gameStore?.dispatch(command) ?? {
+    if (command.action.type === 'goToMenu' || command.action.type === 'selectGame') {
+      endAmountEdit(); hideOpacityPanel(); resizeController?.invalidate();
+    }
+    return appStore?.dispatch(command) ?? {
       ok: false, error: 'RECOVERY_REQUIRED', message: '저장 복구 선택이 필요합니다.', state: recoveryState(),
     };
   });
@@ -362,20 +384,26 @@ async function start(): Promise<void> {
   ipcMain.handle(channels.recovery, async (event, value: unknown) => {
     requireTrusted(event);
     const choice = recoveryChoiceSchema.parse(value);
-    if (loaded.kind !== 'recovery' || gameStore || recovering) throw new Error('Recovery is unavailable');
+    if (appStore || recovering) throw new Error('Recovery is unavailable');
+    if (choice === 'retryLoad') {
+      if (!startupUnavailable) throw new Error('No load failure');
+      recovering = true;
+      try { await loadSession(); const state = (appStore as AppStore | undefined)?.getSnapshot() ?? recoveryState(); sendAppState(state); return state; }
+      finally { recovering = false; }
+    }
+    if (startupUnavailable || loaded.kind !== 'recovery') throw new Error('Recovery is unavailable');
     if (choice === 'restoreBackup' && !loaded.backup) throw new Error('No valid backup exists');
     recovering = true;
     try {
       await repository.archivePrimary();
-      const snapshot: SavedSession = choice === 'restoreBackup'
-        ? (loaded.backup as SavedSession)
-        : { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0,
-          state: createSession(createGameShoe()), lastAppliedCommand: null };
+      const snapshot: AppSession = choice === 'restoreBackup' ? (loaded.backup as AppSession) : newAppSession();
+      const targetScreen = snapshot.activeRoundGameId ?? 'menu';
+      if (snapshot.screen !== targetScreen) { snapshot.screen = targetScreen; snapshot.revision++; }
       await repository.save(snapshot);
       loaded = { kind: 'ready', snapshot };
-      initializeGame(snapshot);
-      const state = gameStore!.getSnapshot();
-      sendGameState(state);
+      initializeSession(snapshot);
+      const state = appStore!.getSnapshot();
+      sendAppState(state);
       return state;
     } finally { recovering = false; }
   });
@@ -438,7 +466,7 @@ async function start(): Promise<void> {
     if (opacityPanel?.isVisible() && opacityAnchor) placeOpacityPanel(opacityAnchor);
   });
   overlay.on('close', event => { resizeController?.invalidate(); if (!quitting) { event.preventDefault(); hideOverlay(); } });
-  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState?.(); });
+  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeAppState?.(); });
   overlay.webContents.on('did-start-navigation', () => { resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); });
   overlay.webContents.on('render-process-gone', () => { resizeController?.invalidate(); hideOverlay(); console.error('Renderer exited; restart the app from the tray.'); });
   overlay.once('ready-to-show', reveal);
@@ -449,12 +477,22 @@ else {
   app.on('second-instance', reveal);
   app.on('activate', reveal);
   app.on('before-quit', event => {
-    if (gameStore?.isBusy()) {
+    if (appStore?.isBusy()) {
       event.preventDefault();
-      void gameStore.whenIdle().then(() => {
-        if (gameStore?.hasPendingSave()) { reveal(); return; }
+      void appStore.whenIdle().then(() => {
+        if (appStore?.hasPendingSave()) { reveal(); return; }
         app.quit();
       });
+      return;
+    }
+    if (appStore?.hasPendingSave() && !quitConfirmed) {
+      event.preventDefault();
+      if (!quitPromptOpen) {
+        quitPromptOpen = true;
+        void dialog.showMessageBox({ type: 'warning', message: '저장하지 못한 변경이 있습니다.',
+          detail: '종료하면 미확정 변경은 사라지고 다음 실행에서 마지막 저장 상태로 돌아갑니다.', buttons: ['취소', '종료'], defaultId: 0, cancelId: 0,
+        }).then(({ response }) => { if (response === 1) { quitConfirmed = true; app.quit(); } }).finally(() => { quitPromptOpen = false; });
+      }
       return;
     }
     quitting = true; resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); tray?.destroy();

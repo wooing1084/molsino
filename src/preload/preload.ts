@@ -1,6 +1,7 @@
+import type { MolsinoAPI } from '../shared/app-contracts';
 import { contextBridge, ipcRenderer } from 'electron';
-import { channels, type BlackjackAPI } from '../shared/contracts';
-const api: BlackjackAPI = {
+import { channels } from '../shared/contracts';
+const api: MolsinoAPI = {
   getSnapshot: () => ipcRenderer.invoke(channels.snapshot),
   dispatch: command => ipcRenderer.invoke(channels.command, command),
   recover: choice => ipcRenderer.invoke(channels.recovery, choice),
@@ -21,4 +22,4 @@ const api: BlackjackAPI = {
   amountEditFocus: phase => ipcRenderer.invoke(channels.amountEditFocus, phase),
   resize: command => ipcRenderer.invoke(channels.resize, command),
 };
-contextBridge.exposeInMainWorld('blackjack', api);
+contextBridge.exposeInMainWorld('molsino', api);

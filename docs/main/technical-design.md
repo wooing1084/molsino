@@ -2,7 +2,7 @@
 
 **목적:** 게임 화면을 담는 Electron 앱의 창, 입력, 프로세스, IPC 신뢰 경계와 배포 계약을 정의한다.
 
-**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 검증 목표를 다룬다. 현재 앱은 블랙잭 하나만 연결되어 있으며 게임 명령·상태·저장 스키마는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
+**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭을 연결한다. 앱 상태·저장은 §9, 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -29,7 +29,7 @@ macOS와 Windows에서 Electron, TypeScript, React UI, Forge·Vite 빌드를 공
 | 계약 검증 | Zod | 창 명령과 게임 명령의 런타임 검증 |
 | 패키징·테스트 | Electron Forge + Vite, Vitest, Playwright Electron | OS별 산출물과 자동 검증 |
 
-현재 `src/main/main.ts`는 오버레이와 블랙잭 `GameStore`를 직접 연결한다. `window.blackjack` Preload API, `game:*` IPC 채널, `SessionRepository`도 현재 블랙잭 데이터에 결합돼 있다. 이 경계는 앞으로 여러 게임을 수용하도록 추상화됐다는 뜻이 아니다. 게임별 상태와 규칙의 실제 계약은 [블랙잭 기술 설계](../games/blackjack/technical-design.md)에 둔다.
+`src/main/main.ts`는 창·트레이·IPC와 앱 세션 시작을 연결한다. `AppStore`가 공용 잔액·화면·게임 상태를 소유하며 `blackjack-adapter.ts`가 기존 순수 블랙잭 코어를 호출한다. `window.molsino`는 앱 snapshot·명령·구독과 창 API를 노출한다. 저장은 `AppSessionRepository`의 v2 원자 스냅샷으로 통합하고, v1 저장소는 기존 파일 이전 검증에만 사용한다. 바카라 선택은 아직 거부한다.
 
 초기 검증 목표는 macOS 14 이상 arm64와 Windows 11 x64다. 지원 범위는 채택한 Electron 버전과 실제 장비 검증을 함께 확인해 표기한다. 다른 CPU·OS 조합은 별도 검증이 필요하다. Electron은 여러 프로세스를 사용하지만 현재 실행 인스턴스와 블랙잭 세션 상태의 소유자는 각각 하나다.
 
@@ -70,23 +70,26 @@ ChatGPT 데스크톱의 펫은 macOS와 Windows에서 다른 앱 위에 떠 있�
 
 ```mermaid
 flowchart LR
-    R[Renderer: React 오버레이·블랙잭 화면] --> P[Preload: window.blackjack 제한 API]
-    P --> I[Main: IPC 검증]
-    I --> W[Main: 창·트레이·플랫폼 제어]
-    I --> G[Main: 현재 블랙잭 GameStore]
-    G --> C[BlackjackCore 순수 전이]
-    G --> S[SessionRepository: 블랙잭 세션 JSON]
-    G -->|공개 GameViewState| P
+    R[Renderer: 앱 셸·메뉴] --> P[Preload: window.molsino]
+    B[BlackjackGame: 카드·베팅·행동] --> R
+    P --> I[Main: IPC 신뢰·스키마 검사]
+    I --> W[창·트레이·플랫폼]
+    I --> A[AppStore: 공용 잔액·화면·명령 직렬화]
+    A --> C[blackjack-adapter → 순수 BlackjackCore]
+    A --> S[AppSessionRepository: v2 원자 저장]
+    A -->|AppView와 현재 blackjack 공개 상태| P
 ```
 
 | 현재 코드 | 담당 책임 |
 | --- | --- |
-| `src/main/main.ts` | 앱 수명, 오버레이·조절창·트레이, IPC 등록, 현재 블랙잭 세션 연결 |
-| `src/main/windows/`, `src/main/platform/adapter.ts` | 창 크기·숨김 단축키와 OS별 창 정책 |
-| `src/main/ipc/trust.ts` | 등록된 최상위 창과 허용된 문서 URL 검사 |
-| `src/preload/preload.ts` | contextBridge API와 상태 구독·해제 |
-| `src/renderer/main.tsx` | 창 조작과 현재 블랙잭 UI가 함께 구현된 Renderer |
-| `src/main/game/`, `src/main/persistence/`, `src/core/` | 현재 블랙잭 명령·저장·엔진; [게임 문서](../games/blackjack/technical-design.md)에서 상세 정의 |
+| `src/main/main.ts` | 앱 수명, 창·트레이, IPC 등록, 앱 세션 로드·복구 |
+| `src/main/game/app-store.ts` | 단일 작성자, 공용 잔액, 화면, 중복 명령, 저장 후보·자동 진행 |
+| `src/main/game/blackjack-adapter.ts` | 블랙잭 코어에 잔액 주입·결과 추출, 카드 공개 상태 |
+| `src/main/persistence/app-session-repository.ts` | v2 스키마·원자 저장·백업·v1 이전 |
+| `src/preload/preload.ts` | 제한된 앱·창 API와 구독 |
+| `src/renderer/main.tsx` | 오버레이, 메뉴, 공용 잔액, 초기화 확인과 복구 화면 |
+| `src/renderer/games/blackjack.tsx` | 블랙잭 카드·베팅 입력·행동·게임 결과 |
+| `src/shared/app-contracts.ts` | 앱 envelope·공개 snapshot, 게임 명령 분기 |
 
 모듈을 더 잘게 나눈 `AppCoordinator`, `OverlayWindowController`, `InputPolicyController`, `DisplayPlacementService`, `TrayController`는 초기 설계상의 책임 이름이며 현재 별도 파일로 모두 존재하는 모듈은 아니다. 실제 파일 지도는 [메인 구현 현황](implementation-status.md)을 기준으로 한다. Main은 창과 저장된 게임 상태를 소유하고 Renderer에는 공개 상태만 전한다.
 
@@ -95,7 +98,7 @@ flowchart LR
 ### 4.1 수명과 초기 표시
 
 1. `app.requestSingleInstanceLock()`을 확보한다. 실패하면 종료한다. `second-instance`는 기존 창을 비활성 복원한다.
-2. 앱 준비 후 현재 블랙잭 세션을 읽고 투명 BrowserWindow, 트레이, 창 단축키를 만든다. 모니터 변경 자동 보정은 미구현이며 구 일정은 폐기했다.
+2. 앱 준비 후 공용 앱 세션을 읽거나 기존 블랙잭 세션을 이전하고 투명 BrowserWindow, 트레이, 창 단축키를 만든다. 모니터 변경 자동 보정은 미구현이며 구 일정은 폐기했다.
 3. `show:false` 창에 로컬 `app://molsino/index.html` UI를 로드한다. 현재 코드는 `ready-to-show`에서 `showInactive()`를 호출한다.
 4. 현재 초기 표시에는 별도 `ui:ready` 채널이 없다. 초기 로딩 결함이 재현되면 새 로드맵의 버그 분석에서 평가한다.
 
@@ -195,7 +198,7 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 
 ### 5.1 창 상태
 
-Main의 현재 `OverlayViewState`는 `revision`, `visibility`(`expanded | collapsed | hidden`), `opacityPercent`, `opacityPopoverVisible`을 가진다. 창 상태는 게임 상태와 별도의 revision으로 구독한다. 접힘 전 펼친 bounds와 숨기기 전 표시 모드는 Main 메모리에 보관하고, 접힘·숨김·클릭 통과로 활성 resize token과 조절창을 정리한다. 헤더의 드래그·색상 전환·숨기기·종료 조작과 접힘/펼침 창 동작은 메인 기능의 책임이다. 현재 헤더의 `BLACKJACK` 표시·잔액과 접힌 막대의 잔액·진행 상태 문구는 블랙잭 공개 상태에서 가져온다. 헤더의 `▁` 접기 버튼은 제거됐지만 `collapsed` 상태·명령은 유지한다. `−`와 Alt+백틱은 같은 숨김 경로로 연결된다.
+Main의 현재 `OverlayViewState`는 `revision`, `visibility`(`expanded | collapsed | hidden`), `opacityPercent`, `opacityPopoverVisible`을 가진다. 창 상태는 게임 상태와 별도의 revision으로 구독한다. 접힘 전 펼친 bounds와 숨기기 전 표시 모드는 Main 메모리에 보관하고, 접힘·숨김·클릭 통과로 활성 resize token과 조절창을 정리한다. 헤더의 드래그·색상 전환·숨기기·종료 조작과 접힘/펼침 창 동작은 메인 기능의 책임이다. 헤더는 현재 화면 이름을 표시하며 잔액·접힌 막대의 진행 여부는 앱 공개 상태에서 가져온다. 헤더의 `▁` 접기 버튼은 제거됐지만 `collapsed` 상태·명령은 유지한다. `−`와 Alt+백틱은 같은 숨김 경로로 연결된다.
 
 숨김·접힘은 표시만 바꾼다. 현재 블랙잭의 딜러 진행과 저장은 Main에서 계속되며 복원 시 최신 공개 상태를 다시 보여 준다. 창 표시 설정은 게임 세션과 별개로 실행 중 메모리에 보관한다. 현재 시작값은 주 화면 오른쪽 아래의 280×180 DIP, 흰색 전경, 불투명도 65%, 펼침, 대화형 입력이다. 전체 창 설정 재실행 초기화에 대한 구 E2E-18 일괄 검증 계획은 폐기했다. 미검증 OS 동작을 보장으로 해석하지 않는다. `preferences.json`은 만들지 않는다.
 
@@ -216,7 +219,7 @@ OS suspend 중에는 실행 자체가 멈출 수 있지만 앱이 별도의 수�
 | `overlay:resize` | Renderer → Main | start/update/end/cancel, UUID token과 좌표·크기 제한 |
 | `overlay:amount-edit-focus` | Renderer → Main | 현재 블랙잭 베팅액 편집에만 사용하며 창·게임 상태 모두 검사 |
 
-현재 Preload는 `window.blackjack`에 창 API와 게임 API를 함께 노출한다. 이 이름과 묶음은 실제 구현을 설명하며 앱 공통 API로 분리됐다는 뜻이 아니다. `contextBridge`는 기능별 메서드만 제공하고 raw `ipcRenderer`나 임의 channel invoke를 노출하지 않는다. 구독은 Electron event 객체를 제거한 payload를 전달하고 해제 함수를 반환한다. Renderer는 창 상태 구독을 먼저 설치한 뒤 snapshot을 요청하며, 늦게 도착한 낮은 revision의 snapshot이나 push를 버린다. 이 창 revision은 게임 revision과 독립적이다. Preload는 sandbox 호환 단일 번들이다. 구 초안의 `overlay:mode`, `utility:open`, `ui:ready`는 현재 채널이 아니며 신규 구현 목록에서 제외했다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
+Preload는 `window.molsino`에 앱 명령·snapshot·구독과 `OverlayAPI`를 노출한다. `window.blackjack`은 노출하지 않는다. `contextBridge`는 기능별 메서드만 제공하고 raw `ipcRenderer`나 임의 channel invoke를 노출하지 않는다. 구독은 Electron event 객체를 제거한 payload를 전달하고 해제 함수를 반환한다. Renderer는 창 상태 구독을 먼저 설치한 뒤 snapshot을 요청하며, 늦게 도착한 낮은 revision의 snapshot이나 push를 버린다. 이 창 revision은 게임 revision과 독립적이다. Preload는 sandbox 호환 단일 번들이다. 구 초안의 `overlay:mode`, `utility:open`, `ui:ready`는 현재 채널이 아니며 신규 구현 목록에서 제외했다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
 
 Main은 sender `webContents`, `senderFrame`, 최상위 프레임과 허용된 앱 URL을 함께 검사한다. TypeScript 타입만 믿지 않고 Zod로 입력을 검증하며 알 수 없는 필드와 명령을 거부한다. 조절창은 정확한 팝업 URL에 대해 허용한 창 상태 API만 호출한다. 신뢰되지 않는 문서에는 상태 push도 보내지 않는다. 게임 명령·공개 상태·홀 카드 은닉 계약은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#2-게임-명령과-공개-상태)를 따른다.
 
@@ -267,7 +270,7 @@ Electron Forge + Vite로 Main·Preload·Renderer를 각각 빌드한다. macOS�
 
 ## 9. 여러 게임과 공용 잔액의 신규 계약
 
-**상태:** N02의 구현 목표다. 이 절의 타입·API·파일은 아직 구현되지 않았다. 사용자 동작은 [메인 제품 설계](product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계)가 기준이다.
+**상태:** N02에서 공용 기반과 블랙잭 연결을 구현했다. 바카라 상태는 null만 허용하며 N03에서 확장한다. 사용자 동작은 [메인 제품 설계](product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계)가 기준이다.
 
 ### 9.1 소유권과 상태
 
@@ -303,13 +306,13 @@ interface AppSessionV2 {
 
 ### 9.2 명령과 공개 상태
 
-Preload 목표 API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 게임 행동은 `gameId`를 판별자로 갖는 별도 스키마를 사용한다. 예: `selectGame`, `goToMenu`, `resetAll`, `retrySave`, 게임별 `setBet`·`deal`·행동. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. 기존 `window.blackjack` 호출은 N02에서 Renderer·테스트와 함께 옮기고 두 개의 독립 작성자를 유지하지 않는다.
+Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 앱 행동은 `selectGame {gameId}`, `goToMenu`, `resetAll`, `retrySave`와 `blackjack {action}`의 strict 분기다. `blackjack` 분기 안에는 게임 행동만 허용하고 게임별 `resetSession`·`retrySave`는 거부한다. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. Renderer·E2E는 `window.molsino`를 사용한다. 과거 GameStore의 보조 테스트는 남지만 런타임에는 AppStore만 연결한다.
 
 모든 변경 명령은 `sessionId`, `commandId`, `expectedRevision`을 검증한다. 게임 명령은 현재 화면과 `gameId`, 허용 행동을 함께 검사한다. 등록되지 않은 게임과 준비 중 게임 선택은 거부한다. 메뉴·딜·초기화·자동 진행은 같은 busy/직렬 경로를 통과하며, 늦게 도착한 이전 게임의 명령은 현재 게임에 적용하지 않는다.
 
 중복 명령은 재실행하지 않는다. 새 시작 이전 sessionId의 명령은 거부한다. 다만 직전 확정된 resetAll의 동일 commandId·요청 sessionId 재전송은 저장된 처리 기록으로 먼저 식별해 이미 완료됐음을 반환하고 다시 초기화하지 않는다. 동일 명령의 캐시 응답과 최신 snapshot을 구분하며 낮은 revision 응답이 화면을 되돌리지 않게 한다. 정상 종료 대기는 앱 작성자 전체의 저장을 대상으로 한다.
 
-공개 snapshot은 공용 잔액·화면·현재 게임의 공개 상태·허용 동작·저장/복구 상태를 제공한다. 창 revision은 계속 게임과 독립이다. 저장 실패처럼 확정 revision을 올리지 않는 상태도 전달할 수 있도록 공개 이벤트에는 별도 단조 증가 `viewSequence`를 둔다. Renderer는 구독을 먼저 설치하고 초기 snapshot을 요청하며 늦은 이벤트를 버린다. `viewSequence`는 구독 연결 수명 안에서 비교하고 새 연결에서는 기준을 초기화한다. 성공한 공용 저장만 durable revision을 증가시킨다.
+공개 `AppView`는 공용 잔액·화면·진행 판·이동 가능 여부·저장/복구 상태와 `blackjack: GameViewState | null`을 제공한다. 메뉴에서 blackjack은 null이며 미공개 카드·슈를 포함하지 않는다. 창 revision은 계속 게임과 독립이다. 저장 실패처럼 확정 revision을 올리지 않는 상태도 전달할 수 있도록 공개 이벤트에는 별도 단조 증가 `viewSequence`를 둔다. Renderer는 구독을 먼저 설치하고 초기 snapshot을 요청하며 늦은 이벤트를 버린다. `viewSequence`는 구독 연결 수명 안에서 비교하고 새 연결에서는 기준을 초기화한다. 성공한 공용 저장만 durable revision을 증가시킨다.
 
 기존 IPC 최상위 문서·sender·URL 검사, strict 스키마, 조절창 권한 제한은 새 API에도 적용한다. 미공개 카드·남은 슈·내부 원장은 공개하지 않는다.
 
@@ -343,4 +346,16 @@ Preload 목표 API는 `window.molsino`의 앱 명령·snapshot·상태 구독과
 
 ### 9.6 구현 경계
 
-새 앱 작성자·저장 검증·게임 어댑터는 책임별로 분리하되 실제 파일 이름은 구현 때 확정한다. 블랙잭 전체 소스 이동이나 범용 게임 플러그인 프레임워크를 선행 조건으로 삼지 않는다. 바카라 코어는 블랙잭 `SHOE_SIZE=312`·규칙 상수를 그대로 재사용하지 않는다. 게임별 신규 계약은 [바카라 기술 설계](../games/baccarat/technical-design.md), 검증은 [메인 E2E 설계](e2e-test-plan.md)를 따른다.
+새 앱 작성자·저장 검증·게임 어댑터의 파일 배치는 §3과 구현 현황을 따른다. 블랙잭 전체 소스 이동이나 범용 게임 플러그인 프레임워크를 선행 조건으로 삼지 않는다. 바카라 코어는 블랙잭 `SHOE_SIZE=312`·규칙 상수를 그대로 재사용하지 않는다. 게임별 신규 계약은 [바카라 기술 설계](../games/baccarat/technical-design.md), 검증은 [메인 E2E 설계](e2e-test-plan.md)를 따른다.
+
+### 9.7 N02 단계 검토와 구현 배치
+
+2026-09-18 사용자 범위 조정으로 메뉴·앱 기반과 블랙잭 분리를 N02, 바카라를 N03으로 분리했다.
+
+| 단계 | 구현 배치 | 확인할 실패 조건 |
+| --- | --- | --- |
+| 공용 상태·이전 | AppStore와 AppSessionRepository, blackjack-adapter | 구 파일 불변·센트/보험/스플릿 판 보존·새 파일 우선·중복 지급 방지 |
+| 메뉴·앱 API | sessionId/commandId/expectedRevision, 별도 viewSequence | 딜/이동 경합·이전 세션·준비 중 게임·판 진행/저장 중 이동 거부 |
+| 화면 분리 | 앱 셸과 BlackjackGame, 메뉴의 초기화 확인 | 입력 초안 취소·최소 크기·재실행 화면·블랙잭 회귀 |
+
+파일 접근이나 최초 저장·이관·시작 화면 정규화가 실패하면 원본을 유지하고 불러오기 재시도만 제공한다. 손상·미래 버전의 명시적 복구와 I/O 재시도를 구분한다. 내부 전이 오류는 후보가 없는 저장 오류로 표시하지 않는다. 미확정 후보가 남은 상태의 종료는 손실 범위를 확인한 뒤 진행한다.

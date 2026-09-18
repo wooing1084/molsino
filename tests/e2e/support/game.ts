@@ -1,28 +1,18 @@
-// 현재 Blackjack 게임의 window.blackjack 호출을 감싸는 얇은 E2E 래퍼.
 import type { Page } from 'playwright';
-import type { CommandResult, GameViewState, UserAction } from '../window-api';
+import type { BlackjackAction } from '../../../src/shared/app-contracts';
+import { blackjackSnapshot } from './app-game';
 
-let commandSeq = 0;
-function nextCommandId(): string {
-  commandSeq += 1;
-  return `e2e-${Date.now()}-${commandSeq}`;
+export async function getSnapshot(page: Page) { return page.evaluate(blackjackSnapshot); }
+export async function dispatch(page: Page, action: BlackjackAction, expectedRevision: number) {
+  return page.evaluate(async ({ action, expectedRevision }) => {
+    const snapshot = await window.molsino.getSnapshot();
+    return window.molsino.dispatch({ sessionId: snapshot.sessionId, commandId: crypto.randomUUID(), expectedRevision,
+      action: { type: 'blackjack', action } });
+  }, { action, expectedRevision });
 }
-
-export async function getSnapshot(page: Page): Promise<GameViewState> {
-  return page.evaluate(() => window.blackjack.getSnapshot());
-}
-
-export async function dispatch(page: Page, action: UserAction, expectedRevision: number): Promise<CommandResult> {
-  const commandId = nextCommandId();
-  return page.evaluate(
-    (command) => window.blackjack.dispatch(command),
-    { commandId, expectedRevision, action },
-  );
-}
-
-// 실패 시 원인을 바로 드러내는 편의 함수. 커맨드가 거부되면 던진다.
-export async function dispatchExpectOk(page: Page, action: UserAction, expectedRevision: number): Promise<GameViewState> {
+export async function dispatchExpectOk(page: Page, action: BlackjackAction, expectedRevision: number) {
   const result = await dispatch(page, action, expectedRevision);
-  if (!result.ok) throw new Error(`dispatch(${action.type}) rejected: ${result.error}${result.message ? ` — ${result.message}` : ''}`);
-  return result.state;
+  if (!result.ok) throw new Error(`dispatch(${action.type}) rejected: ${result.error} — ${result.message}`);
+  if (!result.state.blackjack) throw new Error('No selected blackjack game');
+  return result.state.blackjack;
 }
