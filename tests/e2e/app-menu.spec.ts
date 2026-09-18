@@ -22,8 +22,7 @@ async function command(action: AppAction) {
 test('APP-04 메뉴에서 블랙잭을 플레이하고 슈·결과·공용 잔액을 유지하며 돌아온다', async () => {
   launched = await launchApp({ startAtMenu: true, shoeFixture: fixturePath('player-blackjack') });
   const p = launched.page;
-  await expect(p.getByRole('button', { name: '바카라 준비 중' })).toBeDisabled();
-  expect(await command({ type: 'selectGame', gameId: 'baccarat' })).toMatchObject({ ok: false });
+  await expect(p.getByRole('button', { name: '바카라', exact: true })).toBeEnabled();
   await p.getByRole('button', { name: '블랙잭', exact: true }).click();
   await p.getByRole('button', { name: '딜', exact: true }).click();
   await expect(p.locator('.balance strong')).toHaveText('$101.50');
@@ -120,7 +119,7 @@ test('APP-11 금액 편집 중 메뉴 이동은 초안을 취소하고 220×150�
   await launched.page.getByRole('textbox', { name: '베팅 금액' }).fill('9.99');
   await launched.page.getByRole('button', { name: '메뉴', exact: true }).click();
   await expect.poll(() => launched.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isFocusable())).toBe(false);
-  for (const name of ['블랙잭', '바카라 준비 중', '새 시작']) {
+  for (const name of ['블랙잭', '바카라', '새 시작']) {
     const b = await launched.page.getByRole('button', { name, exact: true }).boundingBox();
     expect(b).not.toBeNull(); expect(b!.height).toBeGreaterThanOrEqual(24); expect(b!.y + b!.height).toBeLessThanOrEqual(150);
   }

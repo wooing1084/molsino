@@ -11,10 +11,10 @@ function harness(save = vi.fn(async () => {})) {
   return { store, save, command };
 }
 describe('AppStore single wallet and writer', () => {
-  it('serializes navigation, refuses game commands on menu, and rejects unavailable games', async () => {
+  it('serializes navigation, refuses game commands on menu, and rejects commands for another game', async () => {
     const { store, command } = harness();
     expect(await store.dispatch(command({ type: 'blackjack', action: { type: 'deal' } }))).toMatchObject({ ok: false });
-    expect(await store.dispatch(command({ type: 'selectGame', gameId: 'baccarat' }))).toMatchObject({ ok: false });
+    expect(await store.dispatch(command({ type: 'baccarat', action: { type: 'deal' } }))).toMatchObject({ ok: false });
     const first = command({ type: 'selectGame', gameId: 'blackjack' });
     const stale = command({ type: 'goToMenu' });
     const results = await Promise.all([store.dispatch(first), store.dispatch(stale)]);

@@ -217,7 +217,7 @@ OS suspend 중에는 실행 자체가 멈출 수 있지만 앱이 별도의 수�
 | `overlay:set-opacity` | Renderer → Main | 정수 20–100, 5% 단위 검증 |
 | `overlay:opacity-popover` | Renderer → Main | 허용된 창·URL에서 anchor와 호버 수명 검증 |
 | `overlay:resize` | Renderer → Main | start/update/end/cancel, UUID token과 좌표·크기 제한 |
-| `overlay:amount-edit-focus` | Renderer → Main | 현재 블랙잭 베팅액 편집에만 사용하며 창·게임 상태 모두 검사 |
+| `overlay:amount-edit-focus` | Renderer → Main | 현재 게임의 베팅액 편집에 사용하며 창·게임 상태 모두 검사 |
 
 Preload는 `window.molsino`에 앱 명령·snapshot·구독과 `OverlayAPI`를 노출한다. `window.blackjack`은 노출하지 않는다. `contextBridge`는 기능별 메서드만 제공하고 raw `ipcRenderer`나 임의 channel invoke를 노출하지 않는다. 구독은 Electron event 객체를 제거한 payload를 전달하고 해제 함수를 반환한다. Renderer는 창 상태 구독을 먼저 설치한 뒤 snapshot을 요청하며, 늦게 도착한 낮은 revision의 snapshot이나 push를 버린다. 이 창 revision은 게임 revision과 독립적이다. Preload는 sandbox 호환 단일 번들이다. 구 초안의 `overlay:mode`, `utility:open`, `ui:ready`는 현재 채널이 아니며 신규 구현 목록에서 제외했다. [Electron Context Isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation)
 
@@ -270,7 +270,7 @@ Electron Forge + Vite로 Main·Preload·Renderer를 각각 빌드한다. macOS�
 
 ## 9. 여러 게임과 공용 잔액의 신규 계약
 
-**상태:** N02에서 공용 기반과 블랙잭 연결을 구현했다. 바카라 상태는 null만 허용하며 N03에서 확장한다. 사용자 동작은 [메인 제품 설계](product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계)가 기준이다.
+**상태:** N02에서 공용 기반과 블랙잭 연결을 구현했다. N03에서 바카라 상태·자동 진행·검증과 화면을 연결했다. 사용자 동작은 [메인 제품 설계](product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계)가 기준이다.
 
 ### 9.1 소유권과 상태
 
@@ -306,13 +306,13 @@ interface AppSessionV2 {
 
 ### 9.2 명령과 공개 상태
 
-Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 앱 행동은 `selectGame {gameId}`, `goToMenu`, `resetAll`, `retrySave`와 `blackjack {action}`의 strict 분기다. `blackjack` 분기 안에는 게임 행동만 허용하고 게임별 `resetSession`·`retrySave`는 거부한다. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. Renderer·E2E는 `window.molsino`를 사용한다. 과거 GameStore의 보조 테스트는 남지만 런타임에는 AppStore만 연결한다.
+Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 앱 행동은 `selectGame {gameId}`, `goToMenu`, `resetAll`, `retrySave`와 `blackjack {action}`·`baccarat {action}`의 strict 분기다. `blackjack` 분기 안에는 게임 행동만 허용하고 게임별 `resetSession`·`retrySave`는 거부한다. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. Renderer·E2E는 `window.molsino`를 사용한다. 과거 GameStore의 보조 테스트는 남지만 런타임에는 AppStore만 연결한다.
 
-모든 변경 명령은 `sessionId`, `commandId`, `expectedRevision`을 검증한다. 게임 명령은 현재 화면과 `gameId`, 허용 행동을 함께 검사한다. 등록되지 않은 게임과 준비 중 게임 선택은 거부한다. 메뉴·딜·초기화·자동 진행은 같은 busy/직렬 경로를 통과하며, 늦게 도착한 이전 게임의 명령은 현재 게임에 적용하지 않는다.
+모든 변경 명령은 `sessionId`, `commandId`, `expectedRevision`을 검증한다. 게임 명령은 현재 화면과 `gameId`, 허용 행동을 함께 검사한다. 등록되지 않은 게임 선택은 거부한다. 메뉴·딜·초기화·자동 진행은 같은 busy/직렬 경로를 통과하며, 늦게 도착한 이전 게임의 명령은 현재 게임에 적용하지 않는다.
 
 중복 명령은 재실행하지 않는다. 새 시작 이전 sessionId의 명령은 거부한다. 다만 직전 확정된 resetAll의 동일 commandId·요청 sessionId 재전송은 저장된 처리 기록으로 먼저 식별해 이미 완료됐음을 반환하고 다시 초기화하지 않는다. 동일 명령의 캐시 응답과 최신 snapshot을 구분하며 낮은 revision 응답이 화면을 되돌리지 않게 한다. 정상 종료 대기는 앱 작성자 전체의 저장을 대상으로 한다.
 
-공개 `AppView`는 공용 잔액·화면·진행 판·이동 가능 여부·저장/복구 상태와 `blackjack: GameViewState | null`을 제공한다. 메뉴에서 blackjack은 null이며 미공개 카드·슈를 포함하지 않는다. 창 revision은 계속 게임과 독립이다. 저장 실패처럼 확정 revision을 올리지 않는 상태도 전달할 수 있도록 공개 이벤트에는 별도 단조 증가 `viewSequence`를 둔다. Renderer는 구독을 먼저 설치하고 초기 snapshot을 요청하며 늦은 이벤트를 버린다. `viewSequence`는 구독 연결 수명 안에서 비교하고 새 연결에서는 기준을 초기화한다. 성공한 공용 저장만 durable revision을 증가시킨다.
+공개 `AppView`는 공용 잔액·화면·진행 판·이동 가능 여부·저장/복구 상태와 게임별 `blackjack`·`baccarat` 공개 상태를 제공한다. 현재 화면 외의 게임 상태는 null이며 미공개 카드·슈를 포함하지 않는다. 창 revision은 계속 게임과 독립이다. 저장 실패처럼 확정 revision을 올리지 않는 상태도 전달할 수 있도록 공개 이벤트에는 별도 단조 증가 `viewSequence`를 둔다. Renderer는 구독을 먼저 설치하고 초기 snapshot을 요청하며 늦은 이벤트를 버린다. `viewSequence`는 구독 연결 수명 안에서 비교하고 새 연결에서는 기준을 초기화한다. 성공한 공용 저장만 durable revision을 증가시킨다.
 
 기존 IPC 최상위 문서·sender·URL 검사, strict 스키마, 조절창 권한 제한은 새 API에도 적용한다. 미공개 카드·남은 슈·내부 원장은 공개하지 않는다.
 

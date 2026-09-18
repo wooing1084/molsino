@@ -13,6 +13,7 @@ export interface LaunchedApp {
 export interface LaunchOptions {
   userDataDir?: string;
   shoeFixture?: string;
+  baccaratFixture?: string;
   snapshotDelayMs?: number;
   startAtMenu?: boolean;
   autoDelayMs?: number;
@@ -32,6 +33,8 @@ export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedAp
     MOLSINO_TEST_USER_DATA: userDataDir,
     MOLSINO_TEST_HIDE_DOCK: '1',
   };
+  if (options.baccaratFixture) env.BACCARAT_TEST_SHOE_FIXTURE = options.baccaratFixture;
+  else delete env.BACCARAT_TEST_SHOE_FIXTURE;
   if (options.shoeFixture) env.BLACKJACK_TEST_SHOE_FIXTURE = options.shoeFixture;
   if (options.snapshotDelayMs !== undefined) env.MOLSINO_TEST_SNAPSHOT_DELAY_MS = String(options.snapshotDelayMs);
   else delete env.MOLSINO_TEST_SNAPSHOT_DELAY_MS;

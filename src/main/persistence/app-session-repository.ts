@@ -1,3 +1,4 @@
+import { baccaratStateSchema, validateBaccarat } from '../../core/baccarat/core';
 import { randomUUID } from 'node:crypto';
 import { AtomicSessionRepository, type RepositoryLoad } from './atomic-session-repository';
 import { z } from 'zod';
@@ -9,7 +10,7 @@ const appSchema = z.object({
   schemaVersion: z.literal(2), sessionId: z.uuid(), revision: integer,
   screen: z.enum(['menu', 'blackjack', 'baccarat']), wallet: z.object({ balanceCents: integer }).strict(),
   activeRoundGameId: gameId.nullable(),
-  games: z.object({ blackjack: stateSchema.omit({ balanceCents: true }).nullable(), baccarat: z.null() }).strict(),
+  games: z.object({ blackjack: stateSchema.omit({ balanceCents: true }).nullable(), baccarat: baccaratStateSchema.nullable() }).strict(),
   lastAppliedCommand: z.object({ sessionId: z.uuid(), commandId: z.uuid(), revision: integer }).strict().nullable(),
 }).strict();
 export type AppSession = z.infer<typeof appSchema>;
@@ -37,6 +38,13 @@ export function parseAppSession(value: unknown): AppSession {
     const state = { ...s.games.blackjack, balanceCents: s.wallet.balanceCents };
     validateState(state);
     if (!['betting', 'result'].includes(getPhase(state))) active = 'blackjack';
+  }
+  if (s.games.baccarat) {
+    validateBaccarat(s.games.baccarat, s.sessionId, s.wallet.balanceCents);
+    if (s.games.baccarat.phase === 'dealing') {
+      if (active) throw new Error('Two active games');
+      active = 'baccarat';
+    }
   }
   if (s.activeRoundGameId !== active || active && s.screen !== active) throw new Error('Invalid active game lock');
   if (s.screen !== 'menu' && !s.games[s.screen]) throw new Error('Missing selected game');

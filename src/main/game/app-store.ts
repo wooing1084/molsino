@@ -1,3 +1,6 @@
+import { randomInt, randomUUID } from 'node:crypto';
+import { createBaccarat, createShoe, transitionBaccarat, type BaccaratEnvironment } from '../../core/baccarat/core';
+import { toBaccaratView } from './baccarat-adapter';
 import { createSession } from '../../core/engine';
 import type { EngineEnvironment } from '../../core/game-state';
 import type { AppAction, AppCommand, AppResult, AppView } from '../../shared/app-contracts';
@@ -16,14 +19,14 @@ export class AppStore {
   private cache = new Set<string>();
   public constructor(private state: AppSession, private blackjack: EngineEnvironment,
     private platform: string, private repository: Pick<AppSessionRepository, 'save'>,
-    private autoDelay = 0) { parseAppSession(state); }
+    private autoDelay = 0, private baccarat: BaccaratEnvironment = { createShoe: () => createShoe(randomInt), nextId: randomUUID }) { parseAppSession(state); }
   public getSnapshot(): AppView {
     const s = this.state;
     const bj = s.screen === 'blackjack' && s.games.blackjack;
     const blackjack = bj ? toGameViewState({ ...bj, balanceCents: s.wallet.balanceCents }, s.revision, this.platform) : null;
     if (blackjack) blackjack.legalActions = blackjack.legalActions.filter(a => a !== 'resetSession');
     return { revision: s.revision, platform: this.platform, balanceCents: s.wallet.balanceCents,
-      blackjack,
+      blackjack, baccarat: s.screen === 'baccarat' && s.games.baccarat ? toBaccaratView(s.games.baccarat, s.wallet.balanceCents) : null,
       sessionId: s.sessionId, viewSequence: this.sequence, screen: s.screen,
       activeRoundGameId: s.activeRoundGameId, canNavigate: !s.activeRoundGameId && !this.busy && !this.pending && !this.internalError,
       saveError: this.failed, ...(this.internalError ? { internalError: this.internalError } : {}),
@@ -66,7 +69,6 @@ export class AppStore {
         return newAppSession(s.revision);
       }
       if (action.type === 'goToMenu') { s.screen = 'menu'; return s; }
-      if (action.gameId !== 'blackjack') throw new Error('준비 중인 게임입니다.');
       s.screen = action.gameId;
       if (action.gameId === 'blackjack') {
         if (!s.games.blackjack) {
@@ -76,6 +78,10 @@ export class AppStore {
         const b = s.games.blackjack!;
         if (!b.round) b.pendingBetCents = Math.max(100, Math.min(b.pendingBetCents, s.wallet.balanceCents));
       }
+      if (action.gameId === 'baccarat') {
+        s.games.baccarat ??= createBaccarat(this.baccarat.createShoe());
+        if (s.games.baccarat.phase === 'betting') s.games.baccarat.pendingBet.amountCents = Math.max(100, Math.min(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents));
+      }
       return s;
     }
     if (action.type === 'blackjack') {
@@ -84,6 +90,12 @@ export class AppStore {
       s.wallet.balanceCents = next.balance;
       s.games.blackjack = next.game as AppSession['games']['blackjack'];
       s.activeRoundGameId = next.active ? 'blackjack' : null;
+    }
+    if (action.type === 'baccarat') {
+      if (s.screen !== 'baccarat' || !s.games.baccarat) throw new Error('현재 게임의 명령이 아닙니다.');
+      const next = transitionBaccarat(s.games.baccarat, s.wallet.balanceCents, action.action, this.baccarat, s.sessionId);
+      s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
+      s.activeRoundGameId = next.active ? 'baccarat' : null;
     }
     return s;
   }
@@ -99,16 +111,17 @@ export class AppStore {
     } catch { this.failed = true; }
     finally { this.busy = false; this.publish(); for (const done of this.waiters) done(); this.waiters.clear(); }
     if (this.failed) return this.fail('SAVE_FAILED', '저장에 실패했습니다. 저장 재시도가 필요합니다.');
-    this.resumeDealer();
+    this.resumeAutomatic();
     return { ok: true, state: this.getSnapshot() };
   }
-  public resumeDealer(): void {
+  public resumeAutomatic(): void {
     if (this.timer || this.pending || this.internalError || this.busy) return;
-    if (this.state.games.blackjack?.round?.phase !== 'dealerTurn') return;
+    if (!(this.state.activeRoundGameId === 'blackjack' && this.state.games.blackjack?.round?.phase === 'dealerTurn')
+      && !(this.state.activeRoundGameId === 'baccarat' && this.state.games.baccarat?.phase === 'dealing')) return;
     this.timer = setTimeout(() => { this.timer = undefined; void this.advance(); }, this.autoDelay);
   }
   private async advance(): Promise<void> {
-    if (this.busy) { await this.whenIdle(); this.resumeDealer(); return; }
+    if (this.busy) { await this.whenIdle(); this.resumeAutomatic(); return; }
     if (this.pending || this.internalError) return;
     try {
       const s = structuredClone(this.state);
@@ -117,6 +130,10 @@ export class AppStore {
         s.wallet.balanceCents = next.balance;
         s.games.blackjack = next.game as AppSession['games']['blackjack'];
         s.activeRoundGameId = next.active ? 'blackjack' : null;
+      } else if (s.activeRoundGameId === 'baccarat' && s.games.baccarat?.phase === 'dealing') {
+        const next = transitionBaccarat(s.games.baccarat, s.wallet.balanceCents, { type: 'advanceBaccarat' }, this.baccarat, s.sessionId);
+        s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
+        s.activeRoundGameId = next.active ? 'baccarat' : null;
       } else return;
       s.revision++;
       this.pending = parseAppSession(s);

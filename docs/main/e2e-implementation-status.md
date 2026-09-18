@@ -27,13 +27,14 @@
 | [`overlay-state.spec.ts`](../../tests/e2e/overlay-state.spec.ts) | 접힘·펼침과 창 크기 복원, 불투명도 조절창, 전역 숨김 명령 경계. 같은 파일의 게임 진행 상태 보존 검증은 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)을 따른다. |
 | [`ipc-state.spec.ts`](../../tests/e2e/ipc-state.spec.ts), [`ipc-subscription.spec.ts`](../../tests/e2e/ipc-subscription.spec.ts) | snapshot과 push의 순서·구독 수명, 비신뢰 문서와 비정상 IPC 거부. 같은 파일의 카드 은닉 검증은 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)을 따른다. |
 | [`app-menu.spec.ts`](../../tests/e2e/app-menu.spec.ts) | 메뉴 왕복·초기화·이전·저장 실패/재시도·시작 I/O 오류·백업 우선순위·명령 경합·최소 크기 |
+| [`baccarat.spec.ts`](../../tests/e2e/baccarat.spec.ts) | APP-08 두 게임 왕복·공용 잔액·게임별 슈, 바카라 UI·복구는 [바카라 E2E 현황](../games/baccarat/e2e-implementation-status.md) 참조 |
 | [`dock-lifecycle.spec.ts`](../../tests/e2e/dock-lifecycle.spec.ts) | macOS E2E 앱 실행 중 테스트 전용 Dock 숨김 |
 
 위 파일의 존재와 검사 범위를 현재 스위트 현황으로 기록한다. 각 세션의 명령, 통과·실패·스킵 수와 실행 환경은 [세션 보고서](../session-reports/session-list.md)에서 확인한다.
 
 ## 남은 검증 범위
 
-- 2026-09-18에 기존 미진행 세션·TOBE 계획을 폐기했다. 현재 테스트의 미검증 범위는 그대로이며, 메뉴·공용 저장의 단일 게임 APP 시나리오는 N02에서 구현했다. APP-08 두 게임 왕복은 N03 범위다. 필요한 회귀는 [새 로드맵](../work-session-roadmap.md)과 변경 범위로 선정한다.
+- 2026-09-18에 기존 미진행 세션·TOBE 계획을 폐기했다. 현재 테스트의 미검증 범위는 그대로이며, 메뉴·공용 저장의 단일 게임 APP 시나리오는 N02에서 구현했다. APP-08 두 게임 왕복은 N03의 `baccarat.spec.ts`에서 검증한다. 필요한 회귀는 [새 로드맵](../work-session-roadmap.md)과 변경 범위로 선정한다.
 - 자동화 결과만으로 실제 투명 합성, 다른 앱으로의 포커스 복귀, 물리 Alt+백틱·트레이 입력, Windows GUI 동작이나 물리 다중 모니터 동작을 통과로 판정하지 않는다. OS별 검증 결과는 실시한 세션 보고서에 환경과 함께 남긴다.
 - 블랙잭 규칙·베팅·세션 복원의 남은 시나리오는 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)을 따른다.
 
