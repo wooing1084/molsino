@@ -39,7 +39,7 @@
 | 저장 복원 E2E | 정상·강제 종료와 손상 파일의 대표 경로는 자동화됐지만 E2E-17의 모든 저장 체크포인트를 확인하지 않았다. 재셔플 경계와 비공개 게임 상태 은닉의 현재 범위는 [블랙잭 E2E 현황](e2e-implementation-status.md)을 따른다. 공통 신뢰 경계 E2E-21은 [메인 E2E 설계](../../main/e2e-test-plan.md)를 따른다. |
 | 게임 입력의 OS 상호작용 | 베팅 금액 편집은 코드에 있다. 실제 외부 앱 포커스·접근성의 미확인 범위는 남아 있다. S12 일정은 폐기했으며 관련 변경이나 재현된 문제에 맞춰 검증한다. [메인 기능 구현 현황](../../main/implementation-status.md) |
 
-공용 잔액·v2 저장·메뉴 초기화는 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다. 구 GameStore는 런타임에서 연결하지 않고 v1 SessionRepository는 이전 검증에 사용한다.
+공용 잔액·v3 저장·메뉴 초기화는 [메인 기술 설계 §9](../../main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다. 구 GameStore는 런타임에서 연결하지 않고 v1 SessionRepository는 이전 검증에 사용한다.
 
 ## 실제 파일 지도
 
@@ -93,3 +93,5 @@ tests/
 fixtures/blackjack/                 결정론적 카드·저장 E2E 픽스처
 scripts/smoke.cjs                   패키지 게임 경로 확인
 ```
+
+N04는 공통 테이블 레벨·한도와 Renderer 순차 공개를 연결한다. 현재 정책은 [메인 제품 설계](../../main/product-design.md#6-공통-테이블-레벨과-카드-공개), 실제 검증 결과와 남은 범위는 [N04 보고서](../../session-reports/N04-gameplay-improvements.md)를 따른다.

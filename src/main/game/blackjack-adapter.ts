@@ -20,6 +20,12 @@ export function toGameViewState(state: SessionState, revision: number, platform:
   const dealerScore = dealerCards.length > 0 ? scoreHand(dealerCards) : undefined;
 
   return {
+    roundId: round?.roundId ?? null,
+    cardRevealOrder: round ? [
+      ...state.shoe.cards.filter(card => round.playerHands.some(h => h.cards.some(c => c.cardId === card.cardId))
+        || card.cardId === dealerCards[0]?.cardId).map(c => c.cardId),
+      ...dealerCards.slice(1).map(c => c.cardId),
+    ] : [],
     revision,
     platform,
     phase: getPhase(state),

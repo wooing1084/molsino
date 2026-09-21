@@ -29,7 +29,7 @@ macOS와 Windows에서 Electron, TypeScript, React UI, Forge·Vite 빌드를 공
 | 계약 검증 | Zod | 창 명령과 게임 명령의 런타임 검증 |
 | 패키징·테스트 | Electron Forge + Vite, Vitest, Playwright Electron | OS별 산출물과 자동 검증 |
 
-`src/main/main.ts`는 창·트레이·IPC와 앱 세션 시작을 연결한다. `AppStore`가 공용 잔액·화면·게임 상태를 소유하며 `blackjack-adapter.ts`가 기존 순수 블랙잭 코어를 호출한다. `window.molsino`는 앱 snapshot·명령·구독과 창 API를 노출한다. 저장은 `AppSessionRepository`의 v2 원자 스냅샷으로 통합하고, v1 저장소는 기존 파일 이전 검증에만 사용한다. 바카라 코어와 공개 상태 어댑터도 같은 AppStore에 연결한다.
+`src/main/main.ts`는 창·트레이·IPC와 앱 세션 시작을 연결한다. `AppStore`가 공용 잔액·화면·게임 상태를 소유하며 `blackjack-adapter.ts`가 기존 순수 블랙잭 코어를 호출한다. `window.molsino`는 앱 snapshot·명령·구독과 창 API를 노출한다. 저장은 `AppSessionRepository`의 v3 원자 스냅샷으로 통합하고, v1 저장소는 기존 파일 이전 검증에만 사용한다. 바카라 코어와 공개 상태 어댑터도 같은 AppStore에 연결한다.
 
 초기 검증 목표는 macOS 14 이상 arm64와 Windows 11 x64다. 지원 범위는 채택한 Electron 버전과 실제 장비 검증을 함께 확인해 표기한다. 다른 CPU·OS 조합은 별도 검증이 필요하다. Electron은 여러 프로세스를 사용하지만 현재 실행 인스턴스와 공용 앱 세션 상태의 소유자는 각각 하나다.
 
@@ -76,7 +76,7 @@ flowchart LR
     I --> W[창·트레이·플랫폼]
     I --> A[AppStore: 공용 잔액·화면·명령 직렬화]
     A --> C[blackjack-adapter → 순수 BlackjackCore]
-    A --> S[AppSessionRepository: v2 원자 저장]
+    A --> S[AppSessionRepository: v3 원자 저장]
     A -->|AppView와 현재 blackjack 공개 상태| P
 ```
 
@@ -85,7 +85,7 @@ flowchart LR
 | `src/main/main.ts` | 앱 수명, 창·트레이, IPC 등록, 앱 세션 로드·복구 |
 | `src/main/game/app-store.ts` | 단일 작성자, 공용 잔액, 화면, 중복 명령, 저장 후보·자동 진행 |
 | `src/main/game/blackjack-adapter.ts` | 블랙잭 코어에 잔액 주입·결과 추출, 카드 공개 상태 |
-| `src/main/persistence/app-session-repository.ts` | v2 스키마·원자 저장·백업·v1 이전 |
+| `src/main/persistence/app-session-repository.ts` | v3 스키마·원자 저장·백업·v1/v2 이전 |
 | `src/preload/preload.ts` | 제한된 앱·창 API와 구독 |
 | `src/renderer/main.tsx` | 오버레이, 메뉴, 공용 잔액, 초기화 확인과 복구 화면 |
 | `src/renderer/games/blackjack.tsx` | 블랙잭 카드·베팅 입력·행동·게임 결과 |
@@ -138,7 +138,7 @@ await overlay.loadURL('app://molsino/index.html');
 
 Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInactive()`를 조합한다. 두 게임의 베팅 입력만 명시적 요청 동안 임시 포커스를 허용한다. 상세 입력 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)를 따른다. [Electron 창 API](https://www.electronjs.org/docs/latest/api/base-window)
 
-루트 HTML·body·React root 배경도 transparent로 둔다. CSS opacity는 정보 레이어에만 적용하고 창 전체 알파는 1로 유지한다. 펼친 창의 우측 상단 색상 전환 버튼에 호버하면 작은 별도 조절창이 나타나며, 그 슬라이더는 전경 불투명도를 20–100%(5% 단위, 기본 65%)로 조절한다. 20%는 완전 비표시를 막는 하한이며 배경 알파를 높이는 설정이 아니다. 조절창은 버튼의 좌우 여유와 현재 display의 workArea를 기준으로 위치를 선택하고 최종 bounds를 화면 안에 보정한다. 버튼↔조절창 사이 이동에는 짧은 닫힘 지연을 둔다. 슬라이더 조작 중에는 선택값을 즉시 미리 보고, 게임 창 일반 호버 시 100%·이탈 0.8초 후 선택값으로 돌아간다. 흐림 효과나 그림자로 배경을 채우지 않는다. 화면 확대율은 1로 고정하고 OS DPI를 별도로 처리한다.
+루트 HTML·body·React root 배경도 transparent로 둔다. CSS opacity는 정보 레이어에만 적용하고 창 전체 알파는 1로 유지한다. 펼친 창의 우측 상단 색상 전환 버튼에 호버하면 작은 별도 조절창이 나타나며, 그 슬라이더는 전경 불투명도를 20–100%(5% 단위, 기본 65%)로 조절한다. 20%는 완전 비표시를 막는 하한이며 배경 알파를 높이는 설정이 아니다. 조절창은 버튼의 좌우 여유와 현재 display의 workArea를 기준으로 위치를 선택하고 최종 bounds를 화면 안에 보정한다. 버튼↔조절창 사이 이동에는 짧은 닫힘 지연을 둔다. 조절창 전체에는 설정 알파를 한 번 적용하고, 열린 동안에는 양쪽 창에 선택값을 즉시 반영한다. 조절창이 닫힌 게임 창 일반 호버 시 100%·이탈 0.8초 후 선택값으로 돌아간다. 흐림 효과나 그림자로 배경을 채우지 않는다. 화면 확대율은 1로 고정하고 OS DPI를 별도로 처리한다.
 
 ### 4.3 플랫폼별 최소 분기
 
@@ -276,12 +276,13 @@ Electron Forge + Vite로 Main·Preload·Renderer를 각각 빌드한다. macOS�
 
 Main의 앱 단위 작성자가 공용 잔액, 게임별 상태, 화면 선택, 진행 중 판을 소유한다. 기존 블랙잭 GameStore 두 개를 만들어 각각 잔액을 저장하지 않는다. BlackjackCore와 BaccaratCore는 서로의 규칙·슈를 변경하지 않는다.
 
-새 저장 스냅샷의 개념 구조는 다음과 같다. 정확한 TypeScript·Zod 정의는 구현 시 `src/shared`와 저장 모듈에 함께 반영한다.
+새 저장 스냅샷의 개념 구조는 다음과 같다. 정확한 TypeScript·Zod 정의는 `src/shared/app-contracts.ts`, `src/shared/table-levels.ts`와 저장 모듈이 기준이다.
 
 ```ts
 type GameId = 'blackjack' | 'baccarat';
-interface AppSessionV2 {
-  schemaVersion: 2;
+interface AppSessionV3 {
+  schemaVersion: 3;
+  table: { selectedLevel: 1 | 2 | 3 | 4 | 5 | 6; bestBankrollCents: number };
   sessionId: string;                 // 전체 새 시작마다 새 UUID
   revision: number;                  // 앱 전체의 확정 상태 순서
   screen: 'menu' | GameId;
@@ -306,7 +307,7 @@ interface AppSessionV2 {
 
 ### 9.2 명령과 공개 상태
 
-Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 앱 행동은 `selectGame {gameId}`, `goToMenu`, `resetAll`, `retrySave`와 `blackjack {action}`·`baccarat {action}`의 strict 분기다. `blackjack` 분기 안에는 게임 행동만 허용하고 게임별 `resetSession`·`retrySave`는 거부한다. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. Renderer·E2E는 `window.molsino`를 사용한다. 과거 GameStore의 보조 테스트는 남지만 런타임에는 AppStore만 연결한다.
+Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 API다. 앱 행동은 `selectLevel {level}`, `selectGame {gameId}`, `goToMenu`, `resetAll`, `retrySave`와 `blackjack {action}`·`baccarat {action}`의 strict 분기다. `blackjack` 분기 안에는 게임 행동만 허용하고 게임별 `resetSession`·`retrySave`는 거부한다. Renderer에 임의 게임 모듈 이름·파일 경로·내부 진행 명령을 노출하지 않는다. Renderer·E2E는 `window.molsino`를 사용한다. 과거 GameStore의 보조 테스트는 남지만 런타임에는 AppStore만 연결한다.
 
 모든 변경 명령은 `sessionId`, `commandId`, `expectedRevision`을 검증한다. 게임 명령은 현재 화면과 `gameId`, 허용 행동을 함께 검사한다. 등록되지 않은 게임 선택은 거부한다. 메뉴·딜·초기화·자동 진행은 같은 busy/직렬 경로를 통과하며, 늦게 도착한 이전 게임의 명령은 현재 게임에 적용하지 않는다.
 
@@ -359,3 +360,11 @@ Preload API는 `window.molsino`의 앱 명령·snapshot·상태 구독과 창 AP
 | 화면 분리 | 앱 셸과 BlackjackGame, 메뉴의 초기화 확인 | 입력 초안 취소·최소 크기·재실행 화면·블랙잭 회귀 |
 
 파일 접근이나 최초 저장·이관·시작 화면 정규화가 실패하면 원본을 유지하고 불러오기 재시도만 제공한다. 손상·미래 버전의 명시적 복구와 I/O 재시도를 구분한다. 내부 전이 오류는 후보가 없는 저장 오류로 표시하지 않는다. 미확정 후보가 남은 상태의 종료는 손실 범위를 확인한 뒤 진행한다.
+
+### 9.8 공통 레벨·v3 이전·표시 타임라인
+
+`src/shared/table-levels.ts`가 여섯 레벨의 수치·타입·정규화·검증을 제공한다. AppStore는 메뉴·진행 잠금·현재 잔액으로 `selectLevel`을 검증하고 `setBet`와 `deal`의 기본 베팅 한도를 검사한다. `AppView.table`에 확정 선택·입장액·공통 한도·최고 잔액·최고 레벨을 제공한다. 정산으로 새 결과가 만들어질 때만 최고 잔액을 갱신한다. 게임 코어의 추가 베팅 규칙은 변경하지 않는다. 최소액을 낼 수 없으면 pending bet은 최소액 placeholder를 유지하되 딜을 거부한다.
+
+v3는 `table.selectedLevel`과 `table.bestBankrollCents`를 저장한다. 유효한 v2는 Lv.1·현재 지갑 잔액을 최고 기록의 시작값으로 추가하며 기존 sessionId·revision·카드·슈·판·원장·베팅·직전 명령을 보존한다. 진행 판의 큰 베팅에 새 상한을 소급 적용하지 않고 다음 베팅부터 정규화한다. primary 이전을 노출하기 전에 v3 저장과 재검증을 마치며 backup에는 검증된 동등 v3 상태를 남긴다. v2 backup도 검증/변환 후 명시적 복구 대상으로 제공한다. 미래 버전·손상·I/O 실패는 기존 복구 정책을 따른다. v1 원본 파일은 변경하지 않는다.
+
+게임 공개 상태의 `roundId`, 카드 ID, `cardRevealOrder`는 이미 공개 가능한 카드만 담는다. Renderer의 `presentation.ts`와 `use-presentation.ts`는 이 공개 정보로 독립 타임라인을 구성하며 엔진을 진행시키거나 정산 명령을 보내지 않는다. 빠른 연속 snapshot도 대기 카드 순서를 유지하고 동일 카드·스플릿 이동·상태 재송신은 재연출하지 않는다. 450/140/300ms 초기 시간과 결과 노출 규칙은 [제품 설계 §6](product-design.md#6-공통-테이블-레벨과-카드-공개)을 따른다. 저장 오류는 확정 공개 상태 위에 즉시 표시하고 숨김·reload·화면 변경 시 최신 공개 상태로 맞춘다. 실제 OS 합성·외부 앱 포커스 검증 범위는 세션 보고서와 구분한다.

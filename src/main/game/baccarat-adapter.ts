@@ -9,7 +9,9 @@ export function toBaccaratView(s: BaccaratState, balance: number): BaccaratView 
   }
   if (s.phase === 'result') legalActions.push('nextRound');
   const r = s.phase === 'result' ? s.lastResult : null;
-  return { phase: s.phase, pendingBet: { ...s.pendingBet }, player: hand(s.round?.player ?? []), banker: hand(s.round?.banker ?? []),
+  return { roundId: s.round?.roundId ?? null,
+    cardRevealOrder: s.shoe.cards.filter(c => s.round?.player.some(p => p.cardId === c.cardId) || s.round?.banker.some(b => b.cardId === c.cardId)).map(c => c.cardId),
+    phase: s.phase, pendingBet: { ...s.pendingBet }, player: hand(s.round?.player ?? []), banker: hand(s.round?.banker ?? []),
     lastResult: r ? { outcome: r.outcome, bet: { ...r.bet }, returnCents: r.returnCents, netCents: r.netCents } : null,
     recentResults: s.recentResults.map(({ roundId, outcome }) => ({ roundId, outcome })), legalActions };
 }

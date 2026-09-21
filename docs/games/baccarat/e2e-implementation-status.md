@@ -27,7 +27,7 @@
 | --- | --- |
 | BAC-01~03 | 대상 버튼·금액 입력·딜·결과 클릭. P 승패, B $1.01/$1.10 배당과 수수료 문구, T 적중/패배 및 P/B Tie 반환. 파일 잔액·공개 결과와 대조 |
 | BAC-04 | 내추럴과 양쪽 세 번째 카드 경로. 저장된 카드 순서·점수·결과 확인. 조건표 전체는 core 테스트 |
-| BAC-05~06 | 최소 금액·잔액 상한·센트 입력, Escape/blur 취소. 복수 대상·내부 행동 위조·진행 중 변경 거부, 동일 ID·같은 revision 동시 딜의 한 번 적용 |
+| BAC-05~06 | 선택 레벨 최소·최대와 잔액 제한·센트 입력, Escape/blur 취소. 복수 대상·내부 행동 위조·진행 중 변경 거부, 동일 ID·같은 revision 동시 딜의 한 번 적용 |
 | BAC-07 | initial/playerThird/bankerThird/settle/settled 실제 저장 후 SIGKILL. 재기동 때 같은 카드·roundId·진행 잠금에서 재개하고 Banker 승리 배당·기록 1회 반영 |
 | BAC-08 | 배분/정산 전 backup 파일 경로를 디렉터리로 만들어 실제 저장 실패. 마지막 파일 불변·이동 차단·UI 재시도·지급 1회·정상 재기동 보존. 결과 reload와 동일 명령 재전송도 검사 |
 | BAC-09 | 새 슈 버림·소비 인덱스, 인덱스 401 시작 판에서 기존 슈 유지, 다음 딜에만 슈 교체, 메뉴 왕복에서 슈 보존 |
@@ -46,3 +46,5 @@
 - 금액 입력에서 Electron 창의 focusable 해제까지 자동화한다. 실제 외부 앱의 키보드 포커스 복귀·클릭 전달·물리 Alt+백틱·트레이·OS 합성은 별도 관찰 영역이다.
 - PNG는 배치 확인용이다. 검정 글씨 결과 캡처에는 대비되는 배경을 테스트에서만 임시 적용한다. 이를 실제 데스크톱 투명 합성 검증으로 간주하지 않는다.
 - 기존 블랙잭·앱 공통 회귀의 위치는 [블랙잭 E2E 현황](../blackjack/e2e-implementation-status.md)과 [메인 E2E 현황](../../main/e2e-implementation-status.md)을 따른다.
+
+N04의 공통 레벨·한도·카드 공개 통합 사례는 [`gameplay-improvements.spec.ts`](../../../tests/e2e/gameplay-improvements.spec.ts)에 있다. 시나리오 목록은 [메인 E2E 설계](../../main/e2e-test-plan.md#4-n04-게임성-개선), 실행 결과와 미확인 범위는 [N04 보고서](../../session-reports/N04-gameplay-improvements.md)를 따른다.

@@ -37,3 +37,5 @@
 - E2E-18의 구 계획은 폐기했다. 실제 외부 앱 포커스와 OS 클릭 통과·트레이 입력의 현재 검증 범위는 [메인 기능 E2E 현황](../../main/e2e-implementation-status.md#남은-검증-범위)을 따른다.
 
 공용 잔액·메뉴 이관 이후 새 시작 기대값은 [메인 APP 시나리오](../../main/e2e-test-plan.md)를 따른다. N02에서 기존 테스트를 앱 API·v2 저장·메뉴 진입 경로로 전환했다. 보험·스플릿 진행 판의 v1 이전은 app-menu.spec.ts에서 검사한다.
+
+N04의 공통 레벨·한도·카드 공개 통합 사례는 [`gameplay-improvements.spec.ts`](../../../tests/e2e/gameplay-improvements.spec.ts)에 있다. 시나리오 목록은 [메인 E2E 설계](../../main/e2e-test-plan.md#4-n04-게임성-개선), 실행 결과와 미확인 범위는 [N04 보고서](../../session-reports/N04-gameplay-improvements.md)를 따른다.

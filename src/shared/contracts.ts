@@ -109,6 +109,9 @@ export interface ResultEntryView {
 }
 
 export interface GameViewState {
+  roundId: string | null;
+  /** Public cards only; stable within roundId, including across split moves. */
+  cardRevealOrder: string[];
   revision: number;
   platform: string;
   phase: 'betting' | 'insuranceDecision' | 'playerTurn' | 'dealerTurn' | 'result' | 'recovery';

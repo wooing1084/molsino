@@ -46,7 +46,7 @@ interface UserCommand {
 - 곱셈·덧셈의 중간 결과도 safe integer인지 확인하고 범위를 넘으면 명령을 거부한다. 무제한 누적 잔액 때문에 number 정밀도를 잃지 않게 한다.
 - JSON 호환성을 위해 초기 구현은 bigint를 쓰지 않는다.
 - S10.5부터 잔액이 100센트 이상일 때 기본 베팅은 정수 센트로 $1.00~현재 사용 가능 잔액이며 1센트 단위 직접 입력을 허용한다. 입력 문자열은 십진수로 파싱해 센트로 정확히 변환한다. 소수 셋째 자리·지수 표기·부호·빈 값·숫자가 아닌 값은 거부하고 입력 자체를 반올림하지 않는다. 기존 −/+ 증감 단위와 보험 $0.50 단위는 유지한다.
-- 현재 베팅액이 잔액을 넘으면 다음 판에 최대 센트 금액으로 낮춘다. 정산 후 잔액이 100센트 미만이면 게임 오버로 `nextRound`·`setBet`·`setBetStep`·`deal`을 거부하고 새 게임만 허용한다. 정확히 100센트면 `nextRound` 이후 $1.00 베팅과 딜을 허용한다. 진행 중인 라운드는 잔액이 100센트 미만이 되어도 정산한다. 저장된 베팅 전 상태의 잔액이 100센트 미만인 경우에도 같은 정책을 적용한다. 게임 오버는 잔액에서 파생한 UI 상태이며 앱 프로세스 종료나 별도 저장 phase가 아니다.
+- 현재 베팅액은 다음 판에 선택 레벨 한도와 잔액 범위로 정규화한다. 선택 레벨 최소액 미만에서는 AppStore가 새 딜을 거부하고 하위 레벨을 안내한다. 코어 자체의 절대 하한은 다음과 같다. 정산 후 잔액이 100센트 미만이면 게임 오버로 `nextRound`·`setBet`·`setBetStep`·`deal`을 거부하고 새 게임만 허용한다. 정확히 100센트면 `nextRound` 이후 $1.00 베팅과 딜을 허용한다. 진행 중인 라운드는 잔액이 100센트 미만이 되어도 정산한다. 저장된 베팅 전 상태의 잔액이 100센트 미만인 경우에도 같은 정책을 적용한다. 게임 오버는 잔액에서 파생한 UI 상태이며 앱 프로세스 종료나 별도 저장 phase가 아니다.
 - 기존 정수 달러 베팅 세션은 그대로 유효하다. 새 센트 베팅을 엔진의 `legalActions`·무결성 검사·저장 복구 검증에도 일관되게 허용하고, 기존 저장 세션을 소리 없이 초기화하지 않는다.
 - RuleSet.id는 `casino-6d-s17-3to2-v1`. 진행 중 규칙은 버전 고정한다.
 - phase·activeHandId·revision을 검증한다. UI 버튼 비활성화는 엔진 검사를 대체하지 않는다.
@@ -108,7 +108,7 @@ P1 구현은 `src/core` 아래의 JSON 호환 readonly 데이터와 순수 전�
 - `Shoe`는 `{ cards, nextIndex }`이며 draw는 다음 Shoe를 반환한다. 슈 생성은 `randomInt(maxExclusive)`를 필수로 주입받고 코어가 OS 난수나 `Math.random`을 직접 호출하지 않는다.
 - `SessionState`는 ruleSet, balance, pending bet, bet step, shoe, current round, ledger, last result를 가진다. revision과 처리 명령은 AppStore의 앱 envelope가 감싼다.
 - 저장 가능한 phase는 `betting | insuranceDecision | playerTurn | dealerTurn | result`다. `initialDeal`, `peekAndNaturals`, `settlement`는 단일 transition 내부에서 끝나는 일시적 단계라 스냅샷에 남기지 않는다.
-- 최초 pending bet은 테이블 최소와 같은 $1이다. 보험 거절은 `chooseInsurance`의 0센트로 표현하고, hit/stand/double/split/surrender는 모두 `handId`를 받는다.
+- 새 Lv.1의 최초 pending bet은 $1이며 레벨 변경 시 공통 최소·최대 범위로 정규화한다. 보험 거절은 `chooseInsurance`의 0센트로 표현하고, hit/stand/double/split/surrender는 모두 `handId`를 받는다.
 - 상태 전후에 safe integer, 312장/6덱 구성·슈 인덱스·카드 ID와 소비 prefix, phase/active hand, 원장 키·net·last result 일관성을 검사한다. 새 세션·reset·재셔플 공급원은 `nextIndex: 0`이어야 하며, 예상 밖 슈 소진은 `INTEGRITY_ERROR`로 중지한다.
 
 구현과 P1 검증 범위는 [P1 보고서](../../session-reports/P1-blackjack-core.md)에 기록한다.

@@ -106,11 +106,13 @@ test('S10.5-03 $1.01 자연 블랙잭 반환금을 센트로 반올림한다', a
   });
 });
 
-test('S10.5-05 고정 상한 없이 잔액 전체까지 센트 베팅한다', async () => {
+test('S10.5-05 Lv3 한도 안에서 잔액 전체까지 센트 베팅한다', async () => {
   launched = await launchApp();
   const savedPath = join(launched.userDataDir, 'app-session.json');
   const saved = JSON.parse(await readFile(savedPath, 'utf8'));
   saved.wallet.balanceCents = 60_001;
+  // N04: retain an already entered Lv3 after losses; its $1,000 cap exceeds the current bankroll.
+  saved.table = { selectedLevel: 3, bestBankrollCents: 250_000 };
   await writeFile(savedPath, JSON.stringify(saved));
   launched = await relaunchApp(launched);
   await launched.page.getByRole('button', { name: '베팅 금액' }).click();

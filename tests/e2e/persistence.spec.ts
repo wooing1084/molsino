@@ -17,7 +17,7 @@ test('S08-01 저장된 베팅·revision·슈를 정상 종료 뒤 복원한다',
   await expect(launched.page.locator('output')).toHaveText('$2.00');
   const before = await launched.page.evaluate(blackjackSnapshot);
   const saved = JSON.parse(await readFile(join(launched.userDataDir, 'app-session.json'), 'utf8'));
-  expect(saved).toMatchObject({ schemaVersion: 2, revision: before.revision, games: { blackjack: { pendingBetCents: 200 } } });
+  expect(saved).toMatchObject({ schemaVersion: 3, revision: before.revision, games: { blackjack: { pendingBetCents: 200 } } });
 
   launched = await relaunchApp(launched, { shoeFixture: fixturePath('standard-loss') });
   await expect(launched.page.locator('output')).toHaveText('$2.00');

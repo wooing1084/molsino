@@ -47,6 +47,6 @@ N03에서 순수 규칙·공용 저장·플레이 화면을 연결했다.
 ## 문서 운영과 세션 이력
 
 - [문서 작성 가이드](documentation-guide.md): 문서별 SSOT와 작성·갱신 규칙.
-- [N04 게임성 개선 설계안](main/gameplay-improvements-design.md): 투명도 조절창·테이블 레벨/한도·카드 공개 연출의 미구현 제안.
+- [N04 게임성 개선 설계 결정](main/gameplay-improvements-design.md): 구현에 반영한 초기 정책과 제품·기술·검증 기준 문서 연결.
 - [작업 세션 로드맵](work-session-roadmap.md): N02 메인 메뉴·블랙잭 분리, N03 바카라 구현·N04 게임성 개선·N05 macOS 서명과 Mac App Store 제출의 순서·완료 조건. 이전 미진행 계획은 폐기.
 - [세션 보고서 목록](session-reports/session-list.md): 세션 당시 변경·검증 기록으로 이동하는 색인.

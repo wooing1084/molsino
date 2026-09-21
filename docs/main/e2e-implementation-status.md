@@ -44,3 +44,5 @@
 
 - **macOS E2E Dock 정리:** 선작성 패키지 E2E에서 `dock.isVisible() === true`로 실패했다. 일반 앱의 Dock 표시는 유지하고 E2E 런처에만 `MOLSINO_TEST_HIDE_DOCK=1`을 전달해 `setVisibleOnAllWorkspaces` 호출 뒤 Dock 아이콘을 숨겼다. [`dock-lifecycle.spec.ts`](../../tests/e2e/dock-lifecycle.spec.ts)에서 실행 중 `dock.isVisible() === false`와 테스트 전용 플래그를 확인했다. 당시 macOS arm64 Forge 프로덕션 패키지에서 `npm run test:e2e` 26/26, `npm run check` 12파일 110/110 통과. 최근 사용 앱 항목을 자동 삭제하거나 사용자 Dock 설정을 바꾸지는 않았고, 종료 뒤 최근 앱 목록에 새 항목이 생기는지는 OS UI로 확인하지 않았다.
 - **DEV 병합 통합 검증:** 병합된 S09 spec의 Preload API 기대 목록에 S10 오버레이 API를 반영했다. 당시 macOS arm64 Forge 프로덕션 패키지에서 `npm run test:e2e` 32/32, `npm run check` 12파일 114/114 통과.
+
+N04의 공통 레벨·한도·카드 공개 통합 사례는 [`gameplay-improvements.spec.ts`](../../tests/e2e/gameplay-improvements.spec.ts)에 있다. 시나리오 목록은 [메인 E2E 설계](../main/e2e-test-plan.md#4-n04-게임성-개선), 실행 결과와 미확인 범위는 [N04 보고서](../session-reports/N04-gameplay-improvements.md)를 따른다.

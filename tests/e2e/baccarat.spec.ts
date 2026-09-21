@@ -198,7 +198,9 @@ for (const balance of [99, 100]) test(`BAC-12 잔액 ${balance}센트의 딜 경
     expect((await saved()).wallet.balanceCents).toBe(0);
     await p.getByRole('button', { name: '메뉴에서 새 시작' }).click();
   } else {
-    await expect(p.getByRole('button', { name: '딜', exact: true })).toBeDisabled();
+    // N04 replaces unaffordable betting controls with the explicit recovery action.
+    await expect(p.getByRole('button', { name: '딜', exact: true })).toHaveCount(0);
+    await expect(p.getByRole('button', { name: '메뉴에서 새 시작', exact: true })).toBeEnabled();
     expect(await appCommand(p, { type: 'baccarat', action: { type: 'deal' } })).toMatchObject({ ok: false });
     await p.getByRole('button', { name: '메뉴', exact: true }).click();
   }
@@ -268,25 +270,33 @@ test('BAC-09 컷 경계를 넘은 판은 끝내고 다음 딜에서만 새 슈�
 });
 
 test('APP-08 다른 게임에서 잔액이 줄면 복귀한 게임의 새 베팅액만 조정한다', async () => {
-  await start(); const p = launched.page;
-  await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'P', amountCents: 9000 } });
-  await appCommand(p, { type: 'goToMenu' });
-  await appCommand(p, { type: 'selectGame', gameId: 'blackjack' });
-  await appCommand(p, { type: 'blackjack', action: { type: 'setBet', amountCents: 8000 } });
-  await appCommand(p, { type: 'goToMenu' });
-  await appCommand(p, { type: 'selectGame', gameId: 'baccarat' });
-  // A losing Tie wager consumes $90, leaving $10 for the other game's next wager.
-  await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'T', amountCents: 9000 } });
+  await start();
+  // N04: use a $50 bankroll and $45/$40 pending wagers to preserve this wallet-adjustment regression below Lv1's cap.
+  const initial = await saved();
+  await launched.app.close(); initial.wallet.balanceCents = 5000;
+  await writeFile(join(launched.userDataDir, 'app-session.json'), JSON.stringify(initial));
+  launched = await launchApp({ userDataDir: launched.userDataDir, startAtMenu: true, autoDelayMs: 0 });
+  const p = launched.page;
+  await p.getByRole('button', { name: '바카라', exact: true }).click();
+  await expect.poll(async () => (await appSnapshot(p)).screen).toBe('baccarat');
+  expect(await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'P', amountCents: 4500 } })).toMatchObject({ ok: true });
+  expect(await appCommand(p, { type: 'goToMenu' })).toMatchObject({ ok: true });
+  expect(await appCommand(p, { type: 'selectGame', gameId: 'blackjack' })).toMatchObject({ ok: true });
+  expect(await appCommand(p, { type: 'blackjack', action: { type: 'setBet', amountCents: 4000 } })).toMatchObject({ ok: true });
+  expect(await appCommand(p, { type: 'goToMenu' })).toMatchObject({ ok: true });
+  expect(await appCommand(p, { type: 'selectGame', gameId: 'baccarat' })).toMatchObject({ ok: true });
+  // A losing Tie wager consumes $45, leaving $5 for the other game's next wager.
+  expect(await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'T', amountCents: 4500 } })).toMatchObject({ ok: true });
   await p.getByRole('button', { name: '딜', exact: true }).click(); await completed();
   const result = (await saved()).games.baccarat!;
   await p.getByRole('button', { name: '메뉴', exact: true }).click();
   await p.getByRole('button', { name: '블랙잭', exact: true }).click();
-  await expect(p.locator('output')).toHaveText('$10.00');
+  await expect(p.locator('output')).toHaveText('$5.00');
   expect((await saved()).games.baccarat).toEqual(result);
   await p.getByRole('button', { name: '메뉴', exact: true }).click();
   await p.getByRole('button', { name: '바카라', exact: true }).click();
-  expect((await saved()).games.baccarat!.round!.bet.amountCents).toBe(9000);
+  expect((await saved()).games.baccarat!.round!.bet.amountCents).toBe(4500);
   await p.getByRole('button', { name: '다음 판', exact: true }).click();
-  await expect(p.locator('output')).toHaveText('$10.00');
+  await expect(p.locator('output')).toHaveText('$5.00');
   expect((await saved()).games.baccarat!.lastResult).toEqual(result.lastResult);
 });
