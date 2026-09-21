@@ -2,7 +2,7 @@
 
 **목적:** 개발 전에 프로젝트 배경을 파악하고 작업에 필요한 기준 문서를 찾는다.
 
-**요약:** molsino는 다른 앱 위에 떠 있는 카지노 게임이다. 블랙잭·바카라·빅휠을 제공한다. 메인 기능과 게임별 구현·설계 문서는 [문서 안내](docs/README.md)에서 구분해 찾는다.
+**요약:** molsino는 다른 앱 위에 떠 있는 카지노 게임이다. 현재 블랙잭과 바카라를 제공한다. 메인 기능과 게임별 구현·설계 문서는 [문서 안내](docs/README.md)에서 구분해 찾는다.
 
 ## 목차
 
@@ -21,7 +21,6 @@
 | 메인 기능·블랙잭 문서의 전체 경로 | [문서 안내](docs/README.md) |
 | 세션별 완료 내용·검증 기록·남은 이슈 | [세션 목록](docs/session-reports/session-list.md)에서 해당 보고서 |
 | 현재 코드 구성·실제 파일 위치 | [메인 구현 현황](docs/main/implementation-status.md), [블랙잭 구현 현황](docs/games/blackjack/implementation-status.md), [바카라 구현 현황](docs/games/baccarat/implementation-status.md) |
-| 빅휠 규칙·구현 설계 | [빅휠 제품·게임 규칙](docs/games/bigwheel/product-design.md)·[기술 설계](docs/games/bigwheel/technical-design.md) |
 | 신규 메뉴·공용 잔액·바카라 설계 | [메인 제품 설계](docs/main/product-design.md), [메인 기술 설계](docs/main/technical-design.md), [바카라 제품 설계](docs/games/baccarat/product-design.md)·[기술 설계](docs/games/baccarat/technical-design.md) |
 | 오버레이 동작·블랙잭 규칙 | [메인 제품 설계](docs/main/product-design.md), [블랙잭 제품 설계](docs/games/blackjack/product-design.md) |
 | 창·IPC 신뢰 경계·블랙잭 엔진과 저장 계약 | [메인 기술 설계](docs/main/technical-design.md), [블랙잭 기술 설계](docs/games/blackjack/technical-design.md) |

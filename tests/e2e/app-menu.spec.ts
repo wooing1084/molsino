@@ -71,7 +71,7 @@ test('APP-07 새 시작 취소·확정과 이전 세션/동일 초기화 재전�
   await p.getByRole('button', { name: '새 시작', exact: true }).click();
   await p.getByRole('button', { name: '초기화 확정' }).click();
   await expect(p.locator('.balance strong')).toHaveText('$100.00');
-  expect((await saved()).games).toEqual({ blackjack: null, baccarat: null, bigwheel: null });
+  expect((await saved()).games).toEqual({ blackjack: null, baccarat: null });
 });
 
 for (const phase of ['insurance', 'split'] as const) test(`APP-01 ${phase} 미완료 v1 세션을 그대로 이전하고 구 파일은 보존한다`, async () => {

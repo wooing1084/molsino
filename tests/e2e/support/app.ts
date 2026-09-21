@@ -14,7 +14,6 @@ export interface LaunchOptions {
   userDataDir?: string;
   shoeFixture?: string;
   baccaratFixture?: string;
-  bigwheelFixture?: string;
   snapshotDelayMs?: number;
   startAtMenu?: boolean;
   autoDelayMs?: number;
@@ -36,8 +35,6 @@ export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedAp
   };
   if (options.baccaratFixture) env.BACCARAT_TEST_SHOE_FIXTURE = options.baccaratFixture;
   else delete env.BACCARAT_TEST_SHOE_FIXTURE;
-  if (options.bigwheelFixture) env.BIGWHEEL_TEST_SEGMENTS_FIXTURE = options.bigwheelFixture;
-  else delete env.BIGWHEEL_TEST_SEGMENTS_FIXTURE;
   if (options.shoeFixture) env.BLACKJACK_TEST_SHOE_FIXTURE = options.shoeFixture;
   if (options.snapshotDelayMs !== undefined) env.MOLSINO_TEST_SNAPSHOT_DELAY_MS = String(options.snapshotDelayMs);
   else delete env.MOLSINO_TEST_SNAPSHOT_DELAY_MS;

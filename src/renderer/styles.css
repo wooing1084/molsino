@@ -143,22 +143,3 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .level-actions { display: flex; align-items: center; justify-content: space-between; gap: 3px; padding-inline: 20px; }
 .level-actions > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-size: 11px; }
 .level-actions button { flex: 0 0 auto; }
-
-.overlay[data-screen='bigwheel'] { grid-template-rows: 24px 24px minmax(0, 1fr) 14px 24px 14px; gap: 1px; padding-block: 2px; }
-.bigwheel-table { display: flex; min-height: 0; min-width: 0; gap: 5px; }
-.bigwheel-visual { flex: 0 0 34%; display: flex; min-height: 0; min-width: 0; flex-direction: column; align-items: center; }
-.bigwheel-visual svg { flex: 1; width: 100%; min-height: 0; overflow: visible; }
-.bigwheel-disc { transform-origin: 50px 50px; }
-.bigwheel-disc.spinning { animation: wheel-spin 1800ms cubic-bezier(.12,.65,.2,1) both; }
-@keyframes wheel-spin { from { transform: rotate(0deg); } to { transform: rotate(var(--wheel-stop)); } }
-.bigwheel-total { flex: 0 0 11px; max-width: 100%; overflow: auto hidden; white-space: nowrap; font-size: 11px; line-height: 11px; scrollbar-width: none; }
-.bigwheel-history { display: flex; flex: 0 0 11px; max-width: 100%; gap: 4px; overflow: auto hidden; font-size: 11px; line-height: 11px; white-space: nowrap; scrollbar-width: none; }
-.bigwheel-targets { flex: 1; min-width: 0; overflow: hidden auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; }
-.bigwheel-targets button { display: flex; flex: 0 0 24px; min-width: 0; justify-content: space-between; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap; }
-.bigwheel-targets button[aria-pressed='true'] { border-width: 2px; font-weight: 700; }
-.bigwheel-targets output { overflow: hidden; text-overflow: ellipsis; }
-.bigwheel-limits { overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
-.bigwheel-actions { padding-inline: 20px; gap: 3px; }
-.bigwheel-actions .bet-amount { padding-inline: 0; }
-.bigwheel-status { padding-inline: 4px; }
-@media (prefers-reduced-motion: reduce) { .bigwheel-disc.spinning { animation: none; transform: rotate(0deg) !important; } }

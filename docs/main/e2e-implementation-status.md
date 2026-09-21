@@ -28,7 +28,6 @@
 | [`ipc-state.spec.ts`](../../tests/e2e/ipc-state.spec.ts), [`ipc-subscription.spec.ts`](../../tests/e2e/ipc-subscription.spec.ts) | snapshot과 push의 순서·구독 수명, 비신뢰 문서와 비정상 IPC 거부. 같은 파일의 카드 은닉 검증은 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)을 따른다. |
 | [`app-menu.spec.ts`](../../tests/e2e/app-menu.spec.ts) | 메뉴 왕복·초기화·이전·저장 실패/재시도·시작 I/O 오류·백업 우선순위·명령 경합·최소 크기 |
 | [`baccarat.spec.ts`](../../tests/e2e/baccarat.spec.ts) | APP-08 두 게임 왕복·공용 잔액·게임별 슈, 바카라 UI·복구는 [바카라 E2E 현황](../games/baccarat/e2e-implementation-status.md) 참조 |
-| [`bigwheel.spec.ts`](../../tests/e2e/bigwheel.spec.ts) | N05 세 게임 왕복·공용 지갑·복구·표시·최소 창. [빅휠 E2E 현황](../games/bigwheel/e2e-implementation-status.md) 참조 |
 | [`dock-lifecycle.spec.ts`](../../tests/e2e/dock-lifecycle.spec.ts) | macOS E2E 앱 실행 중 테스트 전용 Dock 숨김 |
 
 위 파일의 존재와 검사 범위를 현재 스위트 현황으로 기록한다. 각 세션의 명령, 통과·실패·스킵 수와 실행 환경은 [세션 보고서](../session-reports/session-list.md)에서 확인한다.

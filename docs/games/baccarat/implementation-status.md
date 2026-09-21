@@ -23,7 +23,7 @@
 | 상태 검증 | 416장 구성·고유 ID·버림·소비 위치, 현재 판의 슈 prefix 재생, phase·베팅·최근 순번·최신 정산 증거 검사 |
 | 공개 API | `baccarat {action}`의 setBet/deal/nextRound만 허용. 슈·버린 카드·미래 카드·정산 내부 필드는 공개하지 않음 |
 | 화면 | 양쪽 패와 점수, 흑백 대상 선택, Enter 확정·Escape/blur 취소 금액 입력, 결과·순손익·반환금, 최근 20개 P/B/T 한 줄 |
-| 앱 연결 | 앱 공용 잔액, 진행 중 이동 금지, 숨김 중 자동 진행, 정상/강제 종료 복원, 전체 새 시작에서 기록 제거 |
+| 앱 연결 | 두 게임 공용 잔액, 진행 중 이동 금지, 숨김 중 자동 진행, 정상/강제 종료 복원, 전체 새 시작에서 기록 제거 |
 
 최근 20개 기록은 표시용이다. 내부 `number`·`settledRoundCount`는 순서를 검증하고 `lastResult`는 최신 정산 증거를 보존한다. 전체 과거 판의 영구 원장이나 암호학적 변조 방지를 제공하는 것은 아니다.
 
@@ -35,7 +35,7 @@
 | [`src/main/game/baccarat-shoe-source.ts`](../../../src/main/game/baccarat-shoe-source.ts) | crypto 난수와 테스트 전용 결정론적 슈 |
 | [`src/main/game/baccarat-adapter.ts`](../../../src/main/game/baccarat-adapter.ts) | 공개 상태·허용 동작 추출 |
 | [`src/main/game/app-store.ts`](../../../src/main/game/app-store.ts) | 공용 명령·지갑·저장 후보·자동 진행 직렬화 |
-| [`src/main/persistence/app-session-repository.ts`](../../../src/main/persistence/app-session-repository.ts) | v4 저장 검증과 앱 공용 진행 잠금 |
+| [`src/main/persistence/app-session-repository.ts`](../../../src/main/persistence/app-session-repository.ts) | v3 저장 검증과 두 게임 진행 잠금 |
 | [`src/main/main.ts`](../../../src/main/main.ts) | 게임 환경 주입·신뢰 IPC·시작 복원·금액 편집 포커스 |
 | [`src/shared/app-contracts.ts`](../../../src/shared/app-contracts.ts), [`baccarat-view.ts`](../../../src/shared/baccarat-view.ts) | strict 공개 명령·상태 계약 |
 | [`src/renderer/games/baccarat.tsx`](../../../src/renderer/games/baccarat.tsx) | 바카라 UI·입력 수명·오류 안내 |

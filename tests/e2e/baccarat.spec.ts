@@ -160,7 +160,7 @@ test('APP-08/BAC-09/11 두 게임 왕복이 공용 잔액·각 슈·결과를 �
   await p.getByRole('button', { name: '메뉴', exact: true }).click();
   await p.getByRole('button', { name: '블랙잭', exact: true }).click();
   await expect(p.locator('.balance strong')).toHaveText('$102.50');
-  expect((await saved()).games).toEqual({ blackjack, baccarat, bigwheel: null });
+  expect((await saved()).games).toEqual({ blackjack, baccarat });
 });
 
 test('BAC-10 기록 20개 순서·Tie·재실행·전체 초기화', async () => {
@@ -182,7 +182,7 @@ test('BAC-10 기록 20개 순서·Tie·재실행·전체 초기화', async () =>
   await launched.page.getByRole('button', { name: '새 시작', exact: true }).click();
   await launched.page.getByRole('button', { name: '초기화 확정' }).click();
   await expect(launched.page.locator('.balance strong')).toHaveText('$100.00');
-  expect((await saved()).games).toEqual({ blackjack: null, baccarat: null, bigwheel: null });
+  expect((await saved()).games).toEqual({ blackjack: null, baccarat: null });
 });
 
 for (const balance of [99, 100]) test(`BAC-12 잔액 ${balance}센트의 딜 경계와 전체 새 시작`, async () => {
