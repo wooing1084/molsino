@@ -78,7 +78,9 @@ npx playwright test tests/e2e/baccarat.spec.ts tests/e2e/gameplay-improvements.s
 
 `npm run typecheck`, 캐시를 사용한 `npm run package`, `git diff --check`를 통과했다. 임시 Playwright 점검(`node /tmp/molsino-header-check.cjs`)으로 실제 macOS 패키지와 격리 userData에서 블랙잭·바카라 각각 220×150, 280×150, 340×150의 표시 우선순위, 두 게임명, 레벨 유지, 24×24 버튼과 우상단 크기 조절 핸들의 비중첩을 확인했다. 6개 화면 점검은 모두 통과했고 PNG를 열어 실제 배치를 확인했다. 최초 sandbox의 앱 실행 실패 후 OS 앱 실행 권한으로 재실행했으며 기능 실패는 없었다. 전체 93개 스위트를 다시 실행한 결과가 아니며, 영구 테스트는 추가하지 않았다.
 
-임시 검증 로그는 `/tmp/molsino-header-check.log`, 패키징 로그는 `/tmp/molsino-header-package.log`, 캡처는 `/tmp/molsino-header-screenshots/{blackjack,baccarat}-{220,280,340}.png`에 있다. Windows 및 OS 투명 합성은 이 후속 점검 범위에 포함하지 않는다.
+이후 사용자 요청으로 헤더 게임 이름을 `Blackjack`·`Baccarat`로 변경하고 긴 영문에 맞춰 게임명 숨김 경계를 320 DIP로 조정했다. 글씨 크기는 11 DIP를 유지했다. 타입 검사와 패키징을 다시 통과했고, 같은 임시 점검으로 두 게임 각각 너비 220·280·320·321·340·420 DIP(높이 150 DIP), 총 12개 화면에서 표시 순서와 경계의 잘림·버튼 비중첩 검사를 통과했다. 최소·중간·넓은 창 및 321 DIP의 실제 PNG를 직접 확인했다.
+
+최종 임시 검증 로그는 `/tmp/molsino-header-check.log`, 패키징 로그는 `/tmp/molsino-header-package.log`, 캡처는 `/tmp/molsino-header-screenshots/{blackjack,baccarat}-{220,280,320,321,340,420}.png`에 있다. Windows 및 OS 투명 합성은 이 후속 점검 범위에 포함하지 않는다.
 
 ## 3. 남은 확인과 다음 시작점
 

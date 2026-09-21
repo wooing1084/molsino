@@ -109,7 +109,7 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .resize-handle-se::after { right: 4px; bottom: 4px; border-right: 1px solid; border-bottom: 1px solid; }
 
 @media (prefers-reduced-motion: reduce) { .overlay { transition: none; } .card-face.revealing { animation: none; } }
-@media (max-width: 300px) { .game-label { display: none; } }
+@media (max-width: 320px) { .game-label { display: none; } }
 @media (max-width: 260px) { .app-name { display: none; } }
 
 .game-menu { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 0; }
