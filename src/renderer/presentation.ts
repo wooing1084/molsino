@@ -1,6 +1,7 @@
 import type { AppView } from '../shared/app-contracts';
 import type { CardView } from '../shared/contracts';
 
+export const WHEEL_SPIN_MS = 1800;
 export const CARD_INTERVAL_MS = 450;
 export const CARD_FADE_MS = 140;
 export const RESULT_DELAY_MS = 300;
@@ -14,6 +15,7 @@ export interface PresentationFrame {
   revealing: boolean;
   settling: boolean;
   nextWakeAt?: number;
+  wheelSegmentIndex?: number;
 }
 
 function game(view: AppView) {
@@ -33,6 +35,10 @@ export class PresentationTimeline {
   private priorTable?: AppView['table'];
   private priorHistory: NonNullable<AppView['baccarat']>['recentResults'] = [];
 
+  private wheelCompleteAt = -Infinity;
+  private wheelBalance = 0;
+  private wheelHistory: NonNullable<AppView['bigwheel']>['recentResults'] = [];
+
   receive(view: AppView, now: number, snap = false): PresentationFrame {
     const previous = this.latest;
     if (previous && view.sessionId === previous.sessionId && view.viewSequence < previous.viewSequence) {
@@ -42,6 +48,17 @@ export class PresentationTimeline {
     const previousGame = previous && game(previous);
     const changedScreen = !previous || previous.screen !== view.screen || previous.sessionId !== view.sessionId;
     this.latest = view;
+    if (view.screen === 'bigwheel' && view.bigwheel) {
+      if (snap || changedScreen || view.recovery || !view.bigwheel.roundId) return this.snap(now);
+      if (view.bigwheel.roundId !== previous?.bigwheel?.roundId) {
+        this.wheelCompleteAt = now + WHEEL_SPIN_MS;
+        this.priorTable = previous?.table;
+        this.wheelHistory = previous?.bigwheel?.recentResults ?? [];
+        this.wheelBalance = view.bigwheel.phase === 'result'
+          ? view.balanceCents - (view.bigwheel.lastResult?.returnCents ?? 0) : view.balanceCents;
+      }
+      return this.frame(now);
+    }
     if (snap || changedScreen || view.recovery || !currentGame?.roundId) return this.snap(now);
 
     if (currentGame.roundId !== previousGame?.roundId) {
@@ -72,6 +89,7 @@ export class PresentationTimeline {
   }
 
   snap(now: number): PresentationFrame {
+    this.wheelCompleteAt = -Infinity;
     const currentGame = game(this.latest!);
     this.known = new Set(currentGame?.cardRevealOrder ?? []);
     this.revealed = new Set(this.known);
@@ -98,6 +116,20 @@ export class PresentationTimeline {
 
   private frame(now: number): PresentationFrame {
     const latest = this.latest!;
+    if (latest.screen === 'bigwheel' && latest.bigwheel) {
+      const revealing = now < this.wheelCompleteAt;
+      return {
+        view: revealing ? {
+          ...latest, balanceCents: this.wheelBalance, canNavigate: false,
+          table: this.priorTable ? { ...latest.table, bestLevel: this.priorTable.bestLevel, bestBankrollCents: this.priorTable.bestBankrollCents } : latest.table,
+          bigwheel: { ...latest.bigwheel, phase: 'spinning', lastResult: null, recentResults: this.wheelHistory, legalActions: [] },
+        } : latest,
+        revealing, settling: revealing && latest.bigwheel.phase === 'result',
+        revealedCardIds: new Set<string>(), holePlaced: false,
+        wheelSegmentIndex: latest.bigwheel.lastResult?.segmentIndex,
+        nextWakeAt: revealing ? this.wheelCompleteAt : undefined,
+      };
+    }
     const terminal = game(latest)?.phase === 'result';
     const completeAt = this.lastRevealAt + (terminal ? RESULT_DELAY_MS : CARD_FADE_MS);
     const revealing = this.pending.length > 0 || now < completeAt;

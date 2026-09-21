@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { createSession, transition } from '../../src/core/engine';
-import { AppSessionRepository, migrateAppV2, newAppSession } from '../../src/main/persistence/app-session-repository';
+import { AppSessionRepository, migrateAppV2, migrateAppV3, newAppSession } from '../../src/main/persistence/app-session-repository';
 import { card, environment, fixtureShoe } from '../core/helpers';
 let dir: string;
 afterEach(async () => { if (dir) await rm(dir, { recursive: true, force: true }); });
@@ -54,9 +54,9 @@ it('atomically upgrades v2 above-cap split evidence without changing identity, d
   await writeFile(join(dir, 'app-session.json'), JSON.stringify(old));
   const repo = new AppSessionRepository(dir);
   const loaded = await repo.load();
-  expect(loaded).toEqual({ kind: 'ready', snapshot: { ...old, schemaVersion: 3, table: { selectedLevel: 1, bestBankrollCents: 60000 } } });
+  expect(loaded).toEqual({ kind: 'ready', snapshot: { ...old, schemaVersion: 4, games: { ...old.games, bigwheel: null }, table: { selectedLevel: 1, bestBankrollCents: 60000 } } });
   const persisted = JSON.parse(await readFile(join(dir, 'app-session.json'), 'utf8'));
-  expect(persisted.games).toEqual(old.games);
+  expect(persisted.games).toEqual({ ...old.games, bigwheel: null });
   expect(persisted.lastAppliedCommand).toEqual(old.lastAppliedCommand);
   expect(persisted.table).toEqual({ selectedLevel: 1, bestBankrollCents: 60000 });
   expect(JSON.parse(await readFile(join(dir, 'app-session.backup.json'), 'utf8'))).toEqual(persisted);
@@ -74,7 +74,7 @@ it('retries a failed v2 primary replacement without changing source bytes or dou
   await expect(repo.load()).rejects.toThrow('disk');
   expect(await readFile(join(dir, 'app-session.json'), 'utf8')).toBe(old);
   expect(JSON.parse(await readFile(join(dir, 'app-session.backup.json'), 'utf8')).wallet.balanceCents).toBe(60000);
-  expect(await repo.load()).toMatchObject({ kind: 'ready', snapshot: { schemaVersion: 3, wallet: { balanceCents: 60000 } } });
+  expect(await repo.load()).toMatchObject({ kind: 'ready', snapshot: { schemaVersion: 4, wallet: { balanceCents: 60000 } } });
 });
 it.each(['missing', 'corrupt', 'futureSchema'])('offers a validated v2 backup without automatic restore when primary is %s', async issue => {
   dir = await mkdtemp(join(tmpdir(), 'molsino-app-v3-'));
@@ -82,7 +82,7 @@ it.each(['missing', 'corrupt', 'futureSchema'])('offers a validated v2 backup wi
   await writeFile(join(dir, 'app-session.backup.json'), old);
   if (issue !== 'missing') await writeFile(join(dir, 'app-session.json'), issue === 'corrupt' ? '{bad' : '{"schemaVersion":99}');
   const repo = new AppSessionRepository(dir);
-  expect(await repo.load()).toMatchObject({ kind: 'recovery', issue: issue === 'futureSchema' ? issue : 'corrupt', backup: { schemaVersion: 3, wallet: { balanceCents: 60000 } } });
+  expect(await repo.load()).toMatchObject({ kind: 'recovery', issue: issue === 'futureSchema' ? issue : 'corrupt', backup: { schemaVersion: 4, wallet: { balanceCents: 60000 } } });
   expect(await readFile(join(dir, 'app-session.backup.json'), 'utf8')).toBe(old);
   if (issue === 'missing') await expect(readFile(join(dir, 'app-session.json'))).rejects.toMatchObject({ code: 'ENOENT' });
 });
@@ -90,4 +90,42 @@ it('rejects malformed v2 evidence and never repairs invalid v3 by downgrading it
   const old = v2InProgress();
   expect(() => migrateAppV2({ ...old, activeRoundGameId: null })).toThrow();
   expect(() => migrateAppV2({ ...old, schemaVersion: 3 })).toThrow();
+});
+
+function v3InProgress() {
+  const old = v2InProgress();
+  return { ...old, schemaVersion: 3, table: { selectedLevel: 2, bestBankrollCents: 123456 } };
+}
+it('upgrades v3 while preserving the ongoing game, wallet, level, identity and command evidence', async () => {
+  dir = await mkdtemp(join(tmpdir(), 'molsino-app-v4-'));
+  const old = v3InProgress();
+  await writeFile(join(dir, 'app-session.json'), JSON.stringify(old));
+  const loaded = await new AppSessionRepository(dir).load();
+  const expected = { ...old, schemaVersion: 4, games: { ...old.games, bigwheel: null } };
+  expect(loaded).toEqual({ kind: 'ready', snapshot: expected });
+  expect(JSON.parse(await readFile(join(dir, 'app-session.backup.json'), 'utf8'))).toEqual(expected);
+  expect(await new AppSessionRepository(dir).load()).toEqual(loaded);
+});
+it('offers a valid v3 backup for explicit recovery and never treats malformed v4 as old data', async () => {
+  dir = await mkdtemp(join(tmpdir(), 'molsino-app-v4-'));
+  const old = v3InProgress();
+  await writeFile(join(dir, 'app-session.backup.json'), JSON.stringify(old));
+  await writeFile(join(dir, 'app-session.json'), '{"schemaVersion":99}');
+  expect(await new AppSessionRepository(dir).load()).toMatchObject({ kind: 'recovery', issue: 'futureSchema', backup: { schemaVersion: 4, games: { bigwheel: null }, table: old.table } });
+  expect(() => migrateAppV3({ ...old, schemaVersion: 4 })).toThrow();
+  expect(() => migrateAppV3({ ...old, activeRoundGameId: null })).toThrow();
+  expect(() => migrateAppV3({ ...old, games: { ...old.games, bigwheel: null } })).toThrow();
+});
+it('retries a failed v3 upgrade without changing the saved game or crediting funds twice', async () => {
+  dir = await mkdtemp(join(tmpdir(), 'molsino-app-v4-'));
+  const source = JSON.stringify(v3InProgress());
+  await writeFile(join(dir, 'app-session.json'), source);
+  let fail = true;
+  const repo = new AppSessionRepository(dir, { ...fs, rename: async (from, to) => {
+    if (String(to) === join(dir, 'app-session.json') && fail) { fail = false; throw new Error('disk'); }
+    return fs.rename(from, to);
+  } });
+  await expect(repo.load()).rejects.toThrow('disk');
+  expect(await readFile(join(dir, 'app-session.json'), 'utf8')).toBe(source);
+  expect(await repo.load()).toEqual({ kind: 'ready', snapshot: migrateAppV3(JSON.parse(source)) });
 });

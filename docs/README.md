@@ -44,12 +44,14 @@ N03에서 순수 규칙·공용 저장·플레이 화면을 연결했다.
 
 ### 빅휠
 
-N05에서 강원랜드 규칙의 빅휠을 구현한다.
+N05에서 강원랜드 규칙의 빅휠을 구현했다.
 
 | 필요한 정보 | 기준 문서 |
 | --- | --- |
 | 54칸·7구역 배분과 배당·복수 베팅·화면 | [제품·게임 규칙 설계](games/bigwheel/product-design.md) |
 | 엔진·자동 정산·v4 저장/이전·공개 상태 | [기술 설계](games/bigwheel/technical-design.md) |
+| 현재 구현과 파일 위치 | [구현 현황](games/bigwheel/implementation-status.md) |
+| 시나리오와 검증 범위 | [E2E 설계](games/bigwheel/e2e-test-plan.md)·[E2E 현황](games/bigwheel/e2e-implementation-status.md) |
 
 공용 잔액·메뉴 이동·전체 새 시작은 [메인 제품 설계](main/product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계), 이전 형식 이관·원자 저장·명령 경계는 [메인 기술 설계](main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다.
 

@@ -13,7 +13,7 @@ function baccarat(sequence: number, dealing = false, result = false): AppView {
     screen: 'baccarat', activeRoundGameId: dealing && !result ? 'baccarat' : null,
     balanceCents: result ? 10100 : 9900, canNavigate: !dealing || result, saveError: false,
     table: { selectedLevel: 1, minBetCents: 100, maxBetCents: 5000, entryBalanceCents: 100, bestLevel: result ? 2 : 1, bestBankrollCents: result ? 50000 : 10000 },
-    blackjack: null,
+    blackjack: null, bigwheel: null,
     baccarat: {
       roundId: dealing ? 'round' : null,
       cardRevealOrder: dealing ? order : [],
@@ -166,5 +166,66 @@ describe('public card presentation timeline', () => {
     const final = timeline.advance(2651.1);
     expect(final.revealing).toBe(false);
     expect(final.nextWakeAt).toBeUndefined();
+  });
+});
+
+function bigwheel(sequence: number, phase: 'betting' | 'spinning' | 'result'): AppView {
+  const bets = { silver: 100, gold: 0, emerald: 0, diamond: 0, crystal: 0, joker: 0, mega: 0 };
+  return {
+    ...baccarat(sequence), screen: 'bigwheel', baccarat: null,
+    balanceCents: phase === 'result' ? 10100 : phase === 'spinning' ? 9900 : 10000,
+    activeRoundGameId: phase === 'spinning' ? 'bigwheel' : null,
+    bigwheel: {
+      roundId: phase === 'betting' ? null : 'wheel-round', phase, pendingBets: bets, totalBetCents: 100,
+      lastResult: phase === 'result' ? { roundId: 'wheel-round', outcome: 'silver', segmentIndex: 3, bets, totalBetCents: 100, returnCents: 200, netCents: 100 } : null,
+      recentResults: phase === 'result' ? [{ roundId: 'wheel-round', outcome: 'silver' }] : [],
+      legalActions: phase === 'result' ? ['nextRound'] : phase === 'betting' ? ['setBet', 'spin'] : [],
+    },
+  };
+}
+
+describe('big wheel presentation timeline', () => {
+  it('withholds a fast result, wallet, records and best achievement until the same 1.8 second deadline', () => {
+    const timeline = new PresentationTimeline();
+    timeline.receive(bigwheel(0, 'betting'), 0);
+    const result = bigwheel(1, 'result');
+    result.table.bestBankrollCents = 10100;
+    let frame = timeline.receive(result, 100);
+    expect(frame.revealing).toBe(true);
+    expect(frame.view.balanceCents).toBe(9900);
+    expect(frame.view.bigwheel?.lastResult).toBeNull();
+    expect(frame.view.bigwheel?.recentResults).toEqual([]);
+    expect(frame.view.bigwheel?.legalActions).toEqual([]);
+    expect(frame.view.table.bestBankrollCents).toBe(10000);
+    expect(frame.view.canNavigate).toBe(false);
+    expect(timeline.advance(1899).revealing).toBe(true);
+    frame = timeline.advance(1900);
+    expect(frame.revealing).toBe(false);
+    expect(frame.view.balanceCents).toBe(10100);
+    expect(frame.view.bigwheel?.lastResult?.segmentIndex).toBe(3);
+    expect(frame.view.bigwheel?.recentResults).toHaveLength(1);
+    expect(frame.view.table.bestBankrollCents).toBe(10100);
+  });
+
+  it('does not restart its deadline on settlement, duplicates, save failure or stale updates', () => {
+    const timeline = new PresentationTimeline();
+    timeline.receive(bigwheel(0, 'betting'), 0);
+    timeline.receive(bigwheel(1, 'spinning'), 100);
+    const failed = { ...bigwheel(2, 'spinning'), saveError: true };
+    expect(timeline.receive(failed, 150).view.saveError).toBe(true);
+    timeline.receive(bigwheel(3, 'result'), 200);
+    timeline.receive(bigwheel(3, 'result'), 300);
+    expect(timeline.receive(failed, 500).view.revision).toBe(3);
+    expect(timeline.advance(1899.5).nextWakeAt).toBe(1900);
+    expect(timeline.advance(1900).revealing).toBe(false);
+  });
+
+  it('restores and snaps public results without replay or dispatching settlement', () => {
+    const timeline = new PresentationTimeline();
+    expect(timeline.receive(bigwheel(0, 'result'), 0).revealing).toBe(false);
+    timeline.receive(bigwheel(1, 'betting'), 10);
+    expect(timeline.receive(bigwheel(2, 'spinning'), 20).revealing).toBe(true);
+    expect(timeline.snap(30).revealing).toBe(false);
+    expect(timeline.receive(bigwheel(3, 'result'), 40).revealing).toBe(false);
   });
 });

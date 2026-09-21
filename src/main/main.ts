@@ -1,3 +1,4 @@
+import { createBigWheelSegmentSource } from './game/bigwheel-segment-source';
 import { createBaccaratShoeFactory } from './game/baccarat-shoe-source';
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
@@ -92,7 +93,8 @@ function endAmountEdit(): void {
 
 function canEditBet(s: AppView): boolean {
   return s.screen === 'blackjack' ? Boolean(s.blackjack?.legalActions.includes('setBet'))
-    : s.screen === 'baccarat' && Boolean(s.baccarat?.legalActions.includes('setBet'));
+    : s.screen === 'baccarat' ? Boolean(s.baccarat?.legalActions.includes('setBet'))
+    : s.screen === 'bigwheel' && Boolean(s.bigwheel?.legalActions.includes('setBet'));
 }
 
 function beginAmountEdit(): void {
@@ -261,6 +263,7 @@ async function start(): Promise<void> {
   const testing = Boolean(process.env.MOLSINO_TEST_USER_DATA);
   const createGameShoe = createShoeFactory(testing ? process.env.BLACKJACK_TEST_SHOE_FIXTURE : undefined);
   const createBaccaratShoe = createBaccaratShoeFactory(testing ? process.env.BACCARAT_TEST_SHOE_FIXTURE : undefined);
+  const nextBigWheelSegment = createBigWheelSegmentSource(testing ? process.env.BIGWHEEL_TEST_SEGMENTS_FIXTURE : undefined);
   const repository = new AppSessionRepository(app.getPath('userData'));
   let loaded: AppLoadResult = { kind: 'missing' };
   let startupUnavailable = false;
@@ -271,7 +274,7 @@ async function start(): Promise<void> {
     appStore = new AppStore(snapshot,
       { createShoe: createGameShoe, nextId: () => randomUUID() },
       process.platform, repository,
-      Number.isSafeInteger(delay) && delay >= 0 && delay <= 30000 ? delay : 0, { createShoe: createBaccaratShoe, nextId: randomUUID });
+      Number.isSafeInteger(delay) && delay >= 0 && delay <= 30000 ? delay : 0, { createShoe: createBaccaratShoe, nextId: randomUUID }, { nextSegmentIndex: nextBigWheelSegment, nextId: randomUUID });
     unsubscribeAppState = appStore.subscribe(sendAppState);
     appStore.resumeAutomatic();
   };
@@ -301,7 +304,7 @@ async function start(): Promise<void> {
     revision: 0, sessionId: '00000000-0000-4000-8000-000000000000', viewSequence: 0,
     screen: 'menu', activeRoundGameId: null, canNavigate: false,
     table: { selectedLevel: 1, bestBankrollCents: 0, bestLevel: 1, entryBalanceCents: 100, minBetCents: 100, maxBetCents: 5000 },
-    platform: process.platform, balanceCents: 0, saveError: false, blackjack: null, baccarat: null,
+    platform: process.platform, balanceCents: 0, saveError: false, blackjack: null, baccarat: null, bigwheel: null,
     recovery: { issue: startupUnavailable ? 'unavailable' : loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
       backupAvailable: loaded.kind === 'recovery' && Boolean(loaded.backup) },
   });
@@ -376,7 +379,8 @@ async function start(): Promise<void> {
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
     const command = appCommandSchema.parse(value);
-    if (amountEditing && (command.action.type === 'blackjack' || command.action.type === 'baccarat') && command.action.action.type === 'deal' && appStore) {
+    if (amountEditing && appStore && (((command.action.type === 'blackjack' || command.action.type === 'baccarat') && command.action.action.type === 'deal')
+      || (command.action.type === 'bigwheel' && command.action.action.type === 'spin'))) {
       return { ok: false, error: 'INVALID_ACTION' as const,
         message: '베팅 금액 입력을 먼저 완료하세요.', state: appStore.getSnapshot() };
     }

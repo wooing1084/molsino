@@ -2,7 +2,7 @@
 
 **목적:** 게임 종류와 무관한 앱 기능의 현재 구현 범위, 남은 작업, 실제 파일 위치를 개발 전에 확인한다.
 
-**요약:** 2026-09-21 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v3 저장과 블랙잭 분리를 구현했다. 바카라도 같은 공용 작성자에 연결했다. 기존 미진행 세션은 폐기했으며 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
+**요약:** 2026-09-21 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v4 저장과 블랙잭 분리를 구현했다. 바카라와 빅휠도 같은 공용 작성자에 연결했다. 기존 미진행 세션은 폐기했으며 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
 
 ## 목차
 
@@ -36,8 +36,9 @@
 
 | 항목 | 현재 경계와 다음 위치 |
 | --- | --- |
-| 공용 잔액·메인 메뉴 | AppStore·AppSessionRepository·window.molsino로 구현했다. 메뉴에서 블랙잭과 바카라를 선택한다. [신규 계약](technical-design.md#9-여러-게임과-공용-잔액의-신규-계약) |
+| 공용 잔액·메인 메뉴 | AppStore·AppSessionRepository·window.molsino로 구현했다. 메뉴에서 블랙잭·바카라·빅휠을 선택한다. [신규 계약](technical-design.md#9-여러-게임과-공용-잔액의-신규-계약) |
 | 바카라 | 규칙·저장·화면을 연결했다. [바카라 구현 현황](../games/baccarat/implementation-status.md) |
+| 빅휠 | 복수 베팅·회전·저장·화면을 연결했다. [빅휠 구현 현황](../games/bigwheel/implementation-status.md) |
 | 입력·클릭 통과의 실제 OS 동작 | 편집 포커스·전체 클릭 통과·트레이·단축키 경로는 있다. 외부 앱 포커스 복귀·실제 클릭 전달·물리 키 입력은 기존 자동 테스트로 보장하지 않는다. 구 S12/S13의 별도 일정은 폐기했다. |
 | 위치·다중 모니터 | 화면 변화에 따른 자동 위치 보정은 미구현이다. 기존 크기 조절 경로의 workArea 보정은 있다. S11·E2E-18의 보류 계획은 폐기했으며 `preferences.json`은 없다. |
 | Renderer 장애 | 현재 `render-process-gone`은 숨김·오류 기록만 한다. 새 창 재생성은 없다. 장애 후 복원 실패는 N01 점검에서 재현했다. 수정 세션과 구 S16 일정은 계획에서 제외했다. |
@@ -58,7 +59,7 @@ src/
     game/blackjack-adapter.ts         코어 잔액 주입·공개 상태
     game/baccarat-adapter.ts          바카라 공개 상태
     game/baccarat-shoe-source.ts      Main 난수·격리 테스트 슈
-    persistence/app-session-repository.ts  v3 스키마·v1/v2 이전
+    persistence/app-session-repository.ts  v4 스키마·v1/v2/v3 이전
     persistence/atomic-session-repository.ts  공통 원자 저장·백업·복구
     main.ts                         앱 시작·오버레이 창/트레이·프로토콜·IPC 연결
     ipc/trust.ts                    IPC 송신자·문서 신뢰 검사
@@ -70,6 +71,7 @@ src/
     main.tsx                        창·메뉴·공용 잔액·복구 UI
     games/blackjack.tsx              블랙잭 카드·베팅·행동 UI
     games/baccarat.tsx               바카라 카드·베팅·결과·기록 UI
+    games/bigwheel.tsx               빅휠 회전·복수 베팅·결과 UI
     styles.css                      오버레이와 최소 크기 레이아웃
   shared/
     app-contracts.ts                앱 명령·공개 상태·API
