@@ -41,7 +41,7 @@ button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 header, .bet, footer { padding-inline: 20px; }
 header { display: flex; min-width: 0; gap: 4px; align-items: center; }
 .drag { flex: 1; min-width: 0; overflow: hidden; app-region: drag; cursor: grab; letter-spacing: 1px; font-size: 11px; line-height: 24px; white-space: nowrap; text-overflow: ellipsis; }
-.game-label { margin-left: 5px; font-size: 8px; font-weight: 500; opacity: .55; }
+.game-label { margin-left: 5px; font-size: 11px; font-weight: 500; opacity: .55; }
 header button { flex: 0 0 24px; padding: 0; border: none; }
 header .current-level { flex: 0 0 auto; min-width: 36px; font-size: 11px; font-weight: 600; line-height: 24px; white-space: nowrap; }
 header button.current-level { padding-inline: 3px; border: 1px solid currentColor; line-height: 22px; }
@@ -109,6 +109,7 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .resize-handle-se::after { right: 4px; bottom: 4px; border-right: 1px solid; border-bottom: 1px solid; }
 
 @media (prefers-reduced-motion: reduce) { .overlay { transition: none; } .card-face.revealing { animation: none; } }
+@media (max-width: 300px) { .game-label { display: none; } }
 @media (max-width: 260px) { .app-name { display: none; } }
 
 .game-menu { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 0; }
@@ -127,7 +128,6 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .baccarat-actions button[aria-pressed='true'] { border-width: 2px; font-weight: 700; text-decoration: underline; }
 .baccarat-actions .baccarat-return { font-size: 11px; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; flex: 1; white-space: nowrap; }
 .baccarat-status { padding-inline: 4px; }
-.overlay[data-screen='baccarat'] .game-label { font-size: 11px; }
 
 .level-carousel { position: relative; min-height: 0; min-width: 0; }
 .level-track { position: relative; display: flex; gap: 8px; width: 100%; height: 100%; padding-inline: max(14px, calc((100% - 260px) / 2)); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }

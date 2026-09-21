@@ -72,6 +72,14 @@ npx playwright test tests/e2e/baccarat.spec.ts tests/e2e/gameplay-improvements.s
 
 전체 회귀의 BAC-12 99센트 사례는 이전의 disabled 딜 버튼을 기대했으나 새 화면은 ‘메뉴에서 새 시작’ CTA를 제공해 실패했다. QA는 UI 기대만 수정하고 Main의 딜 거부 검증은 유지했다. APP-08 준비 코드는 바카라 화면 선택의 Main 저장 완료 전에 직접 IPC를 보내 실패했으므로 화면 전환 완료를 기다리고 각 준비 명령의 성공을 검사하도록 수정했다. N04-14는 기존 코어의 원장이 판당 하나가 아니라 핸드당 하나라는 계약에 맞춰 2개 항목·서로 다른 component ID·동일 round ID를 검사한다. 제품 소스를 바꾸지 않고 이 세 테스트를 수정한 뒤 재실행했다.
 
+### 후속 헤더 표시 조정 (2026-09-21)
+
+사용자 요청에 따라 두 게임의 헤더에서 `molsino` 옆 게임 이름을 복원했다. 변경 전 소스에는 게임명 DOM 없이 스타일만 남아 있었다. 창 너비에 따른 정보 우선순위와 숨김 기준은 [메인 제품 설계 §2](../main/product-design.md#2-오버레이와-조작)에 반영했다. 기존 모서리 크기 조절 여백은 유지했다.
+
+`npm run typecheck`, 캐시를 사용한 `npm run package`, `git diff --check`를 통과했다. 임시 Playwright 점검(`node /tmp/molsino-header-check.cjs`)으로 실제 macOS 패키지와 격리 userData에서 블랙잭·바카라 각각 220×150, 280×150, 340×150의 표시 우선순위, 두 게임명, 레벨 유지, 24×24 버튼과 우상단 크기 조절 핸들의 비중첩을 확인했다. 6개 화면 점검은 모두 통과했고 PNG를 열어 실제 배치를 확인했다. 최초 sandbox의 앱 실행 실패 후 OS 앱 실행 권한으로 재실행했으며 기능 실패는 없었다. 전체 93개 스위트를 다시 실행한 결과가 아니며, 영구 테스트는 추가하지 않았다.
+
+임시 검증 로그는 `/tmp/molsino-header-check.log`, 패키징 로그는 `/tmp/molsino-header-package.log`, 캡처는 `/tmp/molsino-header-screenshots/{blackjack,baccarat}-{220,280,340}.png`에 있다. Windows 및 OS 투명 합성은 이 후속 점검 범위에 포함하지 않는다.
+
 ## 3. 남은 확인과 다음 시작점
 
 최종 패키지 검증과 [DEV 대상 PR #12](https://github.com/wooing1084/molsino/pull/12) 생성을 완료했다. PR 브랜치는 `codex/n04-gameplay-improvements`이며 DEV 병합은 이 완료 기록에 포함하지 않는다. 최소 창 PNG의 직접 확인 범위는 위 기록을 따른다. Windows, 외부 업무 앱 포커스, 실제 물리 키·트레이, OS 투명 합성은 이번 기록만으로 검증됐다고 판단하지 않는다.
