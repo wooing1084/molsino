@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import type { TableView } from './table-levels';
 import { baccaratActionSchema } from '../core/baccarat/core';
 import type { BaccaratView } from './baccarat-view';
 import { userActionSchema, type OverlayAPI, type GameViewState, type CommandError } from './contracts';
 const integer = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const appActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('selectLevel'), level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]) }).strict(),
   z.object({ type: z.literal('baccarat'), action: baccaratActionSchema }).strict(),
   z.object({ type: z.literal('selectGame'), gameId: z.enum(['blackjack', 'baccarat']) }).strict(),
   z.object({ type: z.literal('goToMenu') }).strict(), z.object({ type: z.literal('resetAll') }).strict(),
@@ -15,6 +17,7 @@ export type AppAction = z.infer<typeof appActionSchema>;
 export type BlackjackAction = Extract<AppAction, { type: 'blackjack' }>['action'];
 export type AppCommand = z.infer<typeof appCommandSchema>;
 export interface AppView {
+  table: TableView;
   revision: number; platform: string; balanceCents: number; saveError: boolean;
   recovery?: GameViewState['recovery'];
   blackjack: GameViewState | null; baccarat: BaccaratView | null;

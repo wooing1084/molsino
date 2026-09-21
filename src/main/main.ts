@@ -300,6 +300,7 @@ async function start(): Promise<void> {
   const recoveryState = (): AppView => ({
     revision: 0, sessionId: '00000000-0000-4000-8000-000000000000', viewSequence: 0,
     screen: 'menu', activeRoundGameId: null, canNavigate: false,
+    table: { selectedLevel: 1, bestBankrollCents: 0, bestLevel: 1, entryBalanceCents: 100, minBetCents: 100, maxBetCents: 5000 },
     platform: process.platform, balanceCents: 0, saveError: false, blackjack: null, baccarat: null,
     recovery: { issue: startupUnavailable ? 'unavailable' : loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
       backupAvailable: loaded.kind === 'recovery' && Boolean(loaded.backup) },

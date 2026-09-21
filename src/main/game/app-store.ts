@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { bestTableLevel, getTableLevel, normalizeTableBet, validateTableBet } from '../../shared/table-levels';
 import { createBaccarat, createShoe, transitionBaccarat, type BaccaratEnvironment } from '../../core/baccarat/core';
 import { toBaccaratView } from './baccarat-adapter';
 import { createSession } from '../../core/engine';
@@ -24,9 +25,15 @@ export class AppStore {
     const s = this.state;
     const bj = s.screen === 'blackjack' && s.games.blackjack;
     const blackjack = bj ? toGameViewState({ ...bj, balanceCents: s.wallet.balanceCents }, s.revision, this.platform) : null;
-    if (blackjack) blackjack.legalActions = blackjack.legalActions.filter(a => a !== 'resetSession');
+    const limits = getTableLevel(s.table.selectedLevel);
+    if (blackjack) blackjack.legalActions = blackjack.legalActions.filter(a => a !== 'resetSession'
+      && (!(a === 'deal' || a === 'setBet' || a === 'setBetStep') || s.wallet.balanceCents >= limits.minBetCents));
+    const baccarat = s.screen === 'baccarat' && s.games.baccarat ? toBaccaratView(s.games.baccarat, s.wallet.balanceCents) : null;
+    if (baccarat && s.wallet.balanceCents < limits.minBetCents) baccarat.legalActions = baccarat.legalActions.filter(a => a !== 'deal' && a !== 'setBet');
     return { revision: s.revision, platform: this.platform, balanceCents: s.wallet.balanceCents,
-      blackjack, baccarat: s.screen === 'baccarat' && s.games.baccarat ? toBaccaratView(s.games.baccarat, s.wallet.balanceCents) : null,
+      table: { selectedLevel: s.table.selectedLevel, bestBankrollCents: s.table.bestBankrollCents, bestLevel: bestTableLevel(s.table.bestBankrollCents),
+        minBetCents: limits.minBetCents, maxBetCents: limits.maxBetCents, entryBalanceCents: limits.entryBalanceCents },
+      blackjack, baccarat,
       sessionId: s.sessionId, viewSequence: this.sequence, screen: s.screen,
       activeRoundGameId: s.activeRoundGameId, canNavigate: !s.activeRoundGameId && !this.busy && !this.pending && !this.internalError,
       saveError: this.failed, ...(this.internalError ? { internalError: this.internalError } : {}),
@@ -62,6 +69,15 @@ export class AppStore {
   }
   private apply(action: AppAction): AppSession {
     const s = structuredClone(this.state);
+    const limits = getTableLevel(s.table.selectedLevel);
+    if (action.type === 'selectLevel') {
+      if (s.screen !== 'menu' || s.activeRoundGameId) throw new Error('판을 마친 뒤 메뉴에서 레벨을 선택하세요.');
+      const target = getTableLevel(action.level);
+      if (action.level !== s.table.selectedLevel && s.wallet.balanceCents < target.entryBalanceCents) throw new Error('입장에 필요한 잔액이 부족합니다.');
+      s.table.selectedLevel = target.level;
+      this.normalizeBets(s);
+      return s;
+    }
     if (action.type === 'resetAll' || action.type === 'selectGame' || action.type === 'goToMenu') {
       if (s.activeRoundGameId) throw new Error('한 판을 마친 뒤 이동할 수 있습니다.');
       if (action.type === 'resetAll') {
@@ -76,16 +92,22 @@ export class AppStore {
           s.games.blackjack = structuredClone(bj) as AppSession['games']['blackjack'];
         }
         const b = s.games.blackjack!;
-        if (!b.round) b.pendingBetCents = Math.max(100, Math.min(b.pendingBetCents, s.wallet.balanceCents));
+        if (!b.round) b.pendingBetCents = normalizeTableBet(b.pendingBetCents, s.wallet.balanceCents, limits);
       }
       if (action.gameId === 'baccarat') {
         s.games.baccarat ??= createBaccarat(this.baccarat.createShoe());
-        if (s.games.baccarat.phase === 'betting') s.games.baccarat.pendingBet.amountCents = Math.max(100, Math.min(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents));
+        if (s.games.baccarat.phase === 'betting') s.games.baccarat.pendingBet.amountCents = normalizeTableBet(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents, limits);
       }
       return s;
     }
     if (action.type === 'blackjack') {
       if (s.screen !== 'blackjack' || !s.games.blackjack) throw new Error('현재 게임의 명령이 아닙니다.');
+      if (action.action.type === 'setBet') validateTableBet(action.action.amountCents, s.wallet.balanceCents, limits);
+      if (action.action.type === 'setBetStep' && s.wallet.balanceCents < limits.minBetCents) throw new Error('하위 레벨을 선택하세요.');
+      if (action.action.type === 'deal') {
+        this.normalizeBets(s);
+        validateTableBet(s.games.blackjack.pendingBetCents, s.wallet.balanceCents, limits);
+      }
       const next = applyBlackjack(s.games.blackjack, s.wallet.balanceCents, action.action, this.blackjack);
       s.wallet.balanceCents = next.balance;
       s.games.blackjack = next.game as AppSession['games']['blackjack'];
@@ -93,11 +115,30 @@ export class AppStore {
     }
     if (action.type === 'baccarat') {
       if (s.screen !== 'baccarat' || !s.games.baccarat) throw new Error('현재 게임의 명령이 아닙니다.');
+      if (action.action.type === 'setBet') validateTableBet(action.action.amountCents, s.wallet.balanceCents, limits);
+      if (action.action.type === 'deal') {
+        this.normalizeBets(s);
+        validateTableBet(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents, limits);
+      }
       const next = transitionBaccarat(s.games.baccarat, s.wallet.balanceCents, action.action, this.baccarat, s.sessionId);
       s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
       s.activeRoundGameId = next.active ? 'baccarat' : null;
     }
+    this.normalizeBets(s);
+    this.recordSettlement(s);
     return s;
+  }
+  private normalizeBets(s: AppSession): void {
+    const limits = getTableLevel(s.table.selectedLevel);
+    if (s.games.blackjack && !s.games.blackjack.round) s.games.blackjack.pendingBetCents = normalizeTableBet(s.games.blackjack.pendingBetCents, s.wallet.balanceCents, limits);
+    if (s.games.baccarat?.phase === 'betting') s.games.baccarat.pendingBet.amountCents = normalizeTableBet(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents, limits);
+  }
+  private recordSettlement(s: AppSession): void {
+    const newlySettled = (['blackjack', 'baccarat'] as const).some(id => {
+      const next = s.games[id]?.lastResult;
+      return next && next.roundId !== this.state.games[id]?.lastResult?.roundId;
+    });
+    if (newlySettled) s.table.bestBankrollCents = Math.max(s.table.bestBankrollCents, s.wallet.balanceCents);
   }
   private async commit(): Promise<AppResult> {
     this.busy = true;
@@ -135,6 +176,7 @@ export class AppStore {
         s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
         s.activeRoundGameId = next.active ? 'baccarat' : null;
       } else return;
+      this.recordSettlement(s);
       s.revision++;
       this.pending = parseAppSession(s);
       await this.commit();

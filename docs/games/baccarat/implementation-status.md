@@ -17,7 +17,7 @@
 | 영역 | 현재 동작 |
 | --- | --- |
 | 규칙·슈 | 독립된 8덱, 새 슈 버림, 402장 컷 경계, 최초 P→B→P→B 배분, 내추럴·세 번째 카드 규칙 |
-| 베팅·정산 | P/B/T 한 곳, 최소 $1·센트 입력, Banker 95% 이익 반올림, Tie 8배 순이익, P/B Tie 원금 반환. 딜 전에 최대 지급과 안전 정수 범위 검사 |
+| 베팅·정산 | P/B/T 한 곳, 공통 레벨 최소·최대·센트 입력, Banker 95% 이익 반올림, Tie 8배 순이익, P/B Tie 원금 반환. 딜 전에 최대 지급과 안전 정수 범위 검사 |
 | 공용 작성자 | 지갑을 별도로 만들지 않고 AppStore가 차감·각 배분 단계·정산·최근 기록·잠금을 함께 저장 |
 | 복구·중복 방지 | 저장된 배분 단계에서 자동 재개. 실패 후보 그대로 재시도. 현재 판·정산 키·순번·명령 ID/revision으로 재정산 방지 |
 | 상태 검증 | 416장 구성·고유 ID·버림·소비 위치, 현재 판의 슈 prefix 재생, phase·베팅·최근 순번·최신 정산 증거 검사 |
@@ -35,7 +35,7 @@
 | [`src/main/game/baccarat-shoe-source.ts`](../../../src/main/game/baccarat-shoe-source.ts) | crypto 난수와 테스트 전용 결정론적 슈 |
 | [`src/main/game/baccarat-adapter.ts`](../../../src/main/game/baccarat-adapter.ts) | 공개 상태·허용 동작 추출 |
 | [`src/main/game/app-store.ts`](../../../src/main/game/app-store.ts) | 공용 명령·지갑·저장 후보·자동 진행 직렬화 |
-| [`src/main/persistence/app-session-repository.ts`](../../../src/main/persistence/app-session-repository.ts) | v2 저장 검증과 두 게임 진행 잠금 |
+| [`src/main/persistence/app-session-repository.ts`](../../../src/main/persistence/app-session-repository.ts) | v3 저장 검증과 두 게임 진행 잠금 |
 | [`src/main/main.ts`](../../../src/main/main.ts) | 게임 환경 주입·신뢰 IPC·시작 복원·금액 편집 포커스 |
 | [`src/shared/app-contracts.ts`](../../../src/shared/app-contracts.ts), [`baccarat-view.ts`](../../../src/shared/baccarat-view.ts) | strict 공개 명령·상태 계약 |
 | [`src/renderer/games/baccarat.tsx`](../../../src/renderer/games/baccarat.tsx) | 바카라 UI·입력 수명·오류 안내 |
@@ -46,3 +46,5 @@
 ## 검증과 한계
 
 시나리오와 테스트 위치는 [바카라 E2E 현황](e2e-implementation-status.md), 실제 실행 결과와 환경은 [N03 보고서](../../session-reports/N03-baccarat.md)를 따른다. Windows GUI와 외부 앱 포커스·물리 키·트레이·OS 투명 합성의 검증 여부를 자동화 결과로 대체하지 않는다.
+
+N04는 공통 테이블 레벨·한도와 Renderer 순차 공개를 연결한다. 현재 정책은 [메인 제품 설계](../../main/product-design.md#6-공통-테이블-레벨과-카드-공개), 실제 검증 결과와 남은 범위는 [N04 보고서](../../session-reports/N04-gameplay-improvements.md)를 따른다.

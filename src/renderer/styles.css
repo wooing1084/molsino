@@ -20,6 +20,16 @@ button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
   transition: opacity .15s .8s;
   text-shadow: 0 1px 2px #000;
 }
+.overlay[data-screen='blackjack'], .overlay[data-screen='baccarat'] {
+  grid-template-rows: 24px 24px minmax(0, 1fr) 14px 24px 14px;
+  gap: 1px;
+  padding-block: 2px;
+}
+.overlay[data-screen='levels'] {
+  grid-template-rows: 24px 24px minmax(64px, 1fr) 24px;
+  gap: 1px;
+  padding-block: 2px;
+}
 .overlay:hover:not([data-popover-open='true']), .overlay[data-resizing='true'] { opacity: 1; transition-delay: 0s; }
 .overlay[data-popover-open='true'] { transition-delay: 0s; }
 .overlay.collapsed { display: flex; align-items: center; padding: 3px 4px; }
@@ -33,6 +43,8 @@ header { display: flex; min-width: 0; gap: 4px; align-items: center; }
 .drag { flex: 1; min-width: 0; overflow: hidden; app-region: drag; cursor: grab; letter-spacing: 1px; font-size: 11px; line-height: 24px; white-space: nowrap; text-overflow: ellipsis; }
 .game-label { margin-left: 5px; font-size: 8px; font-weight: 500; opacity: .55; }
 header button { flex: 0 0 24px; padding: 0; border: none; }
+header .current-level { flex: 0 0 auto; min-width: 36px; font-size: 11px; font-weight: 600; line-height: 24px; white-space: nowrap; }
+header button.current-level { padding-inline: 3px; border: 1px solid currentColor; line-height: 22px; }
 .balance { display: flex; min-width: 0; align-items: center; justify-content: space-between; }
 .balance span, .bet > span { flex: 0 0 auto; font-size: 11px; line-height: 1; letter-spacing: 1px; }
 .balance strong { min-width: 0; overflow: hidden; font-size: 20px; font-weight: 400; line-height: 1.1; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
@@ -42,9 +54,12 @@ header button { flex: 0 0 24px; padding: 0; border: none; }
 .hand { display: flex; flex: 0 0 auto; min-width: 66px; max-width: 118px; flex-direction: column; justify-content: center; padding: 1px 4px; border: 1px solid #ffffff40; border-radius: 4px; overflow: hidden; }
 .ink-dark .hand { border-color: #00000040; }
 .hand.active { border-color: currentColor; }
-.hand small { overflow: hidden; font-size: 9px; line-height: 11px; opacity: .75; text-overflow: ellipsis; white-space: nowrap; }
-.hand > div { display: flex; gap: 2px; overflow: hidden; }
-.card { flex: 0 0 auto; font-size: 16px; line-height: 18px; letter-spacing: -1px; }
+.hand small { overflow: hidden; font-size: 11px; line-height: 12px; opacity: .75; text-overflow: ellipsis; white-space: nowrap; }
+.hand > div { display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.card { display: inline-flex; justify-content: center; flex: 0 0 24px; min-width: 24px; font-size: 16px; line-height: 18px; letter-spacing: -1px; }
+.card-face.revealing { animation: card-reveal 140ms ease-out; }
+@keyframes card-reveal { from { opacity: 0; } to { opacity: 1; } }
+.table-limits { font-size: 11px; line-height: 14px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bet { display: flex; min-width: 0; gap: 4px; align-items: center; }
 .actions { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .bet button { flex: 0 0 24px; padding: 0; }
@@ -93,22 +108,38 @@ footer { min-width: 0; overflow: hidden; font-size: 11px; line-height: 14px; opa
 .resize-handle-sw::after { bottom: 4px; left: 4px; border-bottom: 1px solid; border-left: 1px solid; }
 .resize-handle-se::after { right: 4px; bottom: 4px; border-right: 1px solid; border-bottom: 1px solid; }
 
-@media (prefers-reduced-motion: reduce) { .overlay { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .overlay { transition: none; } .card-face.revealing { animation: none; } }
+@media (max-width: 260px) { .app-name { display: none; } }
 
 .game-menu { display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 0; }
 .game-menu button { flex: 1; max-width: 150px; height: 32px; }
 .game-menu p { margin: 0; font-size: 11px; line-height: 14px; }
 .balance button { height: 24px; min-width: 48px; padding: 0 5px; font-size: 11px; }
 
-.baccarat-table { display: flex; flex-direction: column; min-height: 0; gap: 1px; }
+.baccarat-table { display: flex; flex-direction: column; min-height: 0; gap: 0; }
 .baccarat-hands { display: flex; flex: 1; min-height: 28px; gap: 4px; }
-.baccarat-hands .hand { flex: 1; max-width: none; min-width: 0; }
+.baccarat-hands .hand { flex: 1; max-width: none; min-width: 0; padding-block: 0; }
 .baccarat-hands .hand small { font-size: 11px; line-height: 12px; }
 .baccarat-hands .card { font-size: 14px; line-height: 15px; }
-.baccarat-history { display: flex; flex: 0 0 12px; gap: 5px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; font-size: 11px; line-height: 12px; scrollbar-width: none; }
+.baccarat-history { display: flex; flex: 0 0 11px; gap: 5px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; font-size: 11px; line-height: 11px; scrollbar-width: none; }
 .baccarat-actions { padding-inline: 20px; gap: 3px; }
 .baccarat-actions button[aria-pressed] { min-width: 24px; padding: 0; }
 .baccarat-actions button[aria-pressed='true'] { border-width: 2px; font-weight: 700; text-decoration: underline; }
 .baccarat-actions .baccarat-return { font-size: 11px; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; flex: 1; white-space: nowrap; }
 .baccarat-status { padding-inline: 4px; }
 .overlay[data-screen='baccarat'] .game-label { font-size: 11px; }
+
+.level-carousel { position: relative; min-height: 0; min-width: 0; }
+.level-track { position: relative; display: flex; gap: 8px; width: 100%; height: 100%; padding-inline: max(14px, calc((100% - 260px) / 2)); overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.level-track::-webkit-scrollbar { display: none; }
+.level-card { display: flex; flex: 0 0 100%; min-width: 0; flex-direction: column; justify-content: center; align-items: center; padding: 1px 4px; border: 1px solid #ffffff60; border-radius: 5px; scroll-snap-align: center; scroll-snap-stop: always; font-size: 11px; line-height: 12px; white-space: nowrap; }
+.ink-dark .level-card { border-color: #00000060; }
+.level-card[aria-current='true'] { border-color: currentColor; }
+.level-card strong { display: block; line-height: 24px; font-size: 12px; }
+.level-card-status { opacity: .8; }
+.level-carousel > button { position: absolute; top: 2px; z-index: 1; width: 24px; padding: 0; }
+.level-prev { left: 12px; }
+.level-next { right: 12px; }
+.level-actions { display: flex; align-items: center; justify-content: space-between; gap: 3px; padding-inline: 20px; }
+.level-actions > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-size: 11px; }
+.level-actions button { flex: 0 0 auto; }

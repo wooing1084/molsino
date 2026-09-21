@@ -5,7 +5,7 @@ import path from 'node:path';
 
 export type RepositoryLoad<T> = { kind: 'missing' } | { kind: 'ready'; snapshot: T }
   | { kind: 'recovery'; issue: 'corrupt' | 'futureSchema'; backup?: T };
-type RepositoryRead<T> = { kind: 'missing' | 'corrupt' | 'futureSchema' } | { kind: 'valid'; snapshot: T };
+type RepositoryRead<T> = { kind: 'missing' | 'corrupt' | 'futureSchema' } | { kind: 'valid'; snapshot: T; upgraded?: boolean };
 export type FileOperations = Pick<typeof fs, 'copyFile' | 'mkdir' | 'open' | 'readFile' | 'rename' | 'unlink'>;
 
 export class AtomicSessionRepository<T> {
@@ -14,14 +14,23 @@ export class AtomicSessionRepository<T> {
 
   public constructor(private readonly directory: string, private readonly basename: string,
     private readonly schemaVersion: number, private readonly parse: (value: unknown) => T,
-    private readonly io: FileOperations = fs) {
+    private readonly io: FileOperations = fs, private readonly migrate?: (value: unknown) => T) {
     this.primary = path.join(directory, `${basename}.json`);
     this.backup = path.join(directory, `${basename}.backup.json`);
   }
 
   public async load(): Promise<RepositoryLoad<T>> {
     const primary = await this.readValidated(this.primary);
-    if (primary.kind === 'valid') return { kind: 'ready', snapshot: primary.snapshot };
+    if (primary.kind === 'valid') {
+      if (primary.upgraded) {
+        // Commit a format upgrade before exposing it; backup retains equivalent validated evidence.
+        await this.save(primary.snapshot);
+        const verified = await this.readValidated(this.primary);
+        if (verified.kind !== 'valid' || verified.upgraded) throw new Error('Migration verification failed');
+        return { kind: 'ready', snapshot: verified.snapshot };
+      }
+      return { kind: 'ready', snapshot: primary.snapshot };
+    }
     const backup = await this.readValidated(this.backup);
     if (primary.kind === 'missing' && backup.kind === 'missing') return { kind: 'missing' };
     return {
@@ -62,7 +71,11 @@ export class AtomicSessionRepository<T> {
         && typeof parsed.schemaVersion === 'number' && parsed.schemaVersion > this.schemaVersion) {
         return { kind: 'futureSchema' };
       }
-      return { kind: 'valid', snapshot: this.parse(parsed) };
+      try { return { kind: 'valid', snapshot: this.parse(parsed) }; }
+      catch (error) {
+        if (!this.migrate) throw error;
+        return { kind: 'valid', snapshot: this.migrate(parsed), upgraded: true };
+      }
     } catch {
       return { kind: 'corrupt' };
     }

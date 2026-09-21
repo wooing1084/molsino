@@ -2,7 +2,7 @@
 
 **목적:** 게임 종류와 무관한 앱 기능의 현재 구현 범위, 남은 작업, 실제 파일 위치를 개발 전에 확인한다.
 
-**요약:** 2026-09-21 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v2 저장과 블랙잭 분리를 구현했다. 바카라도 같은 공용 작성자에 연결했다. 기존 미진행 세션은 폐기했으며 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
+**요약:** 2026-09-21 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v3 저장과 블랙잭 분리를 구현했다. 바카라도 같은 공용 작성자에 연결했다. 기존 미진행 세션은 폐기했으며 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
 
 ## 목차
 
@@ -58,7 +58,7 @@ src/
     game/blackjack-adapter.ts         코어 잔액 주입·공개 상태
     game/baccarat-adapter.ts          바카라 공개 상태
     game/baccarat-shoe-source.ts      Main 난수·격리 테스트 슈
-    persistence/app-session-repository.ts  v2 스키마·v1 이전
+    persistence/app-session-repository.ts  v3 스키마·v1/v2 이전
     persistence/atomic-session-repository.ts  공통 원자 저장·백업·복구
     main.ts                         앱 시작·오버레이 창/트레이·프로토콜·IPC 연결
     ipc/trust.ts                    IPC 송신자·문서 신뢰 검사
@@ -96,3 +96,5 @@ resources/icons/                     앱 아이콘 원본·플랫폼 산출물
 package.json, package-lock.json, .nvmrc
 forge.config.cjs, vite.*.config.mts, vitest.config.mts, playwright.config.ts
 ```
+
+N04는 공통 테이블 레벨·한도와 Renderer 순차 공개를 연결한다. 현재 정책은 [메인 제품 설계](../main/product-design.md#6-공통-테이블-레벨과-카드-공개), 실제 검증 결과와 남은 범위는 [N04 보고서](../session-reports/N04-gameplay-improvements.md)를 따른다.
