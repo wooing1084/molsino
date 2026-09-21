@@ -2,7 +2,7 @@
 
 **목적:** 게임 화면을 담는 Electron 앱의 창, 입력, 프로세스, IPC 신뢰 경계와 배포 계약을 정의한다.
 
-**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭을 연결한다. 앱 상태·저장은 §9, 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
+**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭과 바카라를 연결한다. 앱 상태·저장은 §9, 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -24,14 +24,14 @@ macOS와 Windows에서 Electron, TypeScript, React UI, Forge·Vite 빌드를 공
 | --- | --- | --- |
 | Electron Main | Electron + Node.js | 앱 수명, 단일 인스턴스, 창·트레이, IPC, 현재 게임 저장 연결 |
 | Preload | sandbox + contextBridge | Renderer에 제한된 메서드와 구독만 노출 |
-| Renderer | React + CSS | 오버레이와 현재 블랙잭 화면, 일시적인 입력 초안 |
+| Renderer | React + CSS | 오버레이·메뉴·게임별 화면, 일시적인 입력 초안 |
 | 플랫폼 | `src/main/platform/adapter.ts` | macOS·Windows 창 정책의 차이 처리 |
 | 계약 검증 | Zod | 창 명령과 게임 명령의 런타임 검증 |
 | 패키징·테스트 | Electron Forge + Vite, Vitest, Playwright Electron | OS별 산출물과 자동 검증 |
 
-`src/main/main.ts`는 창·트레이·IPC와 앱 세션 시작을 연결한다. `AppStore`가 공용 잔액·화면·게임 상태를 소유하며 `blackjack-adapter.ts`가 기존 순수 블랙잭 코어를 호출한다. `window.molsino`는 앱 snapshot·명령·구독과 창 API를 노출한다. 저장은 `AppSessionRepository`의 v2 원자 스냅샷으로 통합하고, v1 저장소는 기존 파일 이전 검증에만 사용한다. 바카라 선택은 아직 거부한다.
+`src/main/main.ts`는 창·트레이·IPC와 앱 세션 시작을 연결한다. `AppStore`가 공용 잔액·화면·게임 상태를 소유하며 `blackjack-adapter.ts`가 기존 순수 블랙잭 코어를 호출한다. `window.molsino`는 앱 snapshot·명령·구독과 창 API를 노출한다. 저장은 `AppSessionRepository`의 v2 원자 스냅샷으로 통합하고, v1 저장소는 기존 파일 이전 검증에만 사용한다. 바카라 코어와 공개 상태 어댑터도 같은 AppStore에 연결한다.
 
-초기 검증 목표는 macOS 14 이상 arm64와 Windows 11 x64다. 지원 범위는 채택한 Electron 버전과 실제 장비 검증을 함께 확인해 표기한다. 다른 CPU·OS 조합은 별도 검증이 필요하다. Electron은 여러 프로세스를 사용하지만 현재 실행 인스턴스와 블랙잭 세션 상태의 소유자는 각각 하나다.
+초기 검증 목표는 macOS 14 이상 arm64와 Windows 11 x64다. 지원 범위는 채택한 Electron 버전과 실제 장비 검증을 함께 확인해 표기한다. 다른 CPU·OS 조합은 별도 검증이 필요하다. Electron은 여러 프로세스를 사용하지만 현재 실행 인스턴스와 공용 앱 세션 상태의 소유자는 각각 하나다.
 
 ## 2. 오버레이 경험 참고
 
@@ -136,7 +136,7 @@ await overlay.loadURL('app://molsino/index.html');
 // 현재 구현은 ready-to-show에서 overlay.showInactive()를 호출한다.
 ```
 
-Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInactive()`를 조합한다. 현재 블랙잭 베팅 입력만 명시적 요청 동안 임시 포커스를 허용한다. 상세 입력 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)를 따른다. [Electron 창 API](https://www.electronjs.org/docs/latest/api/base-window)
+Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInactive()`를 조합한다. 두 게임의 베팅 입력만 명시적 요청 동안 임시 포커스를 허용한다. 상세 입력 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)를 따른다. [Electron 창 API](https://www.electronjs.org/docs/latest/api/base-window)
 
 루트 HTML·body·React root 배경도 transparent로 둔다. CSS opacity는 정보 레이어에만 적용하고 창 전체 알파는 1로 유지한다. 펼친 창의 우측 상단 색상 전환 버튼에 호버하면 작은 별도 조절창이 나타나며, 그 슬라이더는 전경 불투명도를 20–100%(5% 단위, 기본 65%)로 조절한다. 20%는 완전 비표시를 막는 하한이며 배경 알파를 높이는 설정이 아니다. 조절창은 버튼의 좌우 여유와 현재 display의 workArea를 기준으로 위치를 선택하고 최종 bounds를 화면 안에 보정한다. 버튼↔조절창 사이 이동에는 짧은 닫힘 지연을 둔다. 슬라이더 조작 중에는 선택값을 즉시 미리 보고, 게임 창 일반 호버 시 100%·이탈 0.8초 후 선택값으로 돌아간다. 흐림 효과나 그림자로 배경을 채우지 않는다. 화면 확대율은 1로 고정하고 OS DPI를 별도로 처리한다.
 
@@ -148,7 +148,7 @@ Windows 투명 창은 frameless로 구성한다. `focusable: false`와 `showInac
 | 작업 공간 | `setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })` 호출 중. 실제 Spaces·전체 화면 결과는 OS에서 확인 | 같은 API는 효과 없음. 현재 가상 데스크톱 정책 사용 |
 | 복원 | showInactive, 일반 앱 Dock 표시·E2E 전용 숨김 | showInactive, skipTaskbar |
 | 트레이 | 단색 Template 이미지, 메뉴 막대 | ICO, 알림 영역 메뉴 |
-| 현재 블랙잭 금액 편집 | 명시적 클릭 중에만 메인 창 `setFocusable(true)`·`focus()` | 동일 창 정책 |
+| 현재 게임 금액 편집 | 명시적 클릭 중에만 메인 창 `setFocusable(true)`·`focus()` | 동일 창 정책 |
 | 전체 화면 | Spaces·Stage Manager 확인 | 일반 전체 화면과 독점 전체 화면을 구분 |
 
 공통 상단 표시 기능이 모든 전체 화면·가상 데스크톱에서 같은 결과를 보장하지는 않는다. Windows의 모든 가상 데스크톱에 고정하는 기능은 1차 범위 밖이다. 다른 앱 전체 화면에서 보이지 않을 때도 트레이로 접근 가능해야 한다.
@@ -160,14 +160,14 @@ macOS의 프로덕션 Dock 정책은 별도로 유지한다. 프로덕션 패키
 - 기본 오버레이는 마우스 중심이다. 복원·호버·일반 게임 버튼 클릭에서 `focus()` 또는 `app.focus()`를 호출하지 않는다.
 - 창 제어 예외인 전역 Alt+백틱은 Electron Main의 `globalShortcut`으로 앱 준비 후 등록한다. 콜백 `toggleOverlay()`는 보이는 상태면 숨기고, 숨김 상태면 트레이 복원과 같은 `reveal()`(`showInactive`)을 호출한다. 게임 명령·일시정지·키보드 포커스 변경은 없다. 등록 실패는 경고만 남기고 트레이 경로를 유지하며 종료 시 해제한다. 키보드 배열·OS별 실제 조합은 실장비에서 확인한다. [Electron globalShortcut](https://www.electronjs.org/docs/latest/api/global-shortcut), [Accelerator](https://www.electronjs.org/docs/latest/api/accelerator)
 - `acceptFirstMouse`는 macOS의 비활성 첫 클릭을 위한 설정이다. 아래 앱으로 클릭을 통과시키는 설정과 구분한다.
-- 현재 임시 키보드 포커스는 블랙잭 베팅액 편집에만 연결돼 있다. Main은 신뢰된 메인 창·베팅 phase·펼침·대화형 상태를 검사하고 `setFocusable(true)`와 `focus()`를 호출한다. 편집 종료·창 blur·숨김·접힘·클릭 통과·reload·phase 변경 때는 `blur()` 뒤 `setFocusable(false)`로 돌아온다. 이전 업무 앱을 강제로 활성화하지 않는다. 금액의 파싱·확정·취소와 게임 명령 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)에 둔다. [Electron BaseWindow 포커스 API](https://www.electronjs.org/docs/latest/api/base-window)
+- 임시 키보드 포커스는 현재 선택된 블랙잭·바카라의 베팅액 편집에 연결돼 있다. Main은 신뢰된 메인 창·베팅 phase·펼침·대화형 상태를 검사하고 `setFocusable(true)`와 `focus()`를 호출한다. 편집 종료·창 blur·숨김·접힘·클릭 통과·reload·phase 변경 때는 `blur()` 뒤 `setFocusable(false)`로 돌아온다. 이전 업무 앱을 강제로 활성화하지 않는다. 금액의 파싱·확정·취소와 게임 명령 조건은 [블랙잭 기술 설계](../games/blackjack/technical-design.md#5-게임-화면과-입력)에 둔다. [Electron BaseWindow 포커스 API](https://www.electronjs.org/docs/latest/api/base-window)
 - 키보드·VoiceOver·Narrator용 별도 접근성 창은 현재 제공하지 않는다. 기존 미진행 계획은 폐기했으며 구현 일정은 없다.
 
 비활성 오버레이의 버튼이 첫 클릭에 실행되고 업무 입력 포커스가 유지되는지는 양쪽 OS에서 확인할 조건이다.
 
 ### 4.5 클릭 통과
 
-**1차 필수:** 명시적인 전체 창 클릭 통과. `setIgnoreMouseEvents(true)`를 사용하고 해제는 Tray에서 수행한다. 현재 블랙잭 인라인 편집과 드래그를 먼저 종료한다. `pointer-events:none`이나 투명 CSS만으로 다른 앱에 클릭이 전달되지는 않는다. [Electron 클릭 통과와 드래그](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)
+**1차 필수:** 명시적인 전체 창 클릭 통과. `setIgnoreMouseEvents(true)`를 사용하고 해제는 Tray에서 수행한다. 현재 게임의 인라인 편집과 드래그를 먼저 종료한다. `pointer-events:none`이나 투명 CSS만으로 다른 앱에 클릭이 전달되지는 않는다. [Electron 클릭 통과와 드래그](https://www.electronjs.org/docs/latest/tutorial/custom-window-interactions)
 
 자동 부분 클릭 통과는 현재 구현하지 않았다. 구 실험 계획은 폐기했으며 새로운 사용자 요구나 문제를 근거로 별도 선정해야 한다.
 
@@ -239,7 +239,7 @@ Main은 sender `webContents`, `senderFrame`, 최상위 프레임과 허용된 �
 - 임의 navigation과 window.open은 차단한다. 모든 새 창은 Main의 정해진 경로로 생성한다.
 - Preload는 파일 읽기·셸 실행·raw IPC를 노출하지 않는다. 입력값은 텍스트로 렌더링한다.
 - 외부 콘텐츠·계정·카메라·마이크·화면 녹화 권한은 필요하지 않으며 사용하지 않는다.
-- 현재 블랙잭 세션 저장은 로그와 분리한다. 전체 슈·비공개 카드·로컬 사용자 경로를 정상 로그에 남기지 않는다. 저장 필드는 [블랙잭 기술 설계](../games/blackjack/technical-design.md#4-명령-직렬화와-세션-저장)를 따른다.
+- 공용 게임 세션 저장은 로그와 분리한다. 전체 슈·비공개 카드·로컬 사용자 경로를 정상 로그에 남기지 않는다. 저장 필드는 [블랙잭 기술 설계](../games/blackjack/technical-design.md#4-명령-직렬화와-세션-저장)를 따른다.
 
 ## 7. 프로젝트 구조와 패키징
 

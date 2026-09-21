@@ -20,7 +20,7 @@
 | --- | --- |
 | 메인 기능·블랙잭 문서의 전체 경로 | [문서 안내](docs/README.md) |
 | 세션별 완료 내용·검증 기록·남은 이슈 | [세션 목록](docs/session-reports/session-list.md)에서 해당 보고서 |
-| 현재 코드 구성·실제 파일 위치 | [메인 구현 현황](docs/main/implementation-status.md), [블랙잭 구현 현황](docs/games/blackjack/implementation-status.md) |
+| 현재 코드 구성·실제 파일 위치 | [메인 구현 현황](docs/main/implementation-status.md), [블랙잭 구현 현황](docs/games/blackjack/implementation-status.md), [바카라 구현 현황](docs/games/baccarat/implementation-status.md) |
 | 신규 메뉴·공용 잔액·바카라 설계 | [메인 제품 설계](docs/main/product-design.md), [메인 기술 설계](docs/main/technical-design.md), [바카라 제품 설계](docs/games/baccarat/product-design.md)·[기술 설계](docs/games/baccarat/technical-design.md) |
 | 오버레이 동작·블랙잭 규칙 | [메인 제품 설계](docs/main/product-design.md), [블랙잭 제품 설계](docs/games/blackjack/product-design.md) |
 | 창·IPC 신뢰 경계·블랙잭 엔진과 저장 계약 | [메인 기술 설계](docs/main/technical-design.md), [블랙잭 기술 설계](docs/games/blackjack/technical-design.md) |

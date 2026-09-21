@@ -34,6 +34,7 @@
 | 블랙잭의 현재 코드 구성·파일 위치 | [블랙잭 구현 현황](games/blackjack/implementation-status.md) |
 | 메인 기능 E2E의 현재 범위 | [메인 E2E 현황](main/e2e-implementation-status.md) |
 | 블랙잭 E2E의 현재 범위 | [블랙잭 E2E 현황](games/blackjack/e2e-implementation-status.md) |
+| 바카라의 현재 구현·검증 범위 | [구현 현황](games/baccarat/implementation-status.md), [E2E 현황](games/baccarat/e2e-implementation-status.md) |
 | 세션 실행 순서·완료 조건·다음 시작점 | [작업 세션 로드맵](work-session-roadmap.md) |
 | 빌드·배포 절차와 산출물 | [빌드와 배포](main/building-distribution.md) |
 
@@ -57,4 +58,4 @@
 
 검증 기록은 다음 작업자가 **이전에 통과한 범위와 아직 확인하지 않은 범위**를 구분하고, 변경에 필요한 재검증을 선택하는 근거다. 결과 숫자만으로 전체 기능이나 실제 OS 동작이 검증됐다고 추정하지 않는다.
 
-각 세션의 실제 명령, 통과·실패·스킵 수, 실행 환경과 한계는 해당 [세션 보고서](session-reports/session-list.md)에 기록한다. 실패와 스킵은 원인 및 재현 조건을 함께 남긴다. 세션에 속하지 않은 독립 통합 검증은 해당 영역의 [메인 E2E 현황](main/e2e-implementation-status.md) 또는 [블랙잭 E2E 현황](games/blackjack/e2e-implementation-status.md), 배포 산출물 검증은 [빌드와 배포](main/building-distribution.md)에 날짜와 범위를 기록한다. 공식 세션 검증 방법은 [로드맵의 검증 정책](work-session-roadmap.md#검증-정책)을 따른다. 문서에 기록되지 않은 검증은 세션 완료 근거로 간주하지 않는다.
+각 세션의 실제 명령, 통과·실패·스킵 수, 실행 환경과 한계는 해당 [세션 보고서](session-reports/session-list.md)에 기록한다. 실패와 스킵은 원인 및 재현 조건을 함께 남긴다. 세션에 속하지 않은 독립 통합 검증은 해당 영역의 [메인 E2E 현황](main/e2e-implementation-status.md) 또는 [블랙잭 E2E 현황](games/blackjack/e2e-implementation-status.md), 배포 산출물 검증은 [빌드와 배포](main/building-distribution.md)에 날짜와 범위를 기록한다. 공식 세션 검증 방법은 [로드맵의 세션 운영 원칙](work-session-roadmap.md#2-세션-운영-원칙)을 따른다. 문서에 기록되지 않은 검증은 세션 완료 근거로 간주하지 않는다.
