@@ -55,9 +55,11 @@ test('APP-10 잘못된 envelope·게임 ID·추가 필드는 거부한다', asyn
   const s = await appSnapshot(launched.page);
   const base = { sessionId: s.sessionId, commandId: crypto.randomUUID(), expectedRevision: s.revision, action: { type: 'blackjack', action: { type: 'deal' } } };
   for (const value of [{ ...base, sessionId: 'bad' }, { ...base, expectedRevision: -1 }, { ...base, filePath: '/tmp/forbidden' },
-    { ...base, action: { type: 'selectGame', gameId: 'unknown' } }, { ...base, action: { type: 'baccarat', action: { type: 'deal' } } }]) {
+    { ...base, action: { type: 'selectGame', gameId: 'unknown' } }, { ...base, action: { type: 'baccarat', action: { type: 'advanceBaccarat' } } }]) {
     await expect(launched.page.evaluate(c => window.molsino.dispatch(c as never), value)).rejects.toThrow();
   }
+  // Baccarat is now a valid command branch, but another game's screen must still reject it.
+  expect(await appCommand(launched.page, { type: 'baccarat', action: { type: 'deal' } })).toMatchObject({ ok: false, error: 'INVALID_ACTION' });
   await expect(launched.page.evaluate(() => window.molsino.windowCommand('openDevTools' as never))).rejects.toThrow();
   await expect(launched.page.evaluate(() => window.molsino.resize({ phase: 'update', token: 'bad' }))).rejects.toThrow();
   expect(await appSnapshot(launched.page)).toEqual(s);

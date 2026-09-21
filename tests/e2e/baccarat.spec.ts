@@ -71,6 +71,7 @@ for (const scenario of [
 
 for (const stage of ['initial', 'playerThird', 'bankerThird', 'settle', 'settled'] as const) test(`BAC-04/07 ${stage} 저장 후 강제 종료에서 정확히 이어간다`, async () => {
   await start(['2', '2', '3', '4', '6', 'A'], 900);
+  await launched.page.getByRole('button', { name: 'Banker 베팅', exact: true }).click();
   await launched.page.getByRole('button', { name: '딜', exact: true }).click();
   await expect.poll(async () => (await saved()).games.baccarat?.round?.stage, { intervals: [20] }).toBe(stage);
   const checkpoint = await saved();
@@ -86,13 +87,14 @@ for (const stage of ['initial', 'playerThird', 'bankerThird', 'settle', 'settled
   const view = await completed();
   expect(view.player.cards.map(c => c.rank)).toEqual(['2', '3', '6']);
   expect(view.banker.cards.map(c => c.rank)).toEqual(['2', '4', 'A']);
-  expect((await saved()).wallet.balanceCents).toBe(9900);
+  expect((await saved()).wallet.balanceCents).toBe(10095);
   expect(view.recentResults).toHaveLength(1);
   expect((await saved()).games.baccarat?.round?.roundId).toBe(checkpoint.games.baccarat?.round?.roundId);
 });
 
 for (const stage of ['initial', 'settle'] as const) test(`BAC-08 ${stage} 다음 저장 실패에서 같은 후보를 재시도한다`, async () => {
   await start(['2', '2', '3', '4', '6', 'A'], 700);
+  await launched.page.getByRole('button', { name: 'Banker 베팅', exact: true }).click();
   await launched.page.getByRole('button', { name: '딜', exact: true }).click();
   await expect.poll(async () => (await saved()).games.baccarat?.round?.stage, { intervals: [20] }).toBe(stage);
   const before = await saved();
@@ -104,10 +106,10 @@ for (const stage of ['initial', 'settle'] as const) test(`BAC-08 ${stage} 다음
   await rm(backup, { recursive: true });
   await launched.page.getByRole('button', { name: '저장 재시도' }).click();
   await completed();
-  expect((await saved()).wallet.balanceCents).toBe(9900);
+  expect((await saved()).wallet.balanceCents).toBe(10095);
   expect((await saved()).games.baccarat?.recentResults).toHaveLength(1);
   launched = await relaunchApp(launched, { startAtMenu: true });
-  expect((await saved()).wallet.balanceCents).toBe(9900);
+  expect((await saved()).wallet.balanceCents).toBe(10095);
   await launched.page.getByRole('button', { name: '바카라', exact: true }).click();
   await expect(launched.page.getByRole('button', { name: '다음 판' })).toBeVisible();
 });
@@ -233,5 +235,58 @@ test('BAC-05/13 최소·기본·최대 크기, 입력 취소·검증, 흑백·�
   await launched.app.evaluate(({ app }) => { app.emit('activate'); });
   await expect(p.getByRole('button', { name: '다음 판' })).toBeVisible();
   expect(await p.evaluate(() => window.molsino.getOverlayState())).toMatchObject({ opacityPercent: 40, visibility: 'expanded' });
+  const backing = await p.addStyleTag({ content: 'body { background: #f5f5f5; }' });
   await p.screenshot({ path: testInfo.outputPath('baccarat-result-220x150.png') });
+  await backing.evaluate(node => node.parentNode?.removeChild(node));
+});
+
+test('BAC-09 컷 경계를 넘은 판은 끝내고 다음 딜에서만 새 슈를 사용한다', async () => {
+  await start();
+  const snapshot = await saved();
+  await launched.app.close();
+  snapshot.games.baccarat!.shoe.nextIndex = 401;
+  await writeFile(join(launched.userDataDir, 'app-session.json'), JSON.stringify(snapshot));
+  launched = await launchApp({ userDataDir: launched.userDataDir, startAtMenu: true, baccaratFixture: join(launched.userDataDir, 'baccarat-shoe.json') });
+  const p = launched.page;
+  await p.getByRole('button', { name: '바카라', exact: true }).click();
+  await p.getByRole('button', { name: '딜', exact: true }).click();
+  await completed();
+  const crossed = (await saved()).games.baccarat!;
+  expect(crossed.round!.startIndex).toBe(401);
+  expect(crossed.shoe.nextIndex).toBeGreaterThanOrEqual(405);
+  expect(crossed.shoe.cards).toEqual(snapshot.games.baccarat!.shoe.cards);
+  await p.getByRole('button', { name: '다음 판', exact: true }).click();
+  expect((await saved()).games.baccarat!.shoe).toEqual(crossed.shoe);
+  await p.getByRole('button', { name: '딜', exact: true }).click();
+  await completed();
+  const next = (await saved()).games.baccarat!;
+  expect(next.shoe.burnCount).toBe(2);
+  expect(next.round!.startIndex).toBe(2);
+  expect(next.shoe.nextIndex).toBe(6);
+  expect(next.round!.player.map(c => c.rank)).toEqual(['9', 'K']);
+  expect(next.recentResults[0]).toEqual(crossed.recentResults[0]);
+});
+
+test('APP-08 다른 게임에서 잔액이 줄면 복귀한 게임의 새 베팅액만 조정한다', async () => {
+  await start(); const p = launched.page;
+  await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'P', amountCents: 9000 } });
+  await appCommand(p, { type: 'goToMenu' });
+  await appCommand(p, { type: 'selectGame', gameId: 'blackjack' });
+  await appCommand(p, { type: 'blackjack', action: { type: 'setBet', amountCents: 8000 } });
+  await appCommand(p, { type: 'goToMenu' });
+  await appCommand(p, { type: 'selectGame', gameId: 'baccarat' });
+  // A losing Tie wager consumes $90, leaving $10 for the other game's next wager.
+  await appCommand(p, { type: 'baccarat', action: { type: 'setBet', target: 'T', amountCents: 9000 } });
+  await p.getByRole('button', { name: '딜', exact: true }).click(); await completed();
+  const result = (await saved()).games.baccarat!;
+  await p.getByRole('button', { name: '메뉴', exact: true }).click();
+  await p.getByRole('button', { name: '블랙잭', exact: true }).click();
+  await expect(p.locator('output')).toHaveText('$10.00');
+  expect((await saved()).games.baccarat).toEqual(result);
+  await p.getByRole('button', { name: '메뉴', exact: true }).click();
+  await p.getByRole('button', { name: '바카라', exact: true }).click();
+  expect((await saved()).games.baccarat!.round!.bet.amountCents).toBe(9000);
+  await p.getByRole('button', { name: '다음 판', exact: true }).click();
+  await expect(p.locator('output')).toHaveText('$10.00');
+  expect((await saved()).games.baccarat!.lastResult).toEqual(result.lastResult);
 });
