@@ -2,7 +2,7 @@
 
 **목적:** 게임 종류와 무관한 앱 기능의 현재 구현 범위, 남은 작업, 실제 파일 위치를 개발 전에 확인한다.
 
-**요약:** 2026-09-21 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v4 저장과 블랙잭 분리를 구현했다. 바카라와 빅휠도 같은 공용 작성자에 연결했다. 기존 미진행 세션은 폐기했으며 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
+**요약:** 2026-09-23 소스 기준으로 투명 오버레이, 크기 조절, 트레이와 단축키, 표시 상태·불투명도, IPC 신뢰 경계와 빌드·검증 기반이 연결돼 있다. 메인 메뉴·공용 잔액·v4 저장과 블랙잭·바카라·빅휠을 구현했다. 한국어 기본값과 영어 표시, 네이티브 언어 메뉴, 별도 환경설정 저장도 연결했다. 미구현·미검증 사실은 아래에 구분한다. 블랙잭의 코어·화면·저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)에서 관리한다.
 
 ## 목차
 
@@ -28,6 +28,7 @@
 | --- | --- | --- |
 | 오버레이 창 | macOS·Windows용 투명 창, 모서리 크기 조절, 트레이의 표시·숨김·전체 클릭 통과·크기 프리셋, 접힘/펼침과 불투명도 조절창을 연결했다. Alt+백틱은 숨김·복원 토글로 동작한다. | [S01 보고서](../session-reports/S01-custom-resize.md), [S10 보고서](../session-reports/S10-overlay-state-opacity.md) |
 | IPC·보안 경계 | 등록된 창의 최상위 문서만 IPC 명령을 보낼 수 있고 런타임 스키마를 검사한다. Preload는 제한된 API를 제공하며 상태 구독은 snapshot과 push의 순서 및 해제 수명을 처리한다. 현재 블랙잭 공개 상태의 구체적 필드는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md)을 따른다. | [S09 상태 동기화](../session-reports/S09-ipc-state-sync.md), [S09 구독 보강](../session-reports/S09-ipc-subscription.md) |
+| 한국어·영어 | 한국어를 기본값으로 유지하고 영어를 추가했다. macOS 애플리케이션 메뉴와 상태 아이콘 메뉴, Windows 알림 영역 메뉴에서 언어를 바꾸며 오버레이 안에는 설정 UI를 두지 않는다. Renderer·불투명도 창·접근성 이름·네이티브 메뉴와 대화상자를 즉시 동기화하고 `preferences.json`에 게임 세션과 별도로 원자 저장한다. | [N06 보고서](../session-reports/N06-english-localization.md), [제품 설계 §7](product-design.md#7-한국어영어와-네이티브-언어-메뉴) |
 | 빌드·검증 기반 | 주요 도구 버전과 Node 버전 파일, 타입 검사·하위 테스트·프로덕션 패키지 E2E 스크립트, macOS·Windows CI 및 배포 산출물 workflow가 있다. | [빌드와 배포](building-distribution.md), [메인 기능 E2E 현황](e2e-implementation-status.md) |
 
 이 표는 현재 코드의 존재와 연결 상태를 나타낸다. 세션별 실행 환경·통과 수와 자동화가 확인하지 못한 OS 동작은 [세션 보고서](../session-reports/session-list.md)와 [메인 기능 E2E 현황](e2e-implementation-status.md)을 확인한다. S10 보고서의 Alt+백틱 숨기기 전용 설명은 당시 기록이다. 현재 숨김·복원 토글 계약은 [제품 설계](product-design.md)와 `src/main/main.ts`의 `toggleOverlay()`가 기준이다.
@@ -40,7 +41,7 @@
 | 바카라 | 규칙·저장·화면을 연결했다. [바카라 구현 현황](../games/baccarat/implementation-status.md) |
 | 빅휠 | 복수 베팅·회전·저장·화면을 연결했다. [빅휠 구현 현황](../games/bigwheel/implementation-status.md) |
 | 입력·클릭 통과의 실제 OS 동작 | 편집 포커스·전체 클릭 통과·트레이·단축키 경로는 있다. 외부 앱 포커스 복귀·실제 클릭 전달·물리 키 입력은 기존 자동 테스트로 보장하지 않는다. 구 S12/S13의 별도 일정은 폐기했다. |
-| 위치·다중 모니터 | 화면 변화에 따른 자동 위치 보정은 미구현이다. 기존 크기 조절 경로의 workArea 보정은 있다. S11·E2E-18의 보류 계획은 폐기했으며 `preferences.json`은 없다. |
+| 위치·다중 모니터 | 화면 변화에 따른 자동 위치 보정과 창 위치 환경설정은 미구현이다. 기존 크기 조절 경로의 workArea 보정은 있다. 언어용 `preferences.json`은 존재하지만 창 위치는 저장하지 않는다. S11·E2E-18의 보류 계획은 폐기했다. |
 | Renderer 장애 | 현재 `render-process-gone`은 숨김·오류 기록만 한다. 새 창 재생성은 없다. 장애 후 복원 실패는 N01 점검에서 재현했다. 수정 세션과 구 S16 일정은 계획에서 제외했다. |
 | OS 검증 | Windows GUI·물리 모니터·실제 투명 합성 등 미확인 범위를 완료로 바꾸지 않는다. 새 사용자 가치와 관계없는 구 일괄 검증 세션은 유지하지 않는다. |
 
@@ -61,6 +62,8 @@ src/
     game/baccarat-shoe-source.ts      Main 난수·격리 테스트 슈
     persistence/app-session-repository.ts  v4 스키마·v1/v2/v3 이전
     persistence/atomic-session-repository.ts  공통 원자 저장·백업·복구
+    persistence/preferences-repository.ts  한국어·영어 설정 저장·복구
+    native-menu.ts                  OS별 애플리케이션/트레이 메뉴 구성
     main.ts                         앱 시작·오버레이 창/트레이·프로토콜·IPC 연결
     ipc/trust.ts                    IPC 송신자·문서 신뢰 검사
     platform/adapter.ts            OS별 창 정책
@@ -76,6 +79,7 @@ src/
   shared/
     app-contracts.ts                앱 명령·공개 상태·API
     contracts.ts                    창·오버레이와 블랙잭 계약
+    i18n.ts                         한국어·영어 카탈로그·오류/빅휠 이름 번역
     env.d.ts                        빌드 환경 타입
 ```
 
@@ -84,12 +88,14 @@ src/
 ```text
 tests/
   main/                              trust.test.ts, resize-controller.test.ts,
-                                     hide-shortcut.test.ts
+                                     hide-shortcut.test.ts, native-menu.test.ts,
+                                     preferences-repository.test.ts
   shared/contracts.test.ts           창·오버레이 명령 계약도 포함
   e2e/                               overlay-resize.spec.ts, overlay-state.spec.ts,
                                      dock-lifecycle.spec.ts, ipc-state.spec.ts,
                                      ipc-subscription.spec.ts
     app-menu.spec.ts                 메뉴·이전·공용 저장·초기화
+    localization.spec.ts             네이티브 메뉴 전환·설정 보존·영어 화면·실패 경계
     support/                         app.ts, app-game.ts, resize.ts
     tsconfig.json, window-api.d.ts
 resources/icons/                     앱 아이콘 원본·플랫폼 산출물
