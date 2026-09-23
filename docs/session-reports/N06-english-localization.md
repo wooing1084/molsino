@@ -11,7 +11,7 @@
 - [3. 검증 기록](#3-검증-기록)
 - [4. 남은 범위와 다음 시작점](#4-남은-범위와-다음-시작점)
 
-날짜: 2026-09-23 · 상태: 구현·검증 완료 · 브랜치: `codex/n06-english-localization` · 기준 `DEV`: `82b1067`.
+날짜: 2026-09-23 · 상태: 구현·검증·원격 push·DEV 대상 PR 완료 · 브랜치: `codex/n06-english-localization` · 기준 `DEV`: `82b1067` · [PR #14](https://github.com/wooing1084/molsino/pull/14).
 
 ## 1. 작업 범위와 결정
 
