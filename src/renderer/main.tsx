@@ -2,6 +2,7 @@ import { StrictMode, useCallback, useEffect, useRef, useState, type CSSPropertie
 import { createRoot } from 'react-dom/client';
 import type { OverlayViewState } from '../shared/contracts';
 import type { AppAction, AppView } from '../shared/app-contracts';
+import { BigWheelGame } from './games/bigwheel';
 import { BaccaratGame } from './games/baccarat';
 import { BlackjackGame } from './games/blackjack';
 import { LevelPicker } from './level-picker';
@@ -317,7 +318,7 @@ function App() {
       onPointerCancel={cancelResize}
       onLostPointerCapture={cancelResize}
     />)}
-    <header><span className="drag">⠿ <strong className="app-name">molsino</strong>{!levelPage && shown && shown.screen !== 'menu' && <span className="game-label">{shown.screen === 'blackjack' ? 'Blackjack' : 'Baccarat'}</span>}</span>{shown && (shown.screen === 'menu' && !levelPage && !shown.recovery
+    <header><span className="drag">⠿ <strong className="app-name">molsino</strong>{!levelPage && shown && shown.screen !== 'menu' && <span className="game-label">{shown.screen === 'blackjack' ? 'Blackjack' : shown.screen === 'baccarat' ? 'Baccarat' : 'Big Wheel'}</span>}</span>{shown && (shown.screen === 'menu' && !levelPage && !shown.recovery
       ? <button className="current-level" aria-label="테이블 레벨" disabled={busy || !shown.canNavigate} onClick={() => { setConfirmReset(false); setError(''); setLevelPage(true); }}><span aria-label="현재 테이블 레벨">Lv.{shown.table.selectedLevel}</span></button>
       : <span className="current-level" aria-label="현재 테이블 레벨">Lv.{shown.table.selectedLevel}</span>)}<button title="흰색/검정 전환" aria-label="흰색/검정 전환" onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.molsino.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.molsino.windowCommand('quit')}>×</button></header>
     <section className="balance">{shown && shown.screen !== 'menu' ? <button aria-label="메뉴" title="한 판을 마친 뒤 이동할 수 있습니다" disabled={busy || revealing || !shown.canNavigate} onClick={() => void runAction({ type: 'goToMenu' })}>‹ 메뉴</button> : <span>BANKROLL</span>}<strong>{frame?.settling ? '정산 중…' : shown ? usd(shown.balanceCents) : '…'}</strong></section>
@@ -337,11 +338,15 @@ function App() {
     : shown?.screen === 'baccarat' && shown.baccarat && frame ? <BaccaratGame state={shown.baccarat} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'baccarat', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
+    : shown?.screen === 'bigwheel' && shown.bigwheel && frame ? <BigWheelGame state={shown.bigwheel} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} table={shown.table} presentation={frame}
+      runAction={action => runAction({ type: 'bigwheel', action })} onRetry={() => runAction({ type: 'retrySave' })}
+      onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
     : <>
       <section className="game-menu">
         {confirmReset ? <p>잔액을 $100으로 초기화하고<br/>모든 게임의 판·슈·기록을 새로 시작합니다.</p> : <>
           <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'blackjack' })}>블랙잭</button>
           <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'baccarat' })}>바카라</button>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'bigwheel' })}>빅휠</button>
         </>}
       </section>
       <section className="bet actions">{state?.saveError ? <button disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>저장 재시도</button>

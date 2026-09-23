@@ -2,7 +2,7 @@
 
 **목적:** 앱의 메인 기능과 게임별 기준 문서와 신규 설계를 구분해 찾는다.
 
-**요약:** `main/`은 오버레이·창·IPC 신뢰 경계·빌드 등 앱 기능을, `games/blackjack/`은 현재 블랙잭, `games/baccarat/`는 바카라 규칙·구현·검증을 다룬다. 메인 메뉴·공용 잔액의 신규 계약은 메인 제품·기술 설계에 있다. 세션 로드맵과 보고서는 작업 순서 및 당시 검증 이력을 기록한다.
+**요약:** `main/`은 오버레이·창·IPC 신뢰 경계·빌드 등 앱 기능을, `games/blackjack/`은 현재 블랙잭, `games/baccarat/`는 바카라, `games/bigwheel/`은 빅휠 규칙·구현·검증을 다룬다. 메인 메뉴·공용 잔액의 신규 계약은 메인 제품·기술 설계에 있다. 세션 로드맵과 보고서는 작업 순서 및 당시 검증 이력을 기록한다.
 
 ## 목차
 
@@ -42,11 +42,22 @@ N03에서 순수 규칙·공용 저장·플레이 화면을 연결했다.
 | 현재 구현과 파일 위치 | [구현 현황](games/baccarat/implementation-status.md) |
 | 시나리오·검증 범위 | [E2E 설계](games/baccarat/e2e-test-plan.md), [E2E 현황](games/baccarat/e2e-implementation-status.md) |
 
+### 빅휠
+
+N05에서 강원랜드 규칙의 빅휠을 구현했다.
+
+| 필요한 정보 | 기준 문서 |
+| --- | --- |
+| 54칸·7구역 배분과 배당·복수 베팅·화면 | [제품·게임 규칙 설계](games/bigwheel/product-design.md) |
+| 엔진·자동 정산·v4 저장/이전·공개 상태 | [기술 설계](games/bigwheel/technical-design.md) |
+| 현재 구현과 파일 위치 | [구현 현황](games/bigwheel/implementation-status.md) |
+| 시나리오와 검증 범위 | [E2E 설계](games/bigwheel/e2e-test-plan.md)·[E2E 현황](games/bigwheel/e2e-implementation-status.md) |
+
 공용 잔액·메뉴 이동·전체 새 시작은 [메인 제품 설계](main/product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계), 이전 형식 이관·원자 저장·명령 경계는 [메인 기술 설계](main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다.
 
 ## 문서 운영과 세션 이력
 
 - [문서 작성 가이드](documentation-guide.md): 문서별 SSOT와 작성·갱신 규칙.
 - [N04 게임성 개선 설계 결정](main/gameplay-improvements-design.md): 구현에 반영한 초기 정책과 제품·기술·검증 기준 문서 연결.
-- [작업 세션 로드맵](work-session-roadmap.md): N02 메인 메뉴·블랙잭 분리, N03 바카라 구현·N04 게임성 개선·N05 macOS 서명과 Mac App Store 제출의 순서·완료 조건. 이전 미진행 계획은 폐기.
+- [작업 세션 로드맵](work-session-roadmap.md): N02 메인 메뉴·블랙잭 분리, N03 바카라 구현·N04 게임성 개선·N05 빅휠·N06 macOS 서명과 Mac App Store 제출의 순서·완료 조건. 이전 미진행 계획은 폐기.
 - [세션 보고서 목록](session-reports/session-list.md): 세션 당시 변경·검증 기록으로 이동하는 색인.

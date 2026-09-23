@@ -1,3 +1,5 @@
+import { createBigWheel, emptyBigWheelBets, totalBigWheelBet, transitionBigWheel, type BigWheelEnvironment } from '../../core/bigwheel/core';
+import { toBigWheelView } from './bigwheel-adapter';
 import { randomInt, randomUUID } from 'node:crypto';
 import { bestTableLevel, getTableLevel, normalizeTableBet, validateTableBet } from '../../shared/table-levels';
 import { createBaccarat, createShoe, transitionBaccarat, type BaccaratEnvironment } from '../../core/baccarat/core';
@@ -20,7 +22,8 @@ export class AppStore {
   private cache = new Set<string>();
   public constructor(private state: AppSession, private blackjack: EngineEnvironment,
     private platform: string, private repository: Pick<AppSessionRepository, 'save'>,
-    private autoDelay = 0, private baccarat: BaccaratEnvironment = { createShoe: () => createShoe(randomInt), nextId: randomUUID }) { parseAppSession(state); }
+    private autoDelay = 0, private baccarat: BaccaratEnvironment = { createShoe: () => createShoe(randomInt), nextId: randomUUID },
+    private bigwheel: BigWheelEnvironment = { nextSegmentIndex: () => randomInt(54), nextId: randomUUID }) { parseAppSession(state); }
   public getSnapshot(): AppView {
     const s = this.state;
     const bj = s.screen === 'blackjack' && s.games.blackjack;
@@ -30,10 +33,12 @@ export class AppStore {
       && (!(a === 'deal' || a === 'setBet' || a === 'setBetStep') || s.wallet.balanceCents >= limits.minBetCents));
     const baccarat = s.screen === 'baccarat' && s.games.baccarat ? toBaccaratView(s.games.baccarat, s.wallet.balanceCents) : null;
     if (baccarat && s.wallet.balanceCents < limits.minBetCents) baccarat.legalActions = baccarat.legalActions.filter(a => a !== 'deal' && a !== 'setBet');
+    const bigwheel = s.screen === 'bigwheel' && s.games.bigwheel ? toBigWheelView(s.games.bigwheel, s.wallet.balanceCents) : null;
+    if (bigwheel && (bigwheel.totalBetCents < limits.minBetCents || bigwheel.totalBetCents > limits.maxBetCents)) bigwheel.legalActions = bigwheel.legalActions.filter(a => a !== 'spin');
     return { revision: s.revision, platform: this.platform, balanceCents: s.wallet.balanceCents,
       table: { selectedLevel: s.table.selectedLevel, bestBankrollCents: s.table.bestBankrollCents, bestLevel: bestTableLevel(s.table.bestBankrollCents),
         minBetCents: limits.minBetCents, maxBetCents: limits.maxBetCents, entryBalanceCents: limits.entryBalanceCents },
-      blackjack, baccarat,
+      blackjack, baccarat, bigwheel,
       sessionId: s.sessionId, viewSequence: this.sequence, screen: s.screen,
       activeRoundGameId: s.activeRoundGameId, canNavigate: !s.activeRoundGameId && !this.busy && !this.pending && !this.internalError,
       saveError: this.failed, ...(this.internalError ? { internalError: this.internalError } : {}),
@@ -98,6 +103,10 @@ export class AppStore {
         s.games.baccarat ??= createBaccarat(this.baccarat.createShoe());
         if (s.games.baccarat.phase === 'betting') s.games.baccarat.pendingBet.amountCents = normalizeTableBet(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents, limits);
       }
+      if (action.gameId === 'bigwheel') {
+        s.games.bigwheel ??= createBigWheel();
+        this.normalizeBigWheelBets(s);
+      }
       return s;
     }
     if (action.type === 'blackjack') {
@@ -124,17 +133,37 @@ export class AppStore {
       s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
       s.activeRoundGameId = next.active ? 'baccarat' : null;
     }
-    this.normalizeBets(s);
+    if (action.type === 'bigwheel') {
+      if (s.screen !== 'bigwheel' || !s.games.bigwheel) throw new Error('현재 게임의 명령이 아닙니다.');
+      if (action.action.type === 'setBet') {
+        const total = totalBigWheelBet({ ...s.games.bigwheel.pendingBets, [action.action.target]: action.action.amountCents });
+        if (total > limits.maxBetCents || total > s.wallet.balanceCents) throw new Error('총 베팅이 테이블 한도 또는 잔액을 초과합니다.');
+      }
+      if (action.action.type === 'spin') validateTableBet(totalBigWheelBet(s.games.bigwheel.pendingBets), s.wallet.balanceCents, limits);
+      const next = transitionBigWheel(s.games.bigwheel, s.wallet.balanceCents, action.action, this.bigwheel, s.sessionId);
+      s.games.bigwheel = next.game; s.wallet.balanceCents = next.balance;
+      s.activeRoundGameId = next.active ? 'bigwheel' : null;
+    }
+    this.normalizeBets(s, action.type !== 'bigwheel' || action.action.type !== 'setBet');
     this.recordSettlement(s);
     return s;
   }
-  private normalizeBets(s: AppSession): void {
+  private normalizeBigWheelBets(s: AppSession): void {
+    const game = s.games.bigwheel;
+    if (!game || game.phase !== 'betting') return;
+    const limits = getTableLevel(s.table.selectedLevel);
+    const total = totalBigWheelBet(game.pendingBets);
+    if (total < limits.minBetCents || total > limits.maxBetCents || total > s.wallet.balanceCents)
+      game.pendingBets = { ...emptyBigWheelBets(), silver: normalizeTableBet(limits.minBetCents, s.wallet.balanceCents, limits) };
+  }
+  private normalizeBets(s: AppSession, normalizeWheel = true): void {
     const limits = getTableLevel(s.table.selectedLevel);
     if (s.games.blackjack && !s.games.blackjack.round) s.games.blackjack.pendingBetCents = normalizeTableBet(s.games.blackjack.pendingBetCents, s.wallet.balanceCents, limits);
     if (s.games.baccarat?.phase === 'betting') s.games.baccarat.pendingBet.amountCents = normalizeTableBet(s.games.baccarat.pendingBet.amountCents, s.wallet.balanceCents, limits);
+    if (normalizeWheel) this.normalizeBigWheelBets(s);
   }
   private recordSettlement(s: AppSession): void {
-    const newlySettled = (['blackjack', 'baccarat'] as const).some(id => {
+    const newlySettled = (['blackjack', 'baccarat', 'bigwheel'] as const).some(id => {
       const next = s.games[id]?.lastResult;
       return next && next.roundId !== this.state.games[id]?.lastResult?.roundId;
     });
@@ -158,7 +187,8 @@ export class AppStore {
   public resumeAutomatic(): void {
     if (this.timer || this.pending || this.internalError || this.busy) return;
     if (!(this.state.activeRoundGameId === 'blackjack' && this.state.games.blackjack?.round?.phase === 'dealerTurn')
-      && !(this.state.activeRoundGameId === 'baccarat' && this.state.games.baccarat?.phase === 'dealing')) return;
+      && !(this.state.activeRoundGameId === 'baccarat' && this.state.games.baccarat?.phase === 'dealing')
+      && !(this.state.activeRoundGameId === 'bigwheel' && this.state.games.bigwheel?.phase === 'spinning')) return;
     this.timer = setTimeout(() => { this.timer = undefined; void this.advance(); }, this.autoDelay);
   }
   private async advance(): Promise<void> {
@@ -175,6 +205,10 @@ export class AppStore {
         const next = transitionBaccarat(s.games.baccarat, s.wallet.balanceCents, { type: 'advanceBaccarat' }, this.baccarat, s.sessionId);
         s.games.baccarat = next.game; s.wallet.balanceCents = next.balance;
         s.activeRoundGameId = next.active ? 'baccarat' : null;
+      } else if (s.activeRoundGameId === 'bigwheel' && s.games.bigwheel?.phase === 'spinning') {
+        const next = transitionBigWheel(s.games.bigwheel, s.wallet.balanceCents, { type: 'advanceBigWheel' }, this.bigwheel, s.sessionId);
+        s.games.bigwheel = next.game; s.wallet.balanceCents = next.balance;
+        s.activeRoundGameId = next.active ? 'bigwheel' : null;
       } else return;
       this.recordSettlement(s);
       s.revision++;

@@ -184,7 +184,7 @@ for (const source of ['primary', 'backup'] as const) test(`N04-08 v2 ${source}�
   if (source === 'backup') await p.getByRole('button', { name: '백업 복구', exact: true }).click();
   await expect(p.getByRole('button', { name: '스탠드', exact: true })).toBeEnabled();
   const migrated = await saved();
-  expect(migrated.schemaVersion).toBe(3); expect(migrated.games.blackjack).toEqual(blackjack);
+  expect(migrated.schemaVersion).toBe(4); expect(migrated.games.blackjack).toEqual(blackjack);
   expect(migrated.wallet.balanceCents).toBe(12500);
   expect(migrated.table).toEqual({ selectedLevel: 1, bestBankrollCents: 12500 });
   await p.getByRole('button', { name: '스탠드', exact: true }).click();

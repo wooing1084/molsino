@@ -15,7 +15,7 @@
 
 **SSOT 원칙:** 한 사실이나 결정의 상세 내용은 담당 문서 한 곳에서 갱신한다. 다른 문서에서 그 정보가 필요하면 짧게 요약하고 담당 문서로 연결한다. 특히 현재 상태, 검증 건수, 다음 작업처럼 자주 바뀌는 정보는 여러 문서에 복제하지 않는다.
 
-`main/`은 현재 앱의 오버레이·창·플랫폼·IPC 신뢰 경계·빌드 기능, `games/blackjack/`은 현재 블랙잭의 규칙·화면·게임 상태·저장 계약을 맡는다. 앱 공통 AppStore·AppSessionRepository와 블랙잭 어댑터·코어의 책임을 구분한다. 기존 GameStore·v1 SessionRepository는 과거 구현/이전 검증용이므로 현재 런타임 작성자로 설명하지 않는다. 신규 메뉴·공용 잔액·저장 이관 계약은 `main/`에, 바카라 규칙·화면·상태는 `games/baccarat/`에 둔다. 신규 설계는 미구현임을 명시하고 현재 코드와 혼동하지 않는다. 여러 영역에 걸친 한 세션의 당시 기록은 `session-reports/`에 유지한다. 전체 문서 경로는 [문서 안내](README.md)에서 찾는다.
+`main/`은 현재 앱의 오버레이·창·플랫폼·IPC 신뢰 경계·빌드 기능, `games/blackjack/`은 현재 블랙잭의 규칙·화면·게임 상태·저장 계약을 맡는다. 앱 공통 AppStore·AppSessionRepository와 블랙잭 어댑터·코어의 책임을 구분한다. 기존 GameStore·v1 SessionRepository는 과거 구현/이전 검증용이므로 현재 런타임 작성자로 설명하지 않는다. 신규 메뉴·공용 잔액·저장 이관 계약은 `main/`에, 바카라 규칙·화면·상태는 `games/baccarat/`, 빅휠은 `games/bigwheel/`에 둔다. 신규 설계는 미구현임을 명시하고 현재 코드와 혼동하지 않는다. 여러 영역에 걸친 한 세션의 당시 기록은 `session-reports/`에 유지한다. 전체 문서 경로는 [문서 안내](README.md)에서 찾는다.
 
 | 정보 | 담당 문서 |
 | --- | --- |
@@ -24,6 +24,7 @@
 | 메뉴·공용 잔액·전체 새 시작의 신규 사용자 동작 | [메인 제품 설계 §5](main/product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계) |
 | 공용 작성자·게임 이동·저장 이관의 신규 계약 | [메인 기술 설계 §9](main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약) |
 | 바카라 규칙·화면·게임 상태·검증 | [제품 설계](games/baccarat/product-design.md)·[기술 설계](games/baccarat/technical-design.md)·[E2E 설계](games/baccarat/e2e-test-plan.md) |
+| 빅휠 규칙·화면·저장 연동 | [제품·게임 규칙](games/bigwheel/product-design.md)·[기술 설계](games/bigwheel/technical-design.md) |
 | Electron 창·플랫폼·IPC 신뢰 경계 | [메인 기술 설계](main/technical-design.md) |
 | 블랙잭 엔진·명령·게임 세션 저장 계약 | [블랙잭 기술 설계](games/blackjack/technical-design.md) |
 | 메인 기능의 오버레이·보안 E2E 기준 | [메인 E2E 설계](main/e2e-test-plan.md) |
