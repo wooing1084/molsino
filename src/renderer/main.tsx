@@ -2,6 +2,7 @@ import { StrictMode, useCallback, useEffect, useRef, useState, type CSSPropertie
 import { createRoot } from 'react-dom/client';
 import type { OverlayViewState } from '../shared/contracts';
 import type { AppAction, AppView } from '../shared/app-contracts';
+import { commandErrorMessage, translate, type I18nKey } from '../shared/i18n';
 import { BigWheelGame } from './games/bigwheel';
 import { BaccaratGame } from './games/baccarat';
 import { BlackjackGame } from './games/blackjack';
@@ -11,10 +12,10 @@ import './styles.css';
 
 const usd = (value: number) => `$${(value / 100).toFixed(2)}`;
 const resizeHandles = [
-  { edge: 'nw', label: '왼쪽 위 모서리로 창 크기 조절' },
-  { edge: 'ne', label: '오른쪽 위 모서리로 창 크기 조절' },
-  { edge: 'sw', label: '왼쪽 아래 모서리로 창 크기 조절' },
-  { edge: 'se', label: '오른쪽 아래 모서리로 창 크기 조절' },
+  { edge: 'nw', label: 'resize.nw' },
+  { edge: 'ne', label: 'resize.ne' },
+  { edge: 'sw', label: 'resize.sw' },
+  { edge: 'se', label: 'resize.se' },
 ] as const;
 
 type ResizeEdge = (typeof resizeHandles)[number]['edge'];
@@ -45,13 +46,15 @@ function App() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [dark, setDark] = useState(false);
-  const [overlayView, setOverlayView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false });
+  const [overlayView, setOverlayView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' });
   const latestOverlay = useRef(overlayView);
   const [resizingEdge, setResizingEdge] = useState<ResizeEdge>();
   const resizeGesture = useRef<ResizeGesture | undefined>(undefined);
   const latestState = useRef<AppView | undefined>(undefined);
   const commandInFlight = useRef(false);
   const { frame, receive, setVisibility } = usePresentation(overlayView.visibility === 'expanded');
+  const locale = overlayView.locale;
+  const t = (key: I18nKey, values?: Parameters<typeof translate>[2]) => translate(locale, key, values);
   const applyState = useCallback((incoming: AppView) => {
     const next = newerState(latestState.current, incoming);
     if (next === latestState.current) return;
@@ -69,10 +72,10 @@ function App() {
     };
     const unsubscribe = window.molsino.onState(apply);
     void window.molsino.getSnapshot().then(apply).catch(() => {
-      if (active) setError('앱 연결 실패 · 다시 실행해 주세요');
+      if (active) setError(t('error.connection'));
     });
     return () => { active = false; unsubscribe(); };
-  }, [applyState]);
+  }, [applyState, locale]);
 
   useEffect(() => {
     const applyOverlay = (next: OverlayViewState) => {
@@ -82,12 +85,17 @@ function App() {
       setOverlayView(next);
     };
     const unsubscribe = window.molsino.onOverlayState(applyOverlay);
-    void window.molsino.getOverlayState().then(applyOverlay).catch(() => setError('창 설정을 불러올 수 없습니다.'));
+    void window.molsino.getOverlayState().then(applyOverlay).catch(() => setError(t('error.overlayLoad')));
     return unsubscribe;
-  }, [setVisibility]);
+  }, [setVisibility, locale]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    setError('');
+  }, [locale]);
 
   function showResizeError(): void {
-    if (document.visibilityState !== 'hidden') setError('창 크기를 조절할 수 없습니다.');
+    if (document.visibilityState !== 'hidden') setError(t('error.resize'));
   }
 
   function releaseCapture(gesture: ResizeGesture): void {
@@ -268,10 +276,10 @@ function App() {
         action,
       });
       applyState(result.state);
-      setError(result.ok ? '' : result.message);
+      setError(result.ok ? '' : commandErrorMessage(locale, result.error));
       return result.ok;
     } catch {
-      setError('게임 명령을 처리할 수 없습니다.');
+      setError(t('error.command'));
       return false;
     }
     finally { commandInFlight.current = false; setBusy(false); }
@@ -283,7 +291,7 @@ function App() {
       const recovered = await window.molsino.recover(choice);
       applyState(recovered);
       setError('');
-    } catch { setError('저장 복구에 실패했습니다. 다시 시도해 주세요.'); }
+    } catch { setError(t('error.recovery')); }
     finally { setBusy(false); }
   }
 
@@ -299,8 +307,8 @@ function App() {
   const revealing = frame?.revealing ?? false;
   if (overlayView.visibility === 'collapsed') return <main className={dark ? 'overlay collapsed ink-dark' : 'overlay collapsed'} style={overlayStyle}>
     <section className="collapsed-bar">
-      <span>{state ? usd(state.balanceCents) : '…'} · {state?.activeRoundGameId ? '진행 중' : '대기'}</span>
-      <button type="button" aria-label="펼치기" onClick={() => void window.molsino.windowCommand('expand')}>▣</button>
+      <span>{state ? usd(state.balanceCents) : '…'} · {state?.activeRoundGameId ? t('collapsed.inProgress') : t('collapsed.idle')}</span>
+      <button type="button" aria-label={t('overlay.expand')} onClick={() => void window.molsino.windowCommand('expand')}>▣</button>
     </section>
   </main>;
 
@@ -309,7 +317,7 @@ function App() {
       key={edge}
       type="button"
       className={`resize-handle resize-handle-${edge}`}
-      aria-label={label}
+      aria-label={t(label)}
       data-testid={`resize-handle-${edge}`}
       data-resizing={resizingEdge === edge}
       onPointerDown={event => beginResize(event, edge)}
@@ -319,50 +327,50 @@ function App() {
       onLostPointerCapture={cancelResize}
     />)}
     <header><span className="drag">⠿ <strong className="app-name">molsino</strong>{!levelPage && shown && shown.screen !== 'menu' && <span className="game-label">{shown.screen === 'blackjack' ? 'Blackjack' : shown.screen === 'baccarat' ? 'Baccarat' : 'Big Wheel'}</span>}</span>{shown && (shown.screen === 'menu' && !levelPage && !shown.recovery
-      ? <button className="current-level" aria-label="테이블 레벨" disabled={busy || !shown.canNavigate} onClick={() => { setConfirmReset(false); setError(''); setLevelPage(true); }}><span aria-label="현재 테이블 레벨">Lv.{shown.table.selectedLevel}</span></button>
-      : <span className="current-level" aria-label="현재 테이블 레벨">Lv.{shown.table.selectedLevel}</span>)}<button title="흰색/검정 전환" aria-label="흰색/검정 전환" onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label="숨기기" onClick={() => void window.molsino.windowCommand('hide')}>−</button><button aria-label="종료" onClick={() => void window.molsino.windowCommand('quit')}>×</button></header>
-    <section className="balance">{shown && shown.screen !== 'menu' ? <button aria-label="메뉴" title="한 판을 마친 뒤 이동할 수 있습니다" disabled={busy || revealing || !shown.canNavigate} onClick={() => void runAction({ type: 'goToMenu' })}>‹ 메뉴</button> : <span>BANKROLL</span>}<strong>{frame?.settling ? '정산 중…' : shown ? usd(shown.balanceCents) : '…'}</strong></section>
+      ? <button className="current-level" aria-label={t('overlay.tableLevel')} disabled={busy || !shown.canNavigate} onClick={() => { setConfirmReset(false); setError(''); setLevelPage(true); }}><span aria-label={t('overlay.currentTableLevel')}>Lv.{shown.table.selectedLevel}</span></button>
+      : <span className="current-level" aria-label={t('overlay.currentTableLevel')}>Lv.{shown.table.selectedLevel}</span>)}<button title={t('overlay.toggleInk')} aria-label={t('overlay.toggleInk')} onMouseEnter={event => showOpacityPopover(event.currentTarget)} onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })} onClick={() => setDark(!dark)}>◐</button><button aria-label={t('overlay.hide')} onClick={() => void window.molsino.windowCommand('hide')}>−</button><button aria-label={t('common.quit')} onClick={() => void window.molsino.windowCommand('quit')}>×</button></header>
+    <section className="balance">{shown && shown.screen !== 'menu' ? <button aria-label={t('common.menu')} title={t('overlay.menuAfterRound')} disabled={busy || revealing || !shown.canNavigate} onClick={() => void runAction({ type: 'goToMenu' })}>‹ {t('common.menu')}</button> : <span>BANKROLL</span>}<strong>{frame?.settling ? t('overlay.settling') : shown ? usd(shown.balanceCents) : '…'}</strong></section>
     {state?.recovery ? <>
-      <section className="game-menu"><p>{state.recovery?.issue === 'unavailable' ? '저장 파일을 읽거나 저장할 수 없습니다' : state.recovery?.issue === 'futureSchema' ? '지원하지 않는 저장 버전' : '저장 파일을 복구해야 합니다'}<br/>원본을 보존하고 복구 방법을 선택하세요.</p></section>
+      <section className="game-menu"><p>{state.recovery?.issue === 'unavailable' ? t('recovery.unavailable') : state.recovery?.issue === 'futureSchema' ? t('recovery.future') : t('recovery.corrupt')}<br/>{t('recovery.detail')}</p></section>
       <section className="bet actions">
-        {state.recovery?.issue === 'unavailable' ? <button disabled={busy} onClick={() => void recover('retryLoad')}>불러오기 재시도</button> : <>
-        {state.recovery?.backupAvailable && <button disabled={busy} onClick={() => void recover('restoreBackup')}>백업 복구</button>}
-        <button disabled={busy} onClick={() => void recover('startNew')}>새 게임 시작</button></>}
-      </section><footer role="status">{error || '복구 방법을 선택하세요'}</footer>
-    </> : levelPage && shown ? <LevelPicker state={shown} busy={busy} error={error} onBack={() => { setLevelPage(false); setError(''); }}
+        {state.recovery?.issue === 'unavailable' ? <button disabled={busy} onClick={() => void recover('retryLoad')}>{t('recovery.retryLoad')}</button> : <>
+        {state.recovery?.backupAvailable && <button disabled={busy} onClick={() => void recover('restoreBackup')}>{t('recovery.restoreBackup')}</button>}
+        <button disabled={busy} onClick={() => void recover('startNew')}>{t('recovery.startNew')}</button></>}
+      </section><footer role="status">{error || t('recovery.choose')}</footer>
+    </> : levelPage && shown ? <LevelPicker state={shown} busy={busy} error={error} locale={locale} onBack={() => { setLevelPage(false); setError(''); }}
       onApply={async level => { const ok = await runAction({ type: 'selectLevel', level }); if (ok) setLevelPage(false); return ok; }}
       onRetry={async () => { const ok = await runAction({ type: 'retrySave' }); if (ok) setLevelPage(false); return ok; }}/>
-    : shown?.screen === 'blackjack' && shown.blackjack && frame ? <BlackjackGame state={{ ...shown.blackjack, saveError: shown.saveError, internalError: shown.internalError }} busy={busy} error={error} table={shown.table} presentation={frame}
+    : shown?.screen === 'blackjack' && shown.blackjack && frame ? <BlackjackGame state={{ ...shown.blackjack, saveError: shown.saveError, internalError: shown.internalError }} busy={busy} error={error} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'blackjack', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
-    : shown?.screen === 'baccarat' && shown.baccarat && frame ? <BaccaratGame state={shown.baccarat} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} table={shown.table} presentation={frame}
+    : shown?.screen === 'baccarat' && shown.baccarat && frame ? <BaccaratGame state={shown.baccarat} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'baccarat', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
-    : shown?.screen === 'bigwheel' && shown.bigwheel && frame ? <BigWheelGame state={shown.bigwheel} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} table={shown.table} presentation={frame}
+    : shown?.screen === 'bigwheel' && shown.bigwheel && frame ? <BigWheelGame state={shown.bigwheel} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'bigwheel', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
     : <>
       <section className="game-menu">
-        {confirmReset ? <p>잔액을 $100으로 초기화하고<br/>모든 게임의 판·슈·기록을 새로 시작합니다.</p> : <>
-          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'blackjack' })}>블랙잭</button>
-          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'baccarat' })}>바카라</button>
-          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'bigwheel' })}>빅휠</button>
+        {confirmReset ? <p>{t('reset.firstLine')}<br/>{t('reset.secondLine')}</p> : <>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'blackjack' })}>{t('game.blackjack')}</button>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'baccarat' })}>{t('game.baccarat')}</button>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'selectGame', gameId: 'bigwheel' })}>{t('game.bigwheel')}</button>
         </>}
       </section>
-      <section className="bet actions">{state?.saveError ? <button disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>저장 재시도</button>
+      <section className="bet actions">{state?.saveError ? <button disabled={busy} onClick={() => void runAction({ type: 'retrySave' })}>{t('common.saveRetry')}</button>
         : confirmReset ? <>
-          <button disabled={busy} onClick={() => setConfirmReset(false)}>취소</button>
-          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'resetAll' }).then(ok => { if (ok) setConfirmReset(false); })}>초기화 확정</button>
-        </> : <button disabled={busy || !state?.canNavigate} onClick={() => setConfirmReset(true)}>새 시작</button>}
+          <button disabled={busy} onClick={() => setConfirmReset(false)}>{t('common.cancel')}</button>
+          <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'resetAll' }).then(ok => { if (ok) setConfirmReset(false); })}>{t('reset.confirm')}</button>
+        </> : <button disabled={busy || !state?.canNavigate} onClick={() => setConfirmReset(true)}>{t('reset.startOver')}</button>}
       </section>
-      <footer role="status">{error || (state?.saveError ? '저장에 실패했습니다 · 재시도하세요' : state ? '게임을 선택하세요' : '앱 연결 중…')}</footer>
+      <footer role="status">{error || (state?.saveError ? t('save.failedRetry') : state ? t('menu.chooseGame') : t('blackjack.connection'))}</footer>
     </>}
 
   </main>;
 }
 
 function OpacityPanel() {
-  const [view, setView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false });
+  const [view, setView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' });
   const [draft, setDraft] = useState<number | null>(null);
   const latestRequest = useRef(0);
 
@@ -372,6 +380,8 @@ function OpacityPanel() {
     void window.molsino.getOverlayState().then(apply);
     return unsubscribe;
   }, []);
+
+  useEffect(() => { document.documentElement.lang = view.locale; }, [view.locale]);
 
   function change(percent: number): void {
     const requestId = ++latestRequest.current;
@@ -387,7 +397,7 @@ function OpacityPanel() {
   const value = draft ?? view.opacityPercent;
   return <main className="opacity-popover" style={{ opacity: value / 100 }} onMouseEnter={() => void window.molsino.opacityPopover({ phase: 'keep' })}
     onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })}>
-    <label className="opacity-control"><span aria-hidden="true">◐</span><input type="range" aria-label="불투명도" min="20" max="100" step="5" value={value} onChange={event => change(Number(event.currentTarget.value))}/><span className="opacity-percent">{value}%</span></label>
+    <label className="opacity-control"><span aria-hidden="true">◐</span><input type="range" aria-label={translate(view.locale, 'opacity.label')} min="20" max="100" step="5" value={value} onChange={event => change(Number(event.currentTarget.value))}/><span className="opacity-percent">{value}%</span></label>
   </main>;
 }
 

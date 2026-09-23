@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { HandStatus, LegalAction } from '../core/game-state';
 import type { Rank, Suit } from '../core/models';
 import type { SettlementOutcome } from '../core/settlement';
+import type { AppLocale } from './i18n';
 export type { SettlementOutcome } from '../core/settlement';
 
 export const channels = {
@@ -70,7 +71,13 @@ export type RecoveryChoice = z.infer<typeof recoveryChoiceSchema>;
 export type UserCommand = z.infer<typeof userCommandSchema>;
 export type WindowCommand = z.infer<typeof windowCommandSchema>;
 export type OverlayVisibility = 'expanded' | 'collapsed' | 'hidden';
-export interface OverlayViewState { revision: number; visibility: OverlayVisibility; opacityPercent: number; opacityPopoverVisible: boolean; }
+export interface OverlayViewState {
+  revision: number;
+  visibility: OverlayVisibility;
+  opacityPercent: number;
+  opacityPopoverVisible: boolean;
+  locale: AppLocale;
+}
 export type OpacityPopoverCommand = z.infer<typeof opacityPopoverCommandSchema>;
 export type ResizeEdge = z.infer<typeof resizeEdgeSchema>;
 export type ResizeCommand = z.infer<typeof resizeCommandSchema>;

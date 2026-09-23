@@ -2,11 +2,14 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { AppView } from '../shared/app-contracts';
 import { TABLE_LEVELS, type TableLevel } from '../shared/table-levels';
 import { compactUsd } from './game-ui';
+import { translate, type AppLocale } from '../shared/i18n';
 
-export function LevelPicker({ state, busy, error, onBack, onApply, onRetry }: {
+export function LevelPicker({ state, busy, error, locale, onBack, onApply, onRetry }: {
   state: AppView; busy: boolean; error: string; onBack(): void;
+  locale: AppLocale;
   onApply(level: TableLevel): Promise<boolean>; onRetry(): Promise<boolean>;
 }) {
+  const t = (key: Parameters<typeof translate>[1], values?: Parameters<typeof translate>[2]) => translate(locale, key, values);
   const [candidate, setCandidate] = useState(state.table.selectedLevel);
   const track = useRef<HTMLDivElement>(null);
   const candidateRef = useRef(candidate);
@@ -31,8 +34,8 @@ export function LevelPicker({ state, busy, error, onBack, onApply, onRetry }: {
   const level = TABLE_LEVELS[candidate - 1]!;
   const shortage = Math.max(0, level.entryBalanceCents - state.balanceCents);
   return <>
-    <section className="level-carousel" aria-label="테이블 레벨 선택">
-      <div className="level-track" aria-label="테이블 레벨 목록" ref={track} onScroll={() => {
+    <section className="level-carousel" aria-label={t('level.selector')}>
+      <div className="level-track" aria-label={t('level.list')} ref={track} onScroll={() => {
         const list = track.current;
         if (!list) return;
         const middle = list.scrollLeft + list.clientWidth / 2;
@@ -47,22 +50,22 @@ export function LevelPicker({ state, busy, error, onBack, onApply, onRetry }: {
         {TABLE_LEVELS.map(table => {
           const current = table.level === state.table.selectedLevel;
           const missing = Math.max(0, table.entryBalanceCents - state.balanceCents);
-          return <article className="level-card" key={table.level} aria-label={`Lv.${table.level} 테이블`} aria-current={current ? 'true' : undefined}>
+          return <article className="level-card" key={table.level} aria-label={t('level.table', { level: table.level })} aria-current={current ? 'true' : undefined}>
             <strong>Lv.{table.level}</strong>
-            <span>최소 {compactUsd(table.minBetCents)} · 최대 {compactUsd(table.maxBetCents)}</span>
-            <span>입장 조건 {compactUsd(table.entryBalanceCents)}</span>
-            <span className="level-card-status">{current ? '선택 중' : missing ? `${compactUsd(missing)} 부족` : '입장 가능'} · {table.level === state.table.bestLevel ? '최고 달성' : table.level < state.table.bestLevel ? '달성' : '미달성'}</span>
+            <span>{t('limits.text', { min: compactUsd(table.minBetCents), max: compactUsd(table.maxBetCents) })}</span>
+            <span>{t('level.entry', { amount: compactUsd(table.entryBalanceCents) })}</span>
+            <span className="level-card-status">{current ? t('level.selecting') : missing ? t('level.short', { amount: compactUsd(missing) }) : t('level.available')} · {table.level === state.table.bestLevel ? t('level.best') : table.level < state.table.bestLevel ? t('level.achieved') : t('level.locked')}</span>
           </article>;
         })}
       </div>
-      <button className="level-prev" aria-label="이전 레벨" disabled={candidate === 1 || busy || state.saveError} onClick={() => browse(-1)}>‹</button>
-      <button className="level-next" aria-label="다음 레벨" disabled={candidate === TABLE_LEVELS.length || busy || state.saveError} onClick={() => browse(1)}>›</button>
+      <button className="level-prev" aria-label={t('level.previous')} disabled={candidate === 1 || busy || state.saveError} onClick={() => browse(-1)}>‹</button>
+      <button className="level-next" aria-label={t('level.next')} disabled={candidate === TABLE_LEVELS.length || busy || state.saveError} onClick={() => browse(1)}>›</button>
     </section>
     <section className="level-actions">
-      <button disabled={busy || state.saveError} onClick={onBack}>뒤로</button>
-      <span role="status" title={error || undefined}>{state.saveError ? '저장 실패' : error || `${candidate} / ${TABLE_LEVELS.length}`}</span>
-      {state.saveError ? <button disabled={busy} onClick={() => void onRetry()}>저장 재시도</button>
-        : <button disabled={busy || selected || shortage > 0 || !state.canNavigate} onClick={() => void onApply(candidate)}>{selected ? '선택 중' : '적용'}</button>}
+      <button disabled={busy || state.saveError} onClick={onBack}>{t('common.back')}</button>
+      <span role="status" title={error || undefined}>{state.saveError ? t('level.saveFailed') : error || `${candidate} / ${TABLE_LEVELS.length}`}</span>
+      {state.saveError ? <button disabled={busy} onClick={() => void onRetry()}>{t('common.saveRetry')}</button>
+        : <button disabled={busy || selected || shortage > 0 || !state.canNavigate} onClick={() => void onApply(candidate)}>{selected ? t('level.selecting') : t('level.apply')}</button>}
     </section>
   </>;
 }
