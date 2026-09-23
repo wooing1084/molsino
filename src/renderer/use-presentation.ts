@@ -23,12 +23,15 @@ export function usePresentation(expanded: boolean) {
     if (!isExpanded || !wasExpanded) snap();
   }, [snap]);
   useEffect(() => {
-    if (frame?.nextWakeAt === undefined) return;
+    if (frame?.nextWakeAt === undefined || !visible.current || document.visibilityState === 'hidden') return;
     // Timers may wake fractionally before the deadline. Re-arm for every frame,
     // even when advance() returns the same deadline, and round the wait upward.
-    const timer = window.setTimeout(() => setFrame(timeline.current.advance(performance.now())), Math.max(1, Math.ceil(frame.nextWakeAt - performance.now())));
+    const timer = window.setTimeout(() => {
+      // A native hide can arrive before React commits the next frame/effect cleanup.
+      if (visible.current && document.visibilityState !== 'hidden') setFrame(timeline.current.advance(performance.now()));
+    }, Math.max(1, Math.ceil(frame.nextWakeAt - performance.now())));
     return () => window.clearTimeout(timer);
-  }, [frame]);
+  }, [frame, expanded]);
   useEffect(() => { if (!expanded) snap(); }, [expanded, snap]);
   useEffect(() => {
     document.addEventListener('visibilitychange', snap);

@@ -3,6 +3,7 @@ import type { AppView } from '../../src/shared/app-contracts';
 import type { GameViewState } from '../../src/shared/contracts';
 import { PresentationTimeline, visibleBaccaratScore, visibleBlackjackScore } from '../../src/renderer/presentation';
 import { card } from '../core/helpers';
+import { wheelSegmentAt } from '../../src/renderer/wheel-presentation';
 
 const cards = [card('A', 'S', '1'), card('9', 'S', '2'), card('K', 'S', '3'), card('7', 'S', '4'), card('2', 'S', '5'), card('3', 'S', '6')];
 const order = cards.map(c => c.cardId);
@@ -225,7 +226,84 @@ describe('big wheel presentation timeline', () => {
     expect(timeline.receive(bigwheel(0, 'result'), 0).revealing).toBe(false);
     timeline.receive(bigwheel(1, 'betting'), 10);
     expect(timeline.receive(bigwheel(2, 'spinning'), 20).revealing).toBe(true);
-    expect(timeline.snap(30).revealing).toBe(false);
-    expect(timeline.receive(bigwheel(3, 'result'), 40).revealing).toBe(false);
+    expect(timeline.snap(30).revealing).toBe(true);
+    // Hidden delivery snaps committed results, while an unresolved restored round still progresses.
+    expect(timeline.receive(bigwheel(3, 'result'), 40, true).revealing).toBe(false);
+  });
+});
+
+
+describe('big wheel continuous reveal lifecycle', () => {
+  it('continues forward beyond 1.8 seconds without a result and reveals all outcome surfaces only after late deceleration', () => {
+    const timeline = new PresentationTimeline();
+    timeline.receive(bigwheel(0, 'betting'), 0);
+    timeline.receive(bigwheel(1, 'spinning'), 100);
+    const early = timeline.advance(500);
+    const late = timeline.advance(2600);
+    expect(late.revealing).toBe(true);
+    expect(late.view.bigwheel?.phase).toBe('spinning');
+    expect(late.view.bigwheel?.lastResult).toBeNull();
+    expect(late.wheelPosition!).toBeGreaterThan(early.wheelPosition!);
+    expect(late.nextWakeAt).toBeGreaterThan(2600);
+    const result = bigwheel(2, 'result'); result.table.bestBankrollCents = 10100;
+    const received = timeline.receive(result, 2600);
+    expect(received.wheelPosition).toBe(late.wheelPosition);
+    expect(received.view.balanceCents).toBe(9900);
+    expect(received.view.bigwheel?.recentResults).toEqual([]);
+    expect(received.view.table.bestBankrollCents).toBe(10000);
+    expect(received.view.canNavigate).toBe(false);
+    expect(timeline.advance(3949).view.bigwheel?.lastResult).toBeNull();
+    const final = timeline.advance(3950);
+    expect(final.revealing).toBe(false);
+    expect(final.view.balanceCents).toBe(10100);
+    expect(final.view.bigwheel?.recentResults).toHaveLength(1);
+    expect(final.view.table.bestBankrollCents).toBe(10100);
+    expect(wheelSegmentAt(final.wheelPosition!)).toBe(3);
+    expect(final.nextWakeAt).toBeUndefined();
+  });
+
+  it('keeps a failed payout moving, retries into the same trajectory, and ignores stale state from an older round', () => {
+    const timeline = new PresentationTimeline();
+    timeline.receive(bigwheel(0, 'betting'), 0);
+    timeline.receive(bigwheel(1, 'spinning'), 100);
+    const failed = { ...bigwheel(2, 'spinning'), saveError: true };
+    const position = timeline.advance(2500).wheelPosition;
+    const error = timeline.receive(failed, 2500);
+    expect(error.view.saveError).toBe(true); expect(error.wheelPosition).toBe(position);
+    timeline.receive(bigwheel(3, 'result'), 2600);
+    const moving = timeline.advance(3000);
+    const duplicate = timeline.receive(bigwheel(4, 'result'), 3000);
+    expect(duplicate.wheelPosition).toBe(moving.wheelPosition);
+    expect(timeline.advance(3950).revealing).toBe(false);
+    const betting = bigwheel(5, 'betting'); betting.bigwheel!.recentResults = bigwheel(4, 'result').bigwheel!.recentResults;
+    const ready = timeline.receive(betting, 4000);
+    expect(ready.wheelPosition).toBe(0); expect(ready.view.bigwheel?.lastResult).toBeNull();
+    const second = bigwheel(6, 'spinning'); second.bigwheel!.roundId = 'second-round';
+    const next = timeline.receive(second, 4100);
+    expect(next.revealing).toBe(true); expect(next.wheelPosition).toBe(0);
+    const stale = timeline.receive(bigwheel(4, 'result'), 4200);
+    expect(stale.view.bigwheel?.roundId).toBe('second-round');
+    expect(stale.view.bigwheel?.lastResult).toBeNull();
+    // A delayed timer only samples the current trajectory; it cannot finalize the prior round.
+    expect(timeline.advance(5000).view.bigwheel?.roundId).toBe('second-round');
+    expect(timeline.advance(10000).revealing).toBe(true);
+  });
+
+  it('restores unsettled rounds as ongoing display and snaps already settled rounds on reload, reentry and hiding', () => {
+    const restored = new PresentationTimeline();
+    const initial = restored.receive(bigwheel(1, 'spinning'), 0);
+    expect(initial.revealing).toBe(true); expect(initial.view.bigwheel?.lastResult).toBeNull();
+    expect(restored.advance(2500).wheelPosition!).toBeGreaterThan(0);
+    // Main may settle while the window is hidden; no animation is forced when it returns.
+    const hidden = restored.receive(bigwheel(2, 'result'), 2600, true);
+    expect(hidden.revealing).toBe(false); expect(hidden.wheelPosition).toBe(3);
+    expect(restored.snap(2700).wheelPosition).toBe(3);
+    expect(restored.snap(2700).nextWakeAt).toBeUndefined();
+    const reloaded = new PresentationTimeline();
+    expect(reloaded.receive(bigwheel(2, 'result'), 0).wheelPosition).toBe(3);
+    const menu = { ...bigwheel(3, 'result'), screen: 'menu' as const, bigwheel: null };
+    restored.receive(menu, 2800);
+    expect(restored.receive(bigwheel(4, 'result'), 2900).wheelPosition).toBe(3);
+    expect(restored.advance(3000).revealing).toBe(false);
   });
 });

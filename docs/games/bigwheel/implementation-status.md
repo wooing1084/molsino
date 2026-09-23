@@ -10,7 +10,7 @@
 - [실제 파일 지도](#실제-파일-지도)
 - [검증과 한계](#검증과-한계)
 
-2026-09-23 후속 설계: [좌·중앙·우 세 칸 확대 표시](product-design.md#31-결과-주변-세-칸-확대--후속-구현-예정)는 **미구현·미검증**이다. 아래 내용은 기존 전체 휠 구현과 검증 범위다.
+2026-09-23 후속 구현: [좌·중앙·우 세 칸 확대 표시](product-design.md#31-결과-주변-세-칸-확대)를 구현했다. 실행 결과와 시각 확인 범위는 [후속 보고서](../../session-reports/N05-bigwheel-result-zoom.md)를 따른다.
 
 ## 현재 구현 범위
 
@@ -21,7 +21,7 @@
 | Main | 차감·미공개 당첨 칸·진행 잠금을 함께 저장하고 내부 자동 전이로 한 번 정산 |
 | 저장 | v4, 기존 v1/v2/v3 이전, 실패 후보 재시도, 저장된 회전 결과로 재기동 재개 |
 | 공개 상태 | 회전 중 칸 인덱스·당첨 구역 비공개, 현재 게임만 노출, 최근 20개 결과 |
-| 화면 | 메뉴·54칸 휠·포인터·7구역 선택·금액 편집·합계·한도·결과, 1.8초 표시 타임라인 |
+| 화면 | 메뉴·54칸 배열의 세 칸 확대·고정 포인터·7구역 선택·금액 편집·합계·한도·결과, 정상 1.8초 표시와 늦은 결과의 연속 감속 |
 
 규칙과 앱 운영 결정의 기준은 [제품 설계](product-design.md), 상태 무결성과 공개 경계는 [기술 설계](technical-design.md)다.
 
@@ -36,6 +36,8 @@
 | [`app-session-repository.ts`](../../../src/main/persistence/app-session-repository.ts) | v4·이전·잠금/게임 검증 |
 | [`app-contracts.ts`](../../../src/shared/app-contracts.ts), [`bigwheel-view.ts`](../../../src/shared/bigwheel-view.ts) | 앱 명령·공개 상태 계약 |
 | [`bigwheel.tsx`](../../../src/renderer/games/bigwheel.tsx) | 휠·구역·입력·결과·기록 화면 |
+| [`bigwheel-window.tsx`](../../../src/renderer/games/bigwheel-window.tsx) | 순환 배열의 세 칸 확대·이동·동작 줄이기 |
+| [`wheel-presentation.ts`](../../../src/renderer/wheel-presentation.ts) | 연속 좌표·전진 감속·최종 칸 정렬 |
 | [`presentation.ts`](../../../src/renderer/presentation.ts) | 공개 연출과 결과·잔액·기록 동시 표시 |
 
 ## 검증과 한계

@@ -88,7 +88,7 @@ for (const scenario of cases) test(`BW-02 ${scenario.name} 원금 포함 ${scena
   await expect(p.getByRole('button', { name: '다음 판', exact: true })).toBeEnabled();
   await expect(p.locator('footer[role="status"]')).toContainText(scenario.name);
   await expect(p.getByLabel('최근 빅휠 결과', { exact: true })).toContainText(scenario.name);
-  await expect(p.getByLabel('빅휠 54칸', { exact: true })).toHaveAttribute('data-segment-index', String(BIG_WHEEL_SEGMENTS.indexOf(scenario.target)));
+  await expect(p.getByLabel('빅휠 세 칸 확대', { exact: true })).toHaveAttribute('data-segment-index', String(BIG_WHEEL_SEGMENTS.indexOf(scenario.target)));
   const result = await saved();
   await p.reload(); await expect(p.getByRole('button', { name: '다음 판', exact: true })).toBeEnabled();
   expect(await saved()).toEqual(result);
@@ -181,9 +181,9 @@ test('BW-07 빠른 Main 정산도 휠 연출 중 결과·기록·최종 잔액�
   expect(await p.locator('.balance strong').textContent()).not.toBe('$101.00');
   await expect(p.getByLabel('최근 빅휠 결과', { exact: true })).toHaveText('최근 결과 없음');
   await expect(p.getByRole('button', { name: '메뉴', exact: true })).toBeDisabled();
-  expect(await p.getByLabel('빅휠 54칸', { exact: true }).getAttribute('data-segment-index')).toBeNull();
+  expect(await p.getByLabel('빅휠 세 칸 확대', { exact: true }).getAttribute('data-segment-index')).toBeNull();
   expect(await p.locator('footer[role="status"]').textContent()).not.toContain('반환');
-  await expect(p.getByLabel('빅휠 54칸', { exact: true })).toHaveAttribute('aria-label', '빅휠 54칸');
+  await expect(p.getByLabel('빅휠 세 칸 확대', { exact: true })).toHaveAttribute('aria-label', '빅휠 세 칸 확대');
   await expect(p.getByRole('button', { name: '다음 판', exact: true })).toBeEnabled();
   await expect(p.locator('.balance strong')).toHaveText('$101.00');
   await expect(p.getByLabel('최근 빅휠 결과', { exact: true })).toContainText('실버');

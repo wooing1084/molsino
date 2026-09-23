@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { BIG_WHEEL_RULES, BIG_WHEEL_SEGMENTS, BIG_WHEEL_SYMBOLS, type BigWheelAction, type BigWheelSymbol } from '../../core/bigwheel/core';
+import { useEffect, useRef, useState } from 'react';
+import { BIG_WHEEL_RULES, BIG_WHEEL_SYMBOLS, type BigWheelAction, type BigWheelSymbol } from '../../core/bigwheel/core';
 import type { BigWheelView } from '../../shared/bigwheel-view';
 import type { OverlayViewState } from '../../shared/contracts';
 import type { AppView } from '../../shared/app-contracts';
 import { parseBetInput } from '../../shared/bet-input';
 import type { PresentationFrame } from '../presentation';
+import { BigWheelWindow } from './bigwheel-window';
 const usd = (n: number) => `$${(n / 100).toFixed(2)}`;
 const compactUsd = (n: number) => `$${n % 100 === 0 ? n / 100 : (n / 100).toFixed(2)}`;
-const step = 360 / 54;
-const point = (angle: number, radius: number) => `${50 + Math.sin(angle * Math.PI / 180) * radius},${50 - Math.cos(angle * Math.PI / 180) * radius}`;
 
 export function BigWheelGame({ state, balance, busy: commandBusy, saveError, internalError, error, runAction, onRetry, onMenu, overlayView, table, presentation }: {
   state: BigWheelView; balance: number; busy: boolean; saveError: boolean; internalError?: string; error: string;
@@ -49,28 +48,17 @@ export function BigWheelGame({ state, balance, busy: commandBusy, saveError, int
   const spinning = state.phase === 'spinning';
   const shortage = balance < table.minBetCents;
   const shortageLabel = balance < 100 ? '메뉴에서 새 시작' : '하위 레벨 선택';
-  const rotation = -(presentation.wheelSegmentIndex ?? 0) * step;
   const status = saveError ? '저장 실패 · 같은 판 저장을 재시도하세요' : internalError ? '진행 오류 · 앱을 다시 실행하세요'
     : spinning ? '휠 회전 중…' : result ? `${BIG_WHEEL_RULES[result.outcome].name} · 반환 ${usd(result.returnCents)} · ${result.netCents >= 0 ? '+' : '−'}${usd(Math.abs(result.netCents))}`
-    : shortage ? `잔액 부족 · ${shortageLabel}` : `${BIG_WHEEL_RULES[target].name} 금액 편집 · 0 입력으로 제거`;
+    : shortage ? `잔액 부족 · ${shortageLabel}` : `회전 대기 · ${BIG_WHEEL_RULES[target].name} 금액 편집`;
   return <>
     <section className="bigwheel-table" aria-label="빅휠 테이블">
       <div className="bigwheel-visual">
-        <svg viewBox="0 0 100 100" role="img" aria-label="빅휠 54칸" data-segment-index={result?.segmentIndex}>
-          <g key={state.roundId ?? 'betting'} className={presentation.revealing ? 'bigwheel-disc spinning' : 'bigwheel-disc'} style={{ '--wheel-stop': `${1080 + rotation}deg`, transform: `rotate(${rotation}deg)` } as CSSProperties}>
-            {BIG_WHEEL_SEGMENTS.map((symbol, i) => <path key={i} d={`M50,50 L${point(i * step - step / 2, 44)} A44,44 0 0,1 ${point(i * step + step / 2, 44)} Z`} fill="currentColor" fillOpacity={.08 + BIG_WHEEL_SYMBOLS.indexOf(symbol) * .1} stroke="currentColor" strokeWidth=".35"><title>{i + 1}: {BIG_WHEEL_RULES[symbol].name}</title></path>)}
-            {BIG_WHEEL_SYMBOLS.map(symbol => {
-              const first = BIG_WHEEL_SEGMENTS.indexOf(symbol);
-              const middle = first + (BIG_WHEEL_RULES[symbol].segments - 1) / 2;
-              const [x, y] = point(middle * step, 32).split(',');
-              return <text key={symbol} x={x} y={y} fill="currentColor" textAnchor="middle" dominantBaseline="middle" fontSize="8">{BIG_WHEEL_RULES[symbol].payout}</text>;
-            })}
-          </g>
-          <path d="M46,1 L54,1 L50,10 Z" fill="currentColor"/>
-          <circle cx="50" cy="50" r="4" fill="currentColor"/>
-        </svg>
-        <div className="bigwheel-total" aria-label="총 베팅 금액" title={`총 베팅 ${usd(state.totalBetCents)}`}>Σ {usd(state.totalBetCents)}</div>
-        <div className="bigwheel-history" aria-label="최근 빅휠 결과" tabIndex={0}>{state.recentResults.length ? state.recentResults.map(r => <span key={r.roundId} title={BIG_WHEEL_RULES[r.outcome].name}>{BIG_WHEEL_RULES[r.outcome].name}</span>) : '최근 결과 없음'}</div>
+        <BigWheelWindow state={state} presentation={presentation}/>
+        <div className="bigwheel-metadata">
+          <div className="bigwheel-total" aria-label="총 베팅 금액" title={`총 베팅 ${usd(state.totalBetCents)}`}>Σ {usd(state.totalBetCents)}</div>
+          <div className="bigwheel-history" aria-label="최근 빅휠 결과" tabIndex={0}>{state.recentResults.length ? state.recentResults.map(r => <span key={r.roundId} title={BIG_WHEEL_RULES[r.outcome].name}>{BIG_WHEEL_RULES[r.outcome].name}</span>) : '최근 결과 없음'}</div>
+        </div>
       </div>
       <div className="bigwheel-targets" aria-label="베팅 구역과 순이익 배당" tabIndex={0}>
         {BIG_WHEEL_SYMBOLS.map(symbol => <button key={symbol} aria-label={`${BIG_WHEEL_RULES[symbol].name} 베팅`} title={`${BIG_WHEEL_RULES[symbol].name} · 순이익 ${BIG_WHEEL_RULES[symbol].payout}:1 · ${usd(state.pendingBets[symbol])}`} aria-pressed={target === symbol} disabled={busy || editing || !state.legalActions.includes('setBet')} onClick={() => { setTarget(symbol); setInputError(''); }}>

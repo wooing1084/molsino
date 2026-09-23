@@ -9,7 +9,7 @@
 - [테스트 위치와 범위](#테스트-위치와-범위)
 - [검증 경계](#검증-경계)
 
-2026-09-23 후속 설계: [좌·중앙·우 세 칸 확대 표시](product-design.md#31-결과-주변-세-칸-확대--후속-구현-예정)는 **미구현·미검증**이다. 아래 내용은 기존 전체 휠 구현과 검증 범위다.
+2026-09-23 후속 구현: [좌·중앙·우 세 칸 확대 표시](product-design.md#31-결과-주변-세-칸-확대)를 구현했다. 실행 결과와 시각 확인 범위는 [후속 보고서](../../session-reports/N05-bigwheel-result-zoom.md)를 따른다.
 
 ## 테스트 위치와 범위
 
@@ -18,6 +18,8 @@
 | 파일 | 검증 범위 |
 | --- | --- |
 | [`bigwheel.spec.ts`](../../../tests/e2e/bigwheel.spec.ts) | BW-01~10: 메뉴, 7배당의 실제 UI 입력, 복수 베팅, 명령 경계, spinning/result 강제 종료, 정산 저장 실패, 0ms Main 정산의 표시 지연, 최소 창·Lv6 최대 금액, 세 게임 왕복 |
+| [`bigwheel-zoom.spec.ts`](../../../tests/e2e/bigwheel-zoom.spec.ts) | BW-11~14: 이웃 칸·이동/감속·결과 마스킹·수명/복구·최소/기본 창 흑백 캡처 |
+| [`wheel-presentation.test.ts`](../../../tests/renderer/wheel-presentation.test.ts) | 모든 칸 매핑·경계 순환·결과 수신 시점별 전진 감속과 정렬 |
 | [`support/app.ts`](../../../tests/e2e/support/app.ts) | 격리 userData와 `bigwheelFixture` 전달·앱 재실행 |
 | [`bigwheel.test.ts`](../../../tests/core/bigwheel.test.ts) | 총 54칸 배분, 모든 칸 정산, 조커/메가 구분, 정수 경계, 상태 불일치, 최근 20개 기록, 공개 명령·정보 은닉 |
 | [`bigwheel-store.test.ts`](../../../tests/main/bigwheel-store.test.ts) | 모든 레벨 합계 한도, 미완성 베팅, 시작·정산 저장 실패, 중복 요청, 저장된 결과 복원, 다음 판 정규화 |
