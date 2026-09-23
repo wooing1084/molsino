@@ -56,7 +56,6 @@ export function BigWheelGame({ state, balance, busy: commandBusy, saveError, int
       <div className="bigwheel-visual">
         <BigWheelWindow state={state} presentation={presentation}/>
         <div className="bigwheel-metadata">
-          <div className="bigwheel-total" aria-label="총 베팅 금액" title={`총 베팅 ${usd(state.totalBetCents)}`}>Σ {usd(state.totalBetCents)}</div>
           <div className="bigwheel-history" aria-label="최근 빅휠 결과" tabIndex={0}>{state.recentResults.length ? state.recentResults.map(r => <span key={r.roundId} title={BIG_WHEEL_RULES[r.outcome].name}>{BIG_WHEEL_RULES[r.outcome].name}</span>) : '최근 결과 없음'}</div>
         </div>
       </div>
@@ -66,7 +65,7 @@ export function BigWheelGame({ state, balance, busy: commandBusy, saveError, int
         </button>)}
       </div>
     </section>
-    <div className="table-limits bigwheel-limits" title={`총액 기준 최소 ${usd(table.minBetCents)} · 최대 ${usd(table.maxBetCents)}`}>총액 최소 {compactUsd(table.minBetCents)} · 최대 {compactUsd(table.maxBetCents)}</div>
+    <div className="table-limits bigwheel-limits" title={`총 베팅 ${usd(state.totalBetCents)} · 총액 기준 최소 ${usd(table.minBetCents)} · 최대 ${usd(table.maxBetCents)}`}><span className="bigwheel-total" aria-label="총 베팅 금액">Σ {usd(state.totalBetCents)}</span><span aria-hidden="true">|</span><span>최소 {compactUsd(table.minBetCents)} · 최대 {compactUsd(table.maxBetCents)}</span></div>
     <section className="bet actions bigwheel-actions">
       {saveError ? <button disabled={commandBusy} onClick={() => void onRetry()}>저장 재시도</button> : internalError ? <span>진행 오류</span>
         : spinning ? <span>휠 회전 중…</span> : state.phase === 'result' ? <button disabled={busy} onClick={() => shortage ? onMenu() : void runAction({ type: 'nextRound' })}>{shortage ? shortageLabel : '다음 판'}</button>
