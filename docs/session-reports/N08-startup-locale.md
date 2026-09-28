@@ -12,7 +12,7 @@
 - [4. 확인한 범위와 한계](#4-확인한-범위와-한계)
 - [5. 전달과 다음 시작점](#5-전달과-다음-시작점)
 
-날짜: 2026-09-28 · 상태: 구현·검증 완료·커밋/push/PR 준비 · 브랜치: `codex/n08-startup-locale` · 기준 `DEV`: `889aeea`.
+날짜: 2026-09-28 · 상태: 구현·검증·원격 push·DEV 대상 PR 완료 · 브랜치: `codex/n08-startup-locale` · 기준 `DEV`: `889aeea` · [PR #16](https://github.com/wooing1084/molsino/pull/16).
 
 ## 1. 작업 범위와 구현
 
@@ -82,4 +82,4 @@ N07 시점의 실제 패키지를 변경 전 별도 경로에 보존했다. 이 
 
 ## 5. 전달과 다음 시작점
 
-구현·관련 회귀·문서 검증을 마쳤다. 커밋·작업 브랜치 push·`DEV` 대상 PR 전달 정보를 아래에 이어 기록한다. 다음 작업은 [로드맵](../work-session-roadmap.md)의 N09 macOS 서명과 Mac App Store 제출이다.
+구현·관련 회귀·문서 검증을 마친 변경을 `2c35737`에 커밋하고 작업 브랜치를 push한 뒤 `DEV` 대상 [PR #16](https://github.com/wooing1084/molsino/pull/16)을 생성했다. 이 전달 기록은 후속 문서 커밋으로 같은 PR에 반영한다. 다음 작업은 N08 PR 반영 후 [로드맵](../work-session-roadmap.md)의 N09 macOS 서명과 Mac App Store 제출이다.
