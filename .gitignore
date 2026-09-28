@@ -25,3 +25,13 @@ blob-report/
 *.pfx
 *.key
 *.pem
+*.p8
+*.cer
+*.certSigningRequest
+*.provisionprofile
+*.mobileprovision
+*.keychain
+*.keychain-db
+
+# Private release plans, account/signing material, store/rating submissions and builds
+/release/
