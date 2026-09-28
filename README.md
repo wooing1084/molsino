@@ -2,7 +2,7 @@
 
 **목적:** molsino의 실행·사용·개발 방법과 상세 문서의 위치를 안내합니다.
 
-**요약:** molsino는 macOS와 Windows에서 다른 앱 위에 떠 있는 카지노 게임입니다. 블랙잭·기본 수수료 바카라·빅휠을 하나의 공용 잔액으로 플레이할 수 있습니다. 게임 세션은 로컬에 저장해 재실행 후 복원할 수 있습니다.
+**요약:** molsino는 macOS와 Windows에서 다른 앱 위에 떠 있는 카지노 게임입니다. 게임들은 하나의 공용 잔액을 사용합니다. 게임 세션은 로컬에 저장해 재실행 후 복원할 수 있습니다.
 
 ## 목차
 
@@ -42,7 +42,7 @@ Universal 빌드는 Intel Mac과 Apple Silicon Mac을 모두 지원합니다. �
 
 [한국어 사용 설명서](USER_GUIDE.md#한국어) · [English user guide](USER_GUIDE.md#english)
 
-창 이동·크기·불투명도·숨김/복원·클릭 통과, 금액 입력, 세 게임의 한 판, 저장·새 시작과 문제 해결을 안내합니다. Window controls, betting, all three games, saving, resets, and troubleshooting are covered in both languages.
+창 이동·크기·불투명도·숨김/복원·클릭 통과, 금액 입력과 게임 플레이, 저장·새 시작과 문제 해결을 안내합니다. Window controls, betting, gameplay, saving, resets, and troubleshooting are covered in both languages.
 
 ## 개발 환경
 

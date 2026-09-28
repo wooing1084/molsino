@@ -1,8 +1,8 @@
 # molsino 사용 설명서 / User Guide
 
-**목적 / Purpose:** 설치한 molsino의 창을 조작하고 블랙잭·바카라·빅휠을 플레이하는 방법을 안내합니다. Learn how to control the molsino window and play Blackjack, Baccarat, and Big Wheel.
+**목적 / Purpose:** 설치한 molsino의 창을 조작하고 게임을 플레이하는 방법을 안내합니다. Learn how to control the molsino window and play its games.
 
-**요약 / Summary:** 세 게임은 로컬에 저장되는 하나의 잔액을 사용합니다. `$`는 구매·환전·현금 보상이 없는 가상 게임 머니입니다. All three games share one locally saved bankroll. `$` represents virtual game money with no purchases, cash exchange, or cash prizes.
+**요약 / Summary:** 게임들은 로컬에 저장되는 하나의 잔액을 사용합니다. `$`는 구매·환전·현금 보상이 없는 가상 게임 머니입니다. The games share one locally saved bankroll. `$` represents virtual game money with no purchases, cash exchange, or cash prizes.
 
 ## 목차 / Contents
 
@@ -34,7 +34,7 @@
 molsino는 다른 앱을 사용하는 동안 작은 투명 창에서 즐기는 로컬 싱글플레이 게임입니다. 설치 파일과 OS별 실행 방법은 [README의 릴리즈 다운로드와 실행](README.md#릴리즈-다운로드와-실행)을 따르세요.
 
 1. 앱을 실행합니다. 처음에는 한국어로 시작하며 초기 잔액은 **$100.00**, 레벨은 **Lv.1**입니다.
-2. 메뉴에서 **블랙잭**, **바카라**, **빅휠** 중 하나를 선택합니다.
+2. 메뉴에서 플레이할 게임을 선택합니다.
 3. 베팅 금액칸을 눌러 `1.00`처럼 입력하고 **Enter**로 확정합니다. 블랙잭·바카라는 **딜**, 빅휠은 **회전**으로 판을 시작합니다.
 4. 블랙잭에서는 **히트** 또는 **스탠드** 등 표시된 행동을 선택합니다. 바카라의 카드 배분과 빅휠의 회전·정산은 자동으로 진행됩니다.
 5. 결과가 표시되고 저장이 끝나면 **다음 판** 또는 **메뉴**를 선택합니다. 다음 판을 눌러도 새 베팅은 자동으로 시작하지 않습니다.
@@ -71,7 +71,7 @@ macOS의 아이콘은 화면 상단 메뉴 막대에 있고 Windows의 아이콘
 
 ### 4. 잔액·레벨·금액 입력
 
-세 게임은 같은 잔액을 사용합니다. 게임을 바꿔도 돈이 추가되지 않으며 기본 베팅액은 **딜** 또는 **회전**을 시작할 때 차감됩니다. 블랙잭의 더블·스플릿·보험 추가금은 해당 행동을 선택할 때 차감됩니다.
+게임들은 같은 잔액을 사용합니다. 게임을 바꿔도 돈이 추가되지 않으며 기본 베팅액은 **딜** 또는 **회전**을 시작할 때 차감됩니다. 블랙잭의 더블·스플릿·보험 추가금은 해당 행동을 선택할 때 차감됩니다.
 
 메뉴 상단의 **Lv.n** 버튼을 누르면 레벨 선택 화면이 열립니다. 좌우 버튼이나 가로 스크롤로 카드를 찾고 **적용**을 눌러 변경합니다. **뒤로**는 적용하지 않고 메뉴로 돌아갑니다.
 
@@ -98,47 +98,31 @@ macOS의 아이콘은 화면 상단 메뉴 막대에 있고 Windows의 아이콘
 
 ### 5. 블랙잭
 
-21을 넘지 않으면서 딜러보다 높은 점수를 만들면 이깁니다. 숫자 카드는 표시 숫자, J/Q/K는 10, A는 1 또는 11입니다. `18s`처럼 `s`가 붙은 점수는 A를 11로 센 소프트 점수입니다.
+카드 점수·승패·행동·배당 등 일반적인 규칙은 [The Venetian의 공식 블랙잭 안내](https://www.venetianlasvegas.com/resort/casino/table-games/how-to-play-blackjack.html)를 참조하세요. 카지노와 테이블마다 세부 규칙은 다를 수 있습니다.
 
 1. 금액을 정하고 **딜**을 누릅니다.
-2. 보험·이븐 머니 선택이 나오면 아래 설명에 따라 선택합니다.
-3. 행동 버튼이 나타나면 **히트**로 한 장 더 받거나 **스탠드**로 멈춥니다. 21을 넘으면 버스트입니다. 가능한 행동만 버튼으로 표시됩니다.
+2. 보험·이븐 머니 선택이 나오면 **보험 $금액 / 안 함** 또는 **이븐 머니 / BJ 유지**에서 선택합니다.
+3. **히트**, **스탠드**, **더블**, **스플릿**, **서렌더** 등 화면에 나타난 행동을 선택합니다. 가능한 행동만 버튼으로 표시됩니다.
 4. 모든 내 패의 행동이 끝나면 딜러가 자동으로 진행합니다. 결과와 하단 **라운드 ±$금액**을 확인하고 **다음 판** 또는 **메뉴**를 선택합니다. 라운드 금액은 모든 패와 보험을 합친 순손익입니다.
 
-| 버튼 | 뜻 |
-| --- | --- |
-| 히트 | 카드 한 장을 더 받습니다. |
-| 스탠드 | 현재 점수로 멈춥니다. |
-| 더블 | 같은 베팅액을 추가하고 한 장만 받은 뒤 멈춥니다. |
-| 스플릿 | 점수가 같은 첫 두 카드를 같은 추가 베팅으로 두 패로 나눕니다. |
-| 서렌더 | 첫 두 장에서 포기하고 베팅액 절반을 돌려받습니다. |
-| 보험 $금액 / 안 함 | 딜러 공개 카드가 A일 때 제시된 보험액을 구매하거나 거절합니다. 딜러가 자연 블랙잭이면 보험 순이익은 2:1이며, 아니면 보험액을 잃습니다. |
-| 이븐 머니 / BJ 유지 | 내가 자연 블랙잭이고 딜러 공개 카드가 A일 때 순이익 1:1을 확정하거나 일반 블랙잭 판정을 유지합니다. |
-
-6덱을 사용하며 딜러는 소프트 17을 포함한 17 이상에서 멈춥니다. 일반 승리는 원금과 순이익 1:1을 돌려받습니다. 스플릿 전 첫 두 장이 A와 10점 카드인 자연 블랙잭은 승리 시 원금과 순이익 3:2를 돌려받습니다. 무승부는 원금만 반환하며, 양쪽이 자연 블랙잭일 때도 이븐 머니를 선택하지 않았다면 무승부입니다. 스플릿은 최대 네 패이며 A는 한 번만 나누고 각 패에 한 장만 추가합니다. 스플릿 후 21은 일반 21로 판정하며 승리 시 1:1입니다. 센트 미만의 반환금은 가장 가까운 센트로 반올림하며 정확히 반 센트면 올립니다.
+molsino에서는 보험 금액을 별도로 입력하지 않고 화면에 제시된 금액을 구매하거나 거절합니다. `18s`처럼 `s`가 붙은 점수는 소프트 점수 표시입니다. 센트 미만의 반환금은 가장 가까운 센트로 반올림하며 정확히 반 센트면 올립니다.
 
 ### 6. 바카라
 
-**P**는 Player, **B**는 Banker, **T**는 Tie(동점)입니다. Player·Banker는 두 카드 패의 이름입니다. 높은 점수의 패가 이기며 점수가 같으면 Tie입니다. A=1, 2~9=표시 숫자, 10/J/Q/K=0이고 합계의 일의 자리만 셉니다. 예를 들어 7+8은 5점입니다.
+카드 점수·추가 카드·승패·배당은 [Massachusetts Gaming Commission의 공식 바카라 규칙(PDF)](https://massgaming.com/wp-content/uploads/RULES-Baccarat-4-11-2024.pdf)을 참조하세요. §6은 점수, §8~12는 베팅과 카드 배분, §13은 배당과 수수료를 다룹니다. 기본 수수료 방식의 규칙을 참고하세요.
+
+화면의 **P**는 Player, **B**는 Banker, **T**는 Tie(동점)입니다. molsino에서는 한 판에 한 곳만 선택합니다.
 
 1. **P / B / T** 중 한 곳을 선택합니다.
 2. 금액칸을 눌러 입력하고 Enter로 확정한 뒤 **딜**을 누릅니다.
-3. 카드 배분과 추가 카드 판단을 기다립니다. 8덱을 사용하며 추가 카드는 자동으로 처리됩니다.
+3. 자동 카드 배분과 결과 표시를 기다립니다.
 4. 결과·반환금·순손익을 확인하고 **다음 판** 또는 **메뉴**를 선택합니다.
 
-| 내 베팅과 결과 | 정산 |
-| --- | --- |
-| P 베팅에서 Player 승 | 원금 반환 + 순이익 1:1 |
-| B 베팅에서 Banker 승 | 원금 반환 + 베팅액의 95% 이익. 승리 이익에 수수료 5%가 적용됩니다. |
-| T 베팅에서 Tie | 원금 반환 + 순이익 8:1 |
-| P 또는 B 베팅에서 Tie | 원금 반환, 순손익 0 |
-| 그 밖의 패배 | 베팅액을 잃습니다. |
-
-Banker 승리 이익은 센트로 반올림하며 정확히 반 센트면 올립니다. 최근 최대 20개의 **P B T**는 내 베팅의 승패가 아니라 어느 패가 이겼는지 나타내는 기록이며 다음 결과를 예측하거나 보장하지 않습니다.
+molsino에서는 Banker 수수료를 승리 시 바로 반영하고, 수수료를 차감한 이익을 센트로 반올림하며 정확히 반 센트면 올립니다. 최근 최대 20개의 **P B T**는 내 베팅의 승패가 아니라 어느 패가 이겼는지 나타내는 기록이며 다음 결과를 예측하거나 보장하지 않습니다.
 
 ### 7. 빅휠
 
-54칸의 휠이 멈추는 구역에 베팅합니다. 여러 구역에 동시에 베팅할 수 있으며 조커와 메가는 배당이 같아도 별개 구역입니다.
+휠의 구역 구성·베팅·당첨·배당은 [강원랜드 카지노의 공식 빅휠 안내](https://kangwonland.high1.com/casino/contents.do?key=1767)를 참조하세요.
 
 1. 구역 목록에서 편집할 구역을 선택합니다. 작은 창에서는 목록을 스크롤해 나머지 구역을 찾습니다.
 2. 아래의 구역명·금액칸을 눌러 금액을 입력하고 Enter로 확정합니다. 구역을 선택하기만 해서는 베팅액이 추가되지 않습니다.
@@ -147,19 +131,9 @@ Banker 승리 이익은 센트로 반올림하며 정확히 반 센트면 올립
 5. **회전**을 누릅니다. 회전 중에는 베팅을 바꿀 수 없습니다. 멈추면 중앙 포인터 아래의 당첨 구역과 반환금·순손익을 확인합니다.
 6. **다음 판** 또는 **메뉴**를 선택합니다. 다음 판에서는 가능한 경우 직전 베팅 구성을 유지하므로 합계를 확인하고 다시 회전하세요.
 
-| 구역 | 당첨 확률 | 당첨 구역의 순이익 배당 | 해당 구역 원금 포함 반환 |
-| --- | ---: | ---: | ---: |
-| 실버 | 24/54 | 1:1 | 2배 |
-| 골드 | 15/54 | 2:1 | 3배 |
-| 에메랄드 | 7/54 | 5:1 | 6배 |
-| 다이아몬드 | 4/54 | 10:1 | 11배 |
-| 크리스탈 | 2/54 | 20:1 | 21배 |
-| 조커 | 1/54 | 40:1 | 41배 |
-| 메가 | 1/54 | 40:1 | 41배 |
+결과 화면의 **반환금**은 받은 금액, **순손익**은 반환금에서 전체 베팅액을 뺀 값입니다.
 
-**반환금은 당첨 구역 베팅액 × 반환 배수**, **순손익은 반환금 − 전체 베팅액**입니다. 다른 구역의 베팅은 잃으므로 한 구역이 당첨되어도 총순손익은 음수일 수 있습니다.
-
-화면의 좌·중앙·우 세 칸은 같은 휠의 당첨 칸과 이웃 칸입니다. 최근 세 판을 뜻하지 않으며 당첨은 중앙 포인터로 읽습니다. 별도의 최근 기록은 최대 20개입니다. 매 판은 독립 추첨이며 이전 기록이 다음 결과를 보장하지 않습니다.
+molsino의 좌·중앙·우 세 칸은 같은 휠의 당첨 칸과 이웃 칸을 확대한 표시입니다. 최근 세 판을 뜻하지 않으며 당첨은 중앙 포인터로 읽습니다. 별도의 최근 기록은 최대 20개이며 다음 결과를 예측하거나 보장하지 않습니다.
 
 ### 8. 저장·이동·새 시작
 
@@ -203,7 +177,7 @@ Banker 승리 이익은 센트로 반올림하며 정확히 반 센트면 올립
 molsino is a local single-player game in a small transparent window that floats over other apps. For downloads and installation, follow the [README's release instructions](README.md#릴리즈-다운로드와-실행). On macOS, extract the Universal ZIP and open `molsino.app`. On Windows, use the installer or extract the entire portable ZIP and open `molsino.exe`.
 
 1. Open the app. First launch uses Korean, with **$100.00** and **Lv.1**. Choose **언어 / Language → English** from the macOS application menu or status icon menu, or the Windows notification area icon menu.
-2. Select **Blackjack**, **Baccarat**, or **Big Wheel** from the menu.
+2. Select the game you want to play from the menu.
 3. Click the amount field, enter a number such as `1.00`, and press **Enter** to confirm. Use **Deal** for Blackjack or Baccarat, or **Spin** for Big Wheel.
 4. In Blackjack, choose an available action such as **Hit** or **Stand**. Baccarat deals automatically, and Big Wheel spins and settles automatically.
 5. Once the result appears and saving finishes, choose **Next Round** or **Menu**. Next Round prepares betting; it does not place the next bet automatically.
@@ -240,7 +214,7 @@ Currently, first launch uses Korean regardless of your OS language. Your choice 
 
 ### 4. Bankroll, levels, and amount entry
 
-All three games share one bankroll. Switching games does not add money. Base bets are deducted when you start **Deal** or **Spin**. Blackjack doubles, splits, and insurance deduct additional money when you choose those actions.
+The games share one bankroll. Switching games does not add money. Base bets are deducted when you start **Deal** or **Spin**. Blackjack doubles, splits, and insurance deduct additional money when you choose those actions.
 
 Click **Lv.n** at the top of the menu to open the level selector. Browse with the arrows or horizontal scrolling, then choose **Apply** to change levels. **Back** returns to the menu without applying your selection.
 
@@ -267,47 +241,31 @@ If you cannot cover the selected level's minimum, finish settlement and select a
 
 ### 5. Blackjack
 
-Beat the dealer's total without going over 21. Number cards use their face values, J/Q/K count as 10, and A counts as 1 or 11. An `s` in a total such as `18s` means a soft total with an ace counted as 11.
+For standard card values, outcomes, actions, and payouts, refer to [The Venetian's official Blackjack guide](https://www.venetianlasvegas.com/resort/casino/table-games/how-to-play-blackjack.html). Details can vary by casino and table.
 
 1. Set your amount and choose **Deal**.
-2. If insurance or even money is offered, make the choice described below.
-3. If action buttons appear, choose **Hit** to take a card or **Stand** to stop. Going over 21 is a bust. Only available actions appear as buttons.
+2. If insurance or even money is offered, choose from **Insurance $amount / No Thanks** or **Even Money / Keep BJ**.
+3. Choose an action shown on screen, such as **Hit**, **Stand**, **Double**, **Split**, or **Surrender**. Only available actions appear as buttons.
 4. The dealer plays automatically after you finish all your hands. Read the result and **Round ±$amount** at the bottom, then choose **Next Round** or **Menu**. The round amount is the combined net result of all hands and insurance.
 
-| Button | Meaning |
-| --- | --- |
-| Hit | Take one more card. |
-| Stand | Stop at the current total. |
-| Double | Add the same bet amount, take exactly one card, and stop. |
-| Split | Separate the first two cards of equal value into two hands with an equal additional bet. |
-| Surrender | Give up on the first two cards and receive half your bet back. |
-| Insurance $amount / No Thanks | When the dealer shows an ace, buy the offered insurance amount or decline. Insurance pays a net profit of 2:1 if the dealer has a natural blackjack; otherwise the insurance bet is lost. |
-| Even Money / Keep BJ | When you have a natural blackjack and the dealer shows an ace, secure a net profit of 1:1 or keep the normal blackjack outcome. |
-
-The game uses six decks. The dealer stands on all 17s, including soft 17. An ordinary win returns your stake plus a net profit of 1:1. A natural blackjack is an ace plus a 10-value card on the first two cards before splitting; a winning natural returns your stake plus 3:2. A push returns only your stake. Two natural blackjacks push unless you chose Even Money. You can split into up to four hands. Aces can be split once, with one extra card per hand. A 21 after splitting is an ordinary 21 and pays 1:1 if it wins. Fractional-cent returns are rounded to the nearest cent, with exact half cents rounded up.
+In molsino, you accept or decline the displayed insurance amount rather than enter a separate amount. An `s` in a total such as `18s` marks a soft total. Fractional-cent returns are rounded to the nearest cent, with exact half cents rounded up.
 
 ### 6. Baccarat
 
-**P** means Player, **B** means Banker, and **T** means Tie. Player and Banker name the two card hands. The higher total wins; equal totals mean Tie. A=1, 2–9 use their face values, and 10/J/Q/K=0. Only the last digit of the sum counts: 7+8 is a total of 5.
+For card values, extra cards, outcomes, and payouts, refer to the [Massachusetts Gaming Commission's official Baccarat rules (PDF)](https://massgaming.com/wp-content/uploads/RULES-Baccarat-4-11-2024.pdf). Section 6 covers scoring, sections 8–12 cover wagers and dealing, and section 13 covers payouts and commission. Use the standard commission-game provisions.
+
+On screen, **P** means Player, **B** means Banker, and **T** means Tie. In molsino, select one betting target per round.
 
 1. Select one of **P / B / T**.
 2. Click the amount field, enter your amount, confirm with Enter, and choose **Deal**.
-3. Wait for dealing and any extra cards. The game uses eight decks and decides extra cards automatically.
+3. Wait for automatic dealing and the result display.
 4. Read the result, return, and net result, then choose **Next Round** or **Menu**.
 
-| Your bet and the result | Settlement |
-| --- | --- |
-| P bet, Player wins | Stake returned + net profit of 1:1 |
-| B bet, Banker wins | Stake returned + profit of 95% of your bet, after a 5% commission on winnings |
-| T bet, Tie | Stake returned + net profit of 8:1 |
-| P or B bet, Tie | Stake returned; net result is 0 |
-| Any other loss | Your bet is lost. |
-
-Banker winnings are rounded to the nearest cent, with exact half cents rounded up. The recent **P B T** history contains up to 20 results. It records which hand won, rather than whether your own bet won, and does not predict or guarantee future results.
+In molsino, Banker commission is applied immediately on a win. Profit after commission is rounded to the nearest cent, with exact half cents rounded up. The recent **P B T** history contains up to 20 results. It records which hand won, rather than whether your own bet won, and does not predict or guarantee future results.
 
 ### 7. Big Wheel
 
-Bet on the area where a 54-segment wheel will stop. You can bet on multiple areas. Joker and Mega are separate areas even though their payouts are equal.
+For the wheel's areas, wagers, winning outcomes, and payouts, refer to [Kangwon Land Casino's official Big Wheel guide](https://kangwonland.high1.com/casino/contents.do?key=1767) (Korean).
 
 1. Select an area in the list to edit. In a small window, scroll the list to reach the other areas.
 2. Click the area-name-and-amount field below, enter an amount, and confirm with Enter. Selecting an area alone does not add a bet.
@@ -316,19 +274,9 @@ Bet on the area where a 54-segment wheel will stop. You can bet on multiple area
 5. Choose **Spin**. Bets cannot change during the spin. When it stops, read the winning area under the center pointer, return, and net result.
 6. Choose **Next Round** or **Menu**. Next Round keeps the previous bet layout when possible; check the total before spinning again.
 
-| Area | Chance of winning | Net profit payout on the winning area | Return including that area's stake |
-| --- | ---: | ---: | ---: |
-| Silver | 24/54 | 1:1 | 2× |
-| Gold | 15/54 | 2:1 | 3× |
-| Emerald | 7/54 | 5:1 | 6× |
-| Diamond | 4/54 | 10:1 | 11× |
-| Crystal | 2/54 | 20:1 | 21× |
-| Joker | 1/54 | 40:1 | 41× |
-| Mega | 1/54 | 40:1 | 41× |
+On the result screen, **return** is the amount received, and **net result** is the return minus your combined bet.
 
-**Return = winning area's bet × return multiplier. Net result = return − total bet.** Bets on other areas are lost, so even a winning area can leave you with an overall loss.
-
-The left, center, and right segments show the winning segment and its neighbors on the same wheel. They are not the last three rounds; read the winner at the center pointer. A separate history keeps up to 20 results. Each round is an independent draw, and previous results do not guarantee the next result.
+molsino's left, center, and right segments are a close-up of the winning segment and its neighbors on the same wheel. They are not the last three rounds; read the winner at the center pointer. A separate history keeps up to 20 results and does not predict or guarantee the next result.
 
 ### 8. Saving, switching games, and starting over
 
