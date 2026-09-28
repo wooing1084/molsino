@@ -16,7 +16,8 @@
 | --- | --- |
 | 오버레이의 제품 동작·조작 | [제품 설계](main/product-design.md) |
 | 한국어·영어 표시와 OS별 언어 메뉴 | [제품 설계 §7](main/product-design.md#7-한국어영어와-네이티브-언어-메뉴), [기술 설계 §10](main/technical-design.md#10-영어-현지화와-네이티브-언어-메뉴) |
-| 사용자용 Markdown 설명서 작성 | [작성 설계](main/user-guide-design.md) — 설명서 파일은 후속 세션에서 작성 |
+| 설치한 앱의 조작·세 게임 플레이 | [사용 설명서](../USER_GUIDE.md) — 한국어·English 안내 |
+| 사용자용 Markdown 설명서 작성·갱신 기준 | [작성 설계](main/user-guide-design.md) |
 | 첫 실행 언어 선택과 실행 언어 유지의 신규 설계 | [제품 설계 §7.1](main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [검증 계획](main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
 | Electron 창·플랫폼·IPC 신뢰 경계 | [기술 설계](main/technical-design.md) |
 | 현재 구현 범위·파일 위치 | [구현 현황](main/implementation-status.md) |
@@ -62,5 +63,5 @@ N05에서 강원랜드 규칙의 빅휠을 구현했다.
 
 - [문서 작성 가이드](documentation-guide.md): 문서별 SSOT와 작성·갱신 규칙.
 - [N04 게임성 개선 설계 결정](main/gameplay-improvements-design.md): 구현에 반영한 초기 정책과 제품·기술·검증 기준 문서 연결.
-- [작업 세션 로드맵](work-session-roadmap.md): 다음 세션의 순서·범위·완료 조건. N07 사용 설명서, N08 실행 언어, N09 스토어 제출 순으로 진행하며 이전 미진행 계획은 폐기.
+- [작업 세션 로드맵](work-session-roadmap.md): 세션의 순서·범위·완료 조건과 현재 다음 시작점. 이전 미진행 계획은 폐기.
 - [세션 보고서 목록](session-reports/session-list.md): 세션 당시 변경·검증 기록으로 이동하는 색인.

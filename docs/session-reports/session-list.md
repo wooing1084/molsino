@@ -44,3 +44,5 @@
 - [N06 — 영어 현지화](N06-english-localization.md) · 통합: 네이티브 메뉴 한국어/영어 전환, 앱 전체 영어 표시와 별도 설정 저장을 구현·검증했다.
 
 - [D04 — 출시 전 설명서·실행 언어 세션 설계](D04-pre-release-sessions-design.md) · 설계: 사용자 설명서·첫 실행 언어와 기존 선택 보존의 후속 세션 및 검증 경계를 정의했다.
+
+- [N07 — Markdown 사용 설명서 작성](N07-user-guide.md) · 문서: 한국어·English 사용 안내와 README 진입 링크를 작성하고 소스·macOS UI와 대조했다.
