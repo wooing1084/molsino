@@ -6,10 +6,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appCommandSchema, type AppView } from '../shared/app-contracts';
 import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, windowCommandSchema, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
+import { translate, type AppLocale } from '../shared/i18n';
 import { AppStore } from './game/app-store';
 import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
+import { buildApplicationMenuTemplate, buildTrayMenuTemplate, type NativeMenuActions } from './native-menu';
 import { AppSessionRepository, newAppSession, type AppSession, type AppLoadResult } from './persistence/app-session-repository';
+import { PreferencesRepository } from './persistence/preferences-repository';
 import { configurePlatformWindow } from './platform/adapter';
 import { installToggleShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
@@ -30,7 +33,9 @@ let quitPromptOpen = false;
 let clickThrough = false;
 let amountEditing = false;
 let appStore: AppStore | undefined;
-let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false };
+let preferencesRepository: PreferencesRepository | undefined;
+let localeChangeInFlight = false;
+let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' };
 let shownVisibility: 'expanded' | 'collapsed' = 'expanded';
 let expandedBounds: WindowBounds | undefined;
 type OpacityAnchor = Extract<OpacityPopoverCommand, { phase: 'show' }>['anchor'];
@@ -64,7 +69,7 @@ function sendOverlayState(): void {
   }
 }
 
-function updateOverlayState(change: Partial<Pick<OverlayViewState, 'visibility' | 'opacityPercent' | 'opacityPopoverVisible'>>): void {
+function updateOverlayState(change: Partial<Pick<OverlayViewState, 'visibility' | 'opacityPercent' | 'opacityPopoverVisible' | 'locale'>>): void {
   overlayState = { ...overlayState, ...change, revision: overlayState.revision + 1 };
   sendOverlayState();
 }
@@ -231,6 +236,40 @@ function setSize(width: number, height: number): void {
     overlay.setBounds(expandedBounds);
   }
 }
+function nativeMenuActions(): NativeMenuActions {
+  return {
+    reveal, hide: hideOverlay, passthrough: enableClickThrough,
+    setSmall: () => setSize(240, 180), setDefault: () => setSize(280, 180), setLarge: () => setSize(360, 240),
+    quit: () => app.quit(), selectLocale: locale => { void selectLocale(locale); },
+  };
+}
+
+function rebuildNativeMenus(): void {
+  const actions = nativeMenuActions();
+  if (tray && !tray.isDestroyed()) tray.setContextMenu(Menu.buildFromTemplate(buildTrayMenuTemplate(overlayState.locale, actions)));
+  const applicationTemplate = buildApplicationMenuTemplate(process.platform, overlayState.locale, actions.selectLocale);
+  Menu.setApplicationMenu(applicationTemplate ? Menu.buildFromTemplate(applicationTemplate) : null);
+}
+
+async function selectLocale(locale: AppLocale): Promise<void> {
+  if (locale === overlayState.locale) { rebuildNativeMenus(); return; }
+  if (!preferencesRepository || localeChangeInFlight) { rebuildNativeMenus(); return; }
+  localeChangeInFlight = true;
+  try {
+    await preferencesRepository.save({ schemaVersion: 1, locale });
+    updateOverlayState({ locale });
+    rebuildNativeMenus();
+  } catch {
+    rebuildNativeMenus();
+    void dialog.showMessageBox({
+      type: 'warning', message: translate(overlayState.locale, 'dialog.languageSaveError'),
+      buttons: [translate(overlayState.locale, 'dialog.dismiss')], defaultId: 0, cancelId: 0,
+    });
+  } finally {
+    localeChangeInFlight = false;
+  }
+}
+
 function setupTray(): void {
   // A generated monochrome bitmap avoids font/image dependencies for the starter.
   const bytes = Buffer.alloc(16 * 16 * 4);
@@ -245,17 +284,7 @@ function setupTray(): void {
   if (process.platform === 'darwin') icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip('molsino');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '보이기 / 클릭 통과 해제', click: reveal },
-    { label: '숨기기', click: hideOverlay },
-    { label: '클릭 통과', click: enableClickThrough },
-    { type: 'separator' },
-    { label: '작게', click: () => setSize(240, 180) },
-    { label: '기본 크기', click: () => setSize(280, 180) },
-    { label: '크게', click: () => setSize(360, 240) },
-    { type: 'separator' },
-    { label: '종료', click: () => app.quit() },
-  ]));
+  rebuildNativeMenus();
   tray.on('click', reveal);
 }
 
@@ -264,7 +293,10 @@ async function start(): Promise<void> {
   const createGameShoe = createShoeFactory(testing ? process.env.BLACKJACK_TEST_SHOE_FIXTURE : undefined);
   const createBaccaratShoe = createBaccaratShoeFactory(testing ? process.env.BACCARAT_TEST_SHOE_FIXTURE : undefined);
   const nextBigWheelSegment = createBigWheelSegmentSource(testing ? process.env.BIGWHEEL_TEST_SEGMENTS_FIXTURE : undefined);
-  const repository = new AppSessionRepository(app.getPath('userData'));
+  const userDataDirectory = app.getPath('userData');
+  preferencesRepository = new PreferencesRepository(userDataDirectory);
+  overlayState = { ...overlayState, locale: (await preferencesRepository.loadOrDefault()).locale };
+  const repository = new AppSessionRepository(userDataDirectory);
   let loaded: AppLoadResult = { kind: 'missing' };
   let startupUnavailable = false;
   let unsubscribeAppState: (() => void) | undefined;
@@ -500,8 +532,9 @@ else {
       event.preventDefault();
       if (!quitPromptOpen) {
         quitPromptOpen = true;
-        void dialog.showMessageBox({ type: 'warning', message: '저장하지 못한 변경이 있습니다.',
-          detail: '종료하면 미확정 변경은 사라지고 다음 실행에서 마지막 저장 상태로 돌아갑니다.', buttons: ['취소', '종료'], defaultId: 0, cancelId: 0,
+        void dialog.showMessageBox({ type: 'warning', message: translate(overlayState.locale, 'dialog.unsaved'),
+          detail: translate(overlayState.locale, 'dialog.unsavedDetail'),
+          buttons: [translate(overlayState.locale, 'common.cancel'), translate(overlayState.locale, 'common.quit')], defaultId: 0, cancelId: 0,
         }).then(({ response }) => { if (response === 1) { quitConfirmed = true; app.quit(); } }).finally(() => { quitPromptOpen = false; });
       }
       return;

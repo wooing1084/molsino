@@ -2,7 +2,7 @@
 
 **목적:** 앱 공통 E2E 실행 기반과 오버레이·IPC·OS 관련 테스트의 현재 범위, 남은 검증을 찾는다.
 
-**요약:** Playwright Electron 스위트는 프로덕션 패키지에서 오버레이 크기·표시 상태, IPC 신뢰 경계와 구독 수명, macOS 테스트 전용 Dock 처리를 검증한다. 블랙잭 카드·베팅·저장 시나리오와 픽스처는 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)에서 관리한다.
+**요약:** Playwright Electron 스위트는 프로덕션 패키지에서 오버레이 크기·표시 상태, IPC 신뢰 경계와 구독 수명, macOS 테스트 전용 Dock 처리, 한국어·영어 전환과 설정 보존을 검증한다. 블랙잭 카드·베팅·저장 시나리오와 픽스처는 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)에서 관리한다.
 
 ## 목차
 
@@ -29,6 +29,7 @@
 | [`app-menu.spec.ts`](../../tests/e2e/app-menu.spec.ts) | 메뉴 왕복·초기화·이전·저장 실패/재시도·시작 I/O 오류·백업 우선순위·명령 경합·최소 크기 |
 | [`baccarat.spec.ts`](../../tests/e2e/baccarat.spec.ts) | APP-08 두 게임 왕복·공용 잔액·게임별 슈, 바카라 UI·복구는 [바카라 E2E 현황](../games/baccarat/e2e-implementation-status.md) 참조 |
 | [`bigwheel.spec.ts`](../../tests/e2e/bigwheel.spec.ts) | N05 세 게임 왕복·공용 지갑·복구·표시·최소 창. [빅휠 E2E 현황](../games/bigwheel/e2e-implementation-status.md) 참조 |
+| [`localization.spec.ts`](../../tests/e2e/localization.spec.ts) | N06 macOS 애플리케이션 메뉴의 한국어/영어 전환, 별도 설정 저장·재실행 보존, 진행 판 불변, 메인·레벨·복구·세 게임·불투명도 창의 영어 표시, 저장 실패 시 기존 언어 유지 |
 | [`dock-lifecycle.spec.ts`](../../tests/e2e/dock-lifecycle.spec.ts) | macOS E2E 앱 실행 중 테스트 전용 Dock 숨김 |
 
 위 파일의 존재와 검사 범위를 현재 스위트 현황으로 기록한다. 각 세션의 명령, 통과·실패·스킵 수와 실행 환경은 [세션 보고서](../session-reports/session-list.md)에서 확인한다.
@@ -36,7 +37,7 @@
 ## 남은 검증 범위
 
 - 2026-09-18에 기존 미진행 세션·TOBE 계획을 폐기했다. 현재 테스트의 미검증 범위는 그대로이며, 메뉴·공용 저장의 단일 게임 APP 시나리오는 N02에서 구현했다. APP-08 두 게임 왕복은 N03의 `baccarat.spec.ts`에서 검증한다. 필요한 회귀는 [새 로드맵](../work-session-roadmap.md)과 변경 범위로 선정한다.
-- 자동화 결과만으로 실제 투명 합성, 다른 앱으로의 포커스 복귀, 물리 Alt+백틱·트레이 입력, Windows GUI 동작이나 물리 다중 모니터 동작을 통과로 판정하지 않는다. OS별 검증 결과는 실시한 세션 보고서에 환경과 함께 남긴다.
+- 자동화 결과만으로 실제 투명 합성, 다른 앱으로의 포커스 복귀, 물리 Alt+백틱·트레이 입력, Windows GUI 동작이나 물리 다중 모니터 동작을 통과로 판정하지 않는다. N06은 Windows가 창 메뉴 막대 대신 알림 영역 tray 메뉴를 구성한다는 템플릿 단위 테스트까지 확인했으며 실제 Windows tray UI는 미검증이다. OS별 검증 결과는 실시한 세션 보고서에 환경과 함께 남긴다.
 - 블랙잭 규칙·베팅·세션 복원의 남은 시나리오는 [블랙잭 E2E 현황](../games/blackjack/e2e-implementation-status.md)을 따른다.
 
 ## 독립 통합 검증 이력

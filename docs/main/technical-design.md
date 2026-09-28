@@ -2,7 +2,7 @@
 
 **목적:** 게임 화면을 담는 Electron 앱의 창, 입력, 프로세스, IPC 신뢰 경계와 배포 계약을 정의한다.
 
-**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭·바카라·빅휠을 연결한다. 앱 상태·저장은 §9, 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
+**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 언어 설정과 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭·바카라·빅휠을 연결한다. 앱 상태·저장은 §9, 언어 계약은 §10, 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -15,6 +15,7 @@
 - [7. 프로젝트 구조와 패키징](#7-프로젝트-구조와-패키징)
 - [8. 검증과 완료 기준](#8-검증과-완료-기준)
 - [9. 여러 게임과 공용 잔액의 신규 계약](#9-여러-게임과-공용-잔액의-신규-계약)
+- [10. 영어 현지화와 네이티브 언어 메뉴](#10-영어-현지화와-네이티브-언어-메뉴)
 
 ## 1. 기술 선택과 책임 경계
 
@@ -376,3 +377,32 @@ v3는 `table.selectedLevel`과 `table.bestBankrollCents`를 저장한다. 유효
 N05의 v4는 기존 v3 상태에 `games.bigwheel`을 추가한다. 이전 v2/v3 strict 스키마를 별도로 검증한 뒤 v2에는 공통 table을, 두 형식에는 `bigwheel: null`을 추가한다. v3의 선택 레벨·최고 잔액·sessionId·revision·진행 판·차감·최근 명령을 바꾸지 않는다. 구 형식 primary/backup도 기존 원자 저장·명시적 백업 복구 정책을 따른다. v4 손상을 구 버전으로 해석해 복구하지 않는다.
 
 빅휠 회전 시작은 Main의 난수로 확정한 칸과 총 베팅 차감·잠금을 함께 저장한다. 자동 정산은 같은 칸을 사용하며 Renderer에 spinning의 미공개 결과를 보내지 않는다. 결과 확정과 표시 연출은 독립이고 재시도는 같은 후보를 저장한다. 상세 코어·공개 상태 계약은 [빅휠 기술 설계](../games/bigwheel/technical-design.md)가 담당한다.
+
+## 10. 영어 현지화와 네이티브 언어 메뉴
+
+### 10.1 플랫폼 메뉴 결정
+
+Electron의 `Menu.setApplicationMenu`는 macOS에서는 전역 애플리케이션 메뉴를 만들지만 Windows에서는 각 창 상단 메뉴바가 된다. 프레임 없는 220×150 오버레이에 Windows 메뉴바를 추가하지 않는다. Electron의 `Tray`는 macOS 메뉴 막대 상태 영역과 Windows 작업 표시줄 알림 영역에 각각 네이티브 컨텍스트 메뉴를 제공한다. 따라서 macOS는 애플리케이션 메뉴와 트레이 메뉴 양쪽, Windows는 기존 트레이 메뉴에서 언어를 선택한다.
+
+- [Electron Menu API](https://www.electronjs.org/docs/latest/api/menu)
+- [Electron Tray 가이드](https://www.electronjs.org/docs/latest/tutorial/tray)
+
+Main은 현재 언어로 네이티브 메뉴 템플릿을 다시 만들고 `한국어`·`English`를 radio 항목으로 표시한다. macOS 애플리케이션 메뉴에는 표준 app/edit/window 역할을 유지하면서 `언어 / Language`를 추가한다. Windows에서는 application menu를 추가하지 않는다. 트레이의 보이기·숨기기·클릭 통과·크기·종료 항목도 선택 언어로 다시 만든다.
+
+### 10.2 언어 상태와 저장
+
+공개 언어 타입은 `AppLocale = 'ko' | 'en'`으로 제한한다. Main이 유일한 작성자이며 앱 시작 때 게임 세션과 별도의 `preferences.json`에서 읽는다. 형식은 `{ schemaVersion: 1, locale }`이고 같은 userData 안에서 원자 교체한다. 언어는 잔액·판·전체 새 시작 수명과 무관하므로 `app-session.json` v4에 넣거나 게임 revision을 올리지 않는다.
+
+언어 선택은 설정 저장 성공 후에만 확정한다. 성공하면 Main이 현재 언어와 네이티브 메뉴를 바꾸고 창 상태의 독립 revision을 올려 모든 신뢰된 Renderer에 알린다. 저장 실패면 이전 언어·메뉴·화면을 유지하고 네이티브 대화상자를 띄운다. 설정 파일이 없으면 한국어 설정을 만들고, 손상·미래 버전·읽기 오류 또는 유효한 설정 백업이 없으면 게임 세션과 별개로 한국어 fallback을 사용한다.
+
+`OverlayViewState`에 `locale`을 추가해 기존 `getOverlayState`/`onOverlayState` 신뢰 경계로 메인 창과 불투명도 창에 전달한다. Renderer에는 언어 변경 IPC를 노출하지 않는다. 네이티브 메뉴 callback만 저장소를 호출한다. 비신뢰 문서·subframe·조절창이 언어를 쓰지 못하며 게임 공개 상태와 미공개 정보는 그대로다.
+
+### 10.3 번역 경계
+
+`src/shared/i18n.ts`가 두 언어의 키와 형식 함수를 제공한다. Renderer는 현재 locale과 의미 키로 문구를 만들며 raw Main/Core 오류 문자열을 그대로 출력하지 않는다. 앱 명령 실패는 공개 오류 코드, 금액 파서는 언어 중립 오류 키를 Renderer에서 번역한다. 게임 코어의 검증 문구는 개발·로그용으로 남길 수 있지만 사용자 화면에 직접 노출하지 않는다.
+
+빅휠 상태에는 언어 독립 symbol만 저장하고 표시 이름은 locale로 계산한다. 카드 rank/suit, P/B/T, `molsino`, 금액 값과 게임 상태 스키마는 번역 때문에 바꾸지 않는다. Renderer는 언어 변경 때 React 표시와 `document.documentElement.lang`만 갱신한다. `usePresentation`의 카드 ID·roundId·시간축과 휠 위치는 locale에 의존하지 않아 진행 중 전환이 연출을 다시 시작하지 않는다.
+
+### 10.4 완료 경계
+
+구현은 [제품 설계 §7](product-design.md#7-한국어영어와-네이티브-언어-메뉴)와 [N06 E2E 기준](e2e-test-plan.md#5-n06-영어-현지화)을 따른다. 프로덕션 패키지에서 네이티브 메뉴 선택·즉시 전환·재실행 보존, 세 게임·복구·입력 오류·조절창의 영어, 진행 판 불변과 최소 창 레이아웃을 확인한다. 메뉴 템플릿의 macOS/Windows 분기는 단위 테스트로 모두 확인하되 macOS 자동화만으로 Windows 알림 영역의 실제 표시를 통과 처리하지 않는다.

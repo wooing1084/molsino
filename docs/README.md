@@ -15,6 +15,7 @@
 | 필요한 정보 | 기준 문서 |
 | --- | --- |
 | 오버레이의 제품 동작·조작 | [제품 설계](main/product-design.md) |
+| 한국어·영어 표시와 OS별 언어 메뉴 | [제품 설계 §7](main/product-design.md#7-한국어영어와-네이티브-언어-메뉴), [기술 설계 §10](main/technical-design.md#10-영어-현지화와-네이티브-언어-메뉴) |
 | Electron 창·플랫폼·IPC 신뢰 경계 | [기술 설계](main/technical-design.md) |
 | 현재 구현 범위·파일 위치 | [구현 현황](main/implementation-status.md) |
 | 오버레이·보안 E2E 기준과 현재 범위 | [E2E 설계](main/e2e-test-plan.md), [E2E 현황](main/e2e-implementation-status.md) |
@@ -59,5 +60,5 @@ N05에서 강원랜드 규칙의 빅휠을 구현했다.
 
 - [문서 작성 가이드](documentation-guide.md): 문서별 SSOT와 작성·갱신 규칙.
 - [N04 게임성 개선 설계 결정](main/gameplay-improvements-design.md): 구현에 반영한 초기 정책과 제품·기술·검증 기준 문서 연결.
-- [작업 세션 로드맵](work-session-roadmap.md): N02 메인 메뉴·블랙잭 분리, N03 바카라 구현·N04 게임성 개선·N05 빅휠·N06 macOS 서명과 Mac App Store 제출의 순서·완료 조건. 이전 미진행 계획은 폐기.
+- [작업 세션 로드맵](work-session-roadmap.md): N02 메인 메뉴·블랙잭 분리, N03 바카라 구현·N04 게임성 개선·N05 빅휠, N06 영어 현지화와 N07 macOS 서명·Mac App Store 제출의 순서·완료 조건. 이전 미진행 계획은 폐기.
 - [세션 보고서 목록](session-reports/session-list.md): 세션 당시 변경·검증 기록으로 이동하는 색인.
