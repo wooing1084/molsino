@@ -10,6 +10,7 @@
 - [2. 검증 기록](#2-검증-기록)
 - [3. 미확인 범위와 다음 시작점](#3-미확인-범위와-다음-시작점)
 - [4. 후속 가이드 표현과 규칙 참조 정리](#4-후속-가이드-표현과-규칙-참조-정리)
+- [5. 후속 참고 자료의 이용 조건 확인](#5-후속-참고-자료의-이용-조건-확인)
 
 날짜: 2026-09-28 · 상태: 설명서 작성·검증·원격 push·DEV 대상 PR 완료 · 브랜치: `codex/n07-user-guide` · 기준 `DEV`: `02cbea2` · [PR #15](https://github.com/wooing1084/molsino/pull/15).
 
@@ -71,3 +72,11 @@ macOS 메뉴는 실제 메뉴 객체의 콜백을 호출했으며 상태 아이�
 일반 규칙을 외부 문서로 안내하고 게임 수를 고정하지 않는 기준을 설명서 작성 설계와 N07 로드맵에도 반영했다. 기존 §2의 UI 관찰과 문서 검사 수치는 최초 작성 당시 기록으로 유지한다.
 
 외부 참고 문서를 읽기 전용으로 확인했다. Venetian 안내와 바카라 PDF는 웹 도구에서 본문을 확인했다. 강원랜드는 웹 도구에서 내부 오류가 나서 직접 HTTP 응답을 확인했으며 페이지 제목 `빅휠 | 카지노`와 구역·배당 안내를 확인했다. 후속 문서 검사(`python3 /private/tmp/molsino-n07-check-markdown.py`)는 PR의 변경 문서 11개·상대 링크/앵커 309개·표 21개·문서 구조에서 오류 0이며 `git diff --check`도 통과했다. 앱 UI는 다시 실행하지 않았다.
+
+## 5. 후속 참고 자료의 이용 조건 확인
+
+2026-09-28 사용자 요청으로 외부 규칙 링크를 공개 이용 조건이 명확한 Wikipedia의 [Blackjack — Rules of play at casinos](https://en.wikipedia.org/wiki/Blackjack#Rules_of_play_at_casinos), [Baccarat — Punto banco](https://en.wikipedia.org/wiki/Baccarat#Punto_banco), [Big Six wheel — Money wheel](https://en.wikipedia.org/wiki/Big_Six_wheel#Money_wheel)로 교체했다. §4의 카지노·규제기관 링크 선정은 이전 이력이며 현재 가이드에는 Wikipedia 링크를 사용한다. 한국어 절에서는 영문 자료임을 표시하고, 바카라는 점수와 기본 수수료 방식의 대상 절을 안내하며 빅휠은 변형에 따른 구역·배당 차이를 화면에서 확인하도록 했다.
+
+각 문서의 대상 절과 하단 CC BY-SA 4.0 표시, [Wikimedia 이용약관 §7](https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use#7._Licensing_of_Content), [Creative Commons의 라이선스 안내](https://creativecommons.org/licenses/by-sa/4.0/)를 읽기 전용으로 확인했다. 공개 라이선스가 명시된 자료를 링크로 안내하는 방식으로 저작권 관련 위험을 줄이며 외부 본문·표·이미지를 가이드에 복제하지 않는다. 향후 재사용 시 출처·라이선스·변경 표시와 동일조건 배포 요구, 이미지별 이용 조건을 확인하는 기준은 [설명서 작성 설계](../main/user-guide-design.md)에 남겼다. 제품 코드·테스트는 변경하지 않았으며 앱 UI는 다시 실행하지 않았다.
+
+후속 문서 검사(`python3 /private/tmp/molsino-n07-check-markdown.py`)는 PR의 변경 문서 11개·상대 링크/앵커 311개·표 21개·문서 구조에서 오류 0이며 `git diff --check`도 통과했다. 외부 규칙 링크의 대상 절을 웹에서 확인하고 한국어·English의 참고 URL 일치, 이전 카지노/PDF 링크와 게임 수 표현의 제거를 검사했다. 빅휠 구역명·배당이 게임 화면에 표시되는 것은 현재 Renderer와 번역 문자열에서 확인했다.

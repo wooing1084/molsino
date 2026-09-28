@@ -98,7 +98,7 @@ macOS의 아이콘은 화면 상단 메뉴 막대에 있고 Windows의 아이콘
 
 ### 5. 블랙잭
 
-카드 점수·승패·행동·배당 등 일반적인 규칙은 [The Venetian의 공식 블랙잭 안내](https://www.venetianlasvegas.com/resort/casino/table-games/how-to-play-blackjack.html)를 참조하세요. 카지노와 테이블마다 세부 규칙은 다를 수 있습니다.
+카드 점수·승패·행동·배당 등 일반적인 규칙은 [Wikipedia의 Blackjack — Rules of play at casinos](https://en.wikipedia.org/wiki/Blackjack#Rules_of_play_at_casinos)(영문)를 참조하세요. 카지노와 테이블마다 세부 규칙은 다를 수 있습니다.
 
 1. 금액을 정하고 **딜**을 누릅니다.
 2. 보험·이븐 머니 선택이 나오면 **보험 $금액 / 안 함** 또는 **이븐 머니 / BJ 유지**에서 선택합니다.
@@ -109,7 +109,7 @@ molsino에서는 보험 금액을 별도로 입력하지 않고 화면에 제시
 
 ### 6. 바카라
 
-카드 점수·추가 카드·승패·배당은 [Massachusetts Gaming Commission의 공식 바카라 규칙(PDF)](https://massgaming.com/wp-content/uploads/RULES-Baccarat-4-11-2024.pdf)을 참조하세요. §6은 점수, §8~12는 베팅과 카드 배분, §13은 배당과 수수료를 다룹니다. 기본 수수료 방식의 규칙을 참고하세요.
+카드 점수·추가 카드·승패·배당은 [Wikipedia의 Baccarat — Punto banco](https://en.wikipedia.org/wiki/Baccarat#Punto_banco)(영문)를 참조하세요. 점수는 같은 문서의 **Valuation of hands**, 추가 카드와 기본 수수료 방식은 **Punto banco** 절을 참고하세요.
 
 화면의 **P**는 Player, **B**는 Banker, **T**는 Tie(동점)입니다. molsino에서는 한 판에 한 곳만 선택합니다.
 
@@ -122,7 +122,7 @@ molsino에서는 Banker 수수료를 승리 시 바로 반영하고, 수수료�
 
 ### 7. 빅휠
 
-휠의 구역 구성·베팅·당첨·배당은 [강원랜드 카지노의 공식 빅휠 안내](https://kangwonland.high1.com/casino/contents.do?key=1767)를 참조하세요.
+휠의 베팅·당첨·배당 등 일반적인 규칙은 [Wikipedia의 Big Six wheel — Money wheel](https://en.wikipedia.org/wiki/Big_Six_wheel#Money_wheel)(영문)를 참조하세요. 휠의 구역 구성과 배당은 변형에 따라 다르므로 molsino에 적용되는 구역명과 배당은 게임 화면에서 확인하세요.
 
 1. 구역 목록에서 편집할 구역을 선택합니다. 작은 창에서는 목록을 스크롤해 나머지 구역을 찾습니다.
 2. 아래의 구역명·금액칸을 눌러 금액을 입력하고 Enter로 확정합니다. 구역을 선택하기만 해서는 베팅액이 추가되지 않습니다.
@@ -241,7 +241,7 @@ If you cannot cover the selected level's minimum, finish settlement and select a
 
 ### 5. Blackjack
 
-For standard card values, outcomes, actions, and payouts, refer to [The Venetian's official Blackjack guide](https://www.venetianlasvegas.com/resort/casino/table-games/how-to-play-blackjack.html). Details can vary by casino and table.
+For standard card values, outcomes, actions, and payouts, refer to [Wikipedia's Blackjack — Rules of play at casinos](https://en.wikipedia.org/wiki/Blackjack#Rules_of_play_at_casinos). Details can vary by casino and table.
 
 1. Set your amount and choose **Deal**.
 2. If insurance or even money is offered, choose from **Insurance $amount / No Thanks** or **Even Money / Keep BJ**.
@@ -252,7 +252,7 @@ In molsino, you accept or decline the displayed insurance amount rather than ent
 
 ### 6. Baccarat
 
-For card values, extra cards, outcomes, and payouts, refer to the [Massachusetts Gaming Commission's official Baccarat rules (PDF)](https://massgaming.com/wp-content/uploads/RULES-Baccarat-4-11-2024.pdf). Section 6 covers scoring, sections 8–12 cover wagers and dealing, and section 13 covers payouts and commission. Use the standard commission-game provisions.
+For card values, extra cards, outcomes, and payouts, refer to [Wikipedia's Baccarat — Punto banco](https://en.wikipedia.org/wiki/Baccarat#Punto_banco). See **Valuation of hands** in the same article for scoring and **Punto banco** for drawing rules and the standard commission game.
 
 On screen, **P** means Player, **B** means Banker, and **T** means Tie. In molsino, select one betting target per round.
 
@@ -265,7 +265,7 @@ In molsino, Banker commission is applied immediately on a win. Profit after comm
 
 ### 7. Big Wheel
 
-For the wheel's areas, wagers, winning outcomes, and payouts, refer to [Kangwon Land Casino's official Big Wheel guide](https://kangwonland.high1.com/casino/contents.do?key=1767) (Korean).
+For standard wagers, winning outcomes, and payouts, refer to [Wikipedia's Big Six wheel — Money wheel](https://en.wikipedia.org/wiki/Big_Six_wheel#Money_wheel). Wheel layouts and payouts vary by version; check the game screen for the area names and payouts used in molsino.
 
 1. Select an area in the list to edit. In a small window, scroll the list to reach the other areas.
 2. Click the area-name-and-amount field below, enter an amount, and confirm with Enter. Selecting an area alone does not add a bet.
