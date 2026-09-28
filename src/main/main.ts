@@ -2,6 +2,7 @@ import { createBigWheelSegmentSource } from './game/bigwheel-segment-source';
 import { createBaccaratShoeFactory } from './game/baccarat-shoe-source';
 import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
+import * as fileOperations from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appCommandSchema, type AppView } from '../shared/app-contracts';
@@ -13,6 +14,7 @@ import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
 import { buildApplicationMenuTemplate, buildTrayMenuTemplate, type NativeMenuActions } from './native-menu';
 import { AppSessionRepository, newAppSession, type AppSession, type AppLoadResult } from './persistence/app-session-repository';
 import { PreferencesRepository } from './persistence/preferences-repository';
+import { readStartupLocale } from './startup-locale';
 import { configurePlatformWindow } from './platform/adapter';
 import { installToggleShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
@@ -47,6 +49,10 @@ const requestedSnapshotDelay = process.env.MOLSINO_TEST_USER_DATA
   ? Number(process.env.MOLSINO_TEST_SNAPSHOT_DELAY_MS ?? 0) : 0;
 const snapshotDelayMs = Number.isSafeInteger(requestedSnapshotDelay)
   && requestedSnapshotDelay >= 0 && requestedSnapshotDelay <= 2_000 ? requestedSnapshotDelay : 0;
+const requestedOverlayDelay = process.env.MOLSINO_TEST_USER_DATA
+  ? Number(process.env.MOLSINO_TEST_OVERLAY_STATE_DELAY_MS ?? 0) : 0;
+const overlayStateDelayMs = Number.isSafeInteger(requestedOverlayDelay)
+  && requestedOverlayDelay >= 0 && requestedOverlayDelay <= 2_000 ? requestedOverlayDelay : 0;
 
 function sendAppState(state: AppView): void {
   if (amountEditing && (!canEditBet(state) || state.saveError)) endAmountEdit();
@@ -59,13 +65,17 @@ function sendAppState(state: AppView): void {
 }
 
 function sendOverlayState(): void {
+  const state = { ...overlayState };
   for (const [window, expectedURL] of [[overlay, documentURL], [opacityPanel, opacityDocumentURL]] as const) {
     if (!window || window.isDestroyed()) continue;
-    const contents = window.webContents;
-    const frame = contents.isDestroyed() ? null : contents.mainFrame;
-    if (frame && isTrustedDocument(frame.url, expectedURL)) {
-      contents.send(channels.overlayStateChanged, { ...overlayState });
-    }
+    const send = () => {
+      if (window.isDestroyed()) return;
+      const contents = window.webContents;
+      const frame = contents.isDestroyed() ? null : contents.mainFrame;
+      if (frame && isTrustedDocument(frame.url, expectedURL)) contents.send(channels.overlayStateChanged, state);
+    };
+    if (overlayStateDelayMs > 0) setTimeout(send, overlayStateDelayMs);
+    else send();
   }
 }
 
@@ -294,8 +304,25 @@ async function start(): Promise<void> {
   const createBaccaratShoe = createBaccaratShoeFactory(testing ? process.env.BACCARAT_TEST_SHOE_FIXTURE : undefined);
   const nextBigWheelSegment = createBigWheelSegmentSource(testing ? process.env.BIGWHEEL_TEST_SEGMENTS_FIXTURE : undefined);
   const userDataDirectory = app.getPath('userData');
-  preferencesRepository = new PreferencesRepository(userDataDirectory);
-  overlayState = { ...overlayState, locale: (await preferencesRepository.loadOrDefault()).locale };
+  const firstRunLocale = readStartupLocale(() => {
+    if (testing && process.env.MOLSINO_TEST_SYSTEM_LANGUAGE_ERROR === '1') throw new Error('Injected system language query failure');
+    const injectedLanguages = testing ? process.env.MOLSINO_TEST_PREFERRED_LANGUAGES : undefined;
+    if (injectedLanguages === undefined) return app.getPreferredSystemLanguages();
+    const languages: unknown = JSON.parse(injectedLanguages);
+    if (!Array.isArray(languages) || !languages.every(language => typeof language === 'string')) {
+      throw new Error('Invalid preferred system language test input');
+    }
+    return languages;
+  });
+  const preferenceIO = testing && process.env.MOLSINO_TEST_PREFERENCES_WRITE_FAILURE === '1'
+    ? { ...fileOperations, rename: async (from: Parameters<typeof fileOperations.rename>[0], to: Parameters<typeof fileOperations.rename>[1]) => {
+      if (to === path.join(userDataDirectory, 'preferences.json')) {
+        throw Object.assign(new Error('Injected preference write failure'), { code: 'EACCES' });
+      }
+      await fileOperations.rename(from, to);
+    } } : undefined;
+  preferencesRepository = new PreferencesRepository(userDataDirectory, preferenceIO);
+  overlayState = { ...overlayState, locale: (await preferencesRepository.loadOrDefault(firstRunLocale)).locale };
   const repository = new AppSessionRepository(userDataDirectory);
   let loaded: AppLoadResult = { kind: 'missing' };
   let startupUnavailable = false;
@@ -463,9 +490,15 @@ async function start(): Promise<void> {
       case 'expand': expandOverlay(); break;
     }
   });
-  ipcMain.handle(channels.overlayState, event => {
+  ipcMain.handle(channels.overlayState, async event => {
     requireOpacityTrusted(event);
-    return { ...overlayState };
+    if (testing && process.env.MOLSINO_TEST_OVERLAY_STATE_ERROR === '1') {
+      sendOverlayState();
+      throw new Error('Injected initial overlay state query failure');
+    }
+    const state = { ...overlayState };
+    if (overlayStateDelayMs > 0) await new Promise(resolve => setTimeout(resolve, overlayStateDelayMs));
+    return state;
   });
   ipcMain.handle(channels.opacity, (event, value: unknown) => {
     requireOpacityTrusted(event);

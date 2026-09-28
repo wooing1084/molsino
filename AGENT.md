@@ -27,7 +27,7 @@
 | 창·IPC 신뢰 경계·블랙잭 엔진과 저장 계약 | [메인 기술 설계](docs/main/technical-design.md), [블랙잭 기술 설계](docs/games/blackjack/technical-design.md) |
 | 작업 순서·다음 세션·완료 조건 | [작업 세션 로드맵](docs/work-session-roadmap.md) |
 | 사용자용 Markdown 설명서의 작성 범위·검증 | [사용 설명서 작성 설계](docs/main/user-guide-design.md) |
-| 첫 실행 언어 선택·저장된 실행 언어 유지의 신규 설계 | [제품 설계 §7.1](docs/main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](docs/main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [언어 검증 계획](docs/main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
+| 첫 실행 언어 선택·저장된 실행 언어 유지의 정책과 실패 경계 | [제품 설계 §7.1](docs/main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](docs/main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [언어 검증 기준](docs/main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
 | E2E 시나리오와 스위트 구현 현황 | [메인 E2E 설계](docs/main/e2e-test-plan.md)·[현황](docs/main/e2e-implementation-status.md), [블랙잭 E2E 설계](docs/games/blackjack/e2e-test-plan.md)·[현황](docs/games/blackjack/e2e-implementation-status.md) |
 | 로컬 설치·개발 실행 | [README](README.md) |
 | 빌드·배포 절차 | [빌드와 배포](docs/main/building-distribution.md) |

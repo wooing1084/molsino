@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { APP_LOCALES, type AppLocale } from '../../shared/i18n';
-import { AtomicSessionRepository, type FileOperations } from './atomic-session-repository';
+import { AtomicSessionRepository, type FileOperations, type RepositoryLoad } from './atomic-session-repository';
 
 const preferencesSchema = z.object({
   schemaVersion: z.literal(1),
@@ -16,15 +16,23 @@ export class PreferencesRepository extends AtomicSessionRepository<AppPreference
     super(directory, 'preferences', 1, parsePreferences, io);
   }
 
-  public async loadOrDefault(): Promise<AppPreferences> {
+  public async loadOrDefault(firstRunLocale: AppLocale = 'ko'): Promise<AppPreferences> {
+    let loaded: RepositoryLoad<AppPreferences>;
     try {
-      const loaded = await this.load();
-      if (loaded.kind === 'ready') return loaded.snapshot;
-      const preferences = loaded.kind === 'recovery' && loaded.backup ? loaded.backup : defaultPreferences();
-      await this.save(preferences);
-      return preferences;
-    } catch {
+      loaded = await this.load();
+    } catch (error) {
+      console.warn('Failed to read language preferences; using Korean for this launch.', error);
       return defaultPreferences();
     }
+    if (loaded.kind === 'ready') return loaded.snapshot;
+    const preferences: AppPreferences = loaded.kind === 'missing'
+      ? { schemaVersion: 1, locale: firstRunLocale }
+      : loaded.backup ?? defaultPreferences();
+    try {
+      await this.save(preferences);
+    } catch (error) {
+      console.warn('Failed to persist language preferences; keeping the selected language for this launch.', error);
+    }
+    return preferences;
   }
 }

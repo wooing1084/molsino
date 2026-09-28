@@ -8,6 +8,7 @@ import { BaccaratGame } from './games/baccarat';
 import { BlackjackGame } from './games/blackjack';
 import { LevelPicker } from './level-picker';
 import { usePresentation } from './use-presentation';
+import { useOverlayView } from './use-overlay-view';
 import './styles.css';
 
 const usd = (value: number) => `$${(value / 100).toFixed(2)}`;
@@ -39,21 +40,32 @@ function newerState(current: AppView | undefined, incoming: AppView): AppView {
   return incoming.viewSequence > current.viewSequence ? incoming : current;
 }
 
+function OverlayLoading({ failed }: { failed: boolean }) {
+  return <main className="overlay-loading" data-overlay-ready="false">
+    {failed && <p role="status"><span lang="ko">{translate('ko', 'error.overlayLoad')}</span><br/><span lang="en">{translate('en', 'error.overlayLoad')}</span></p>}
+  </main>;
+}
+
 function App() {
   const [state, setState] = useState<AppView>();
   const [confirmReset, setConfirmReset] = useState(false);
   const [levelPage, setLevelPage] = useState(false);
   const [error, setError] = useState('');
+  const [connectionFailed, setConnectionFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [dark, setDark] = useState(false);
-  const [overlayView, setOverlayView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' });
-  const latestOverlay = useRef(overlayView);
+  const latestOverlay = useRef<OverlayViewState | undefined>(undefined);
   const [resizingEdge, setResizingEdge] = useState<ResizeEdge>();
   const resizeGesture = useRef<ResizeGesture | undefined>(undefined);
   const latestState = useRef<AppView | undefined>(undefined);
   const commandInFlight = useRef(false);
-  const { frame, receive, setVisibility } = usePresentation(overlayView.visibility === 'expanded');
-  const locale = overlayView.locale;
+  const { frame, receive, setVisibility } = usePresentation((latestOverlay.current?.visibility ?? 'expanded') === 'expanded');
+  const { view: overlayView, loadError: overlayLoadError } = useOverlayView(next => {
+    latestOverlay.current = next;
+    // Consume every native boundary here, even when React batches hide and restore pushes.
+    setVisibility(next.visibility === 'expanded');
+  });
+  const locale = overlayView?.locale ?? 'ko';
   const t = (key: I18nKey, values?: Parameters<typeof translate>[2]) => translate(locale, key, values);
   const applyState = useCallback((incoming: AppView) => {
     const next = newerState(latestState.current, incoming);
@@ -68,29 +80,18 @@ function App() {
   useEffect(() => {
     let active = true;
     const apply = (nextState: AppView) => {
-      if (active) applyState(nextState);
+      if (!active) return;
+      setConnectionFailed(false);
+      applyState(nextState);
     };
     const unsubscribe = window.molsino.onState(apply);
     void window.molsino.getSnapshot().then(apply).catch(() => {
-      if (active) setError(t('error.connection'));
+      if (active && !latestState.current) setConnectionFailed(true);
     });
     return () => { active = false; unsubscribe(); };
-  }, [applyState, locale]);
+  }, [applyState]);
 
   useEffect(() => {
-    const applyOverlay = (next: OverlayViewState) => {
-      if (next.revision < latestOverlay.current.revision) return;
-      latestOverlay.current = next;
-      setVisibility(next.visibility === 'expanded');
-      setOverlayView(next);
-    };
-    const unsubscribe = window.molsino.onOverlayState(applyOverlay);
-    void window.molsino.getOverlayState().then(applyOverlay).catch(() => setError(t('error.overlayLoad')));
-    return unsubscribe;
-  }, [setVisibility, locale]);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
     setError('');
   }, [locale]);
 
@@ -302,17 +303,20 @@ function App() {
     } });
   }
 
+  if (!overlayView) return <OverlayLoading failed={overlayLoadError}/>;
+
+  const shownError = error || (connectionFailed ? t('error.connection') : '');
   const overlayStyle = { '--overlay-opacity': overlayView.opacityPercent / 100 } as CSSProperties;
   const shown = frame?.view ?? state;
   const revealing = frame?.revealing ?? false;
-  if (overlayView.visibility === 'collapsed') return <main className={dark ? 'overlay collapsed ink-dark' : 'overlay collapsed'} style={overlayStyle}>
+  if (overlayView.visibility === 'collapsed') return <main className={dark ? 'overlay collapsed ink-dark' : 'overlay collapsed'} style={overlayStyle} data-overlay-ready="true">
     <section className="collapsed-bar">
       <span>{state ? usd(state.balanceCents) : '…'} · {state?.activeRoundGameId ? t('collapsed.inProgress') : t('collapsed.idle')}</span>
       <button type="button" aria-label={t('overlay.expand')} onClick={() => void window.molsino.windowCommand('expand')}>▣</button>
     </section>
   </main>;
 
-  return <main className={dark ? 'overlay ink-dark' : 'overlay'} style={overlayStyle} data-screen={levelPage ? 'levels' : shown?.screen} data-revealing={revealing} data-popover-open={overlayView.opacityPopoverVisible} data-resizing={resizingEdge !== undefined}>
+  return <main className={dark ? 'overlay ink-dark' : 'overlay'} style={overlayStyle} data-overlay-ready="true" data-screen={levelPage ? 'levels' : shown?.screen} data-revealing={revealing} data-popover-open={overlayView.opacityPopoverVisible} data-resizing={resizingEdge !== undefined}>
     {resizeHandles.map(({ edge, label }) => <button
       key={edge}
       type="button"
@@ -336,17 +340,17 @@ function App() {
         {state.recovery?.issue === 'unavailable' ? <button disabled={busy} onClick={() => void recover('retryLoad')}>{t('recovery.retryLoad')}</button> : <>
         {state.recovery?.backupAvailable && <button disabled={busy} onClick={() => void recover('restoreBackup')}>{t('recovery.restoreBackup')}</button>}
         <button disabled={busy} onClick={() => void recover('startNew')}>{t('recovery.startNew')}</button></>}
-      </section><footer role="status">{error || t('recovery.choose')}</footer>
-    </> : levelPage && shown ? <LevelPicker state={shown} busy={busy} error={error} locale={locale} onBack={() => { setLevelPage(false); setError(''); }}
+      </section><footer role="status">{shownError || t('recovery.choose')}</footer>
+    </> : levelPage && shown ? <LevelPicker state={shown} busy={busy} error={shownError} locale={locale} onBack={() => { setLevelPage(false); setError(''); }}
       onApply={async level => { const ok = await runAction({ type: 'selectLevel', level }); if (ok) setLevelPage(false); return ok; }}
       onRetry={async () => { const ok = await runAction({ type: 'retrySave' }); if (ok) setLevelPage(false); return ok; }}/>
-    : shown?.screen === 'blackjack' && shown.blackjack && frame ? <BlackjackGame state={{ ...shown.blackjack, saveError: shown.saveError, internalError: shown.internalError }} busy={busy} error={error} locale={locale} table={shown.table} presentation={frame}
+    : shown?.screen === 'blackjack' && shown.blackjack && frame ? <BlackjackGame state={{ ...shown.blackjack, saveError: shown.saveError, internalError: shown.internalError }} busy={busy} error={shownError} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'blackjack', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
-    : shown?.screen === 'baccarat' && shown.baccarat && frame ? <BaccaratGame state={shown.baccarat} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} locale={locale} table={shown.table} presentation={frame}
+    : shown?.screen === 'baccarat' && shown.baccarat && frame ? <BaccaratGame state={shown.baccarat} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={shownError} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'baccarat', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
-    : shown?.screen === 'bigwheel' && shown.bigwheel && frame ? <BigWheelGame state={shown.bigwheel} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={error} locale={locale} table={shown.table} presentation={frame}
+    : shown?.screen === 'bigwheel' && shown.bigwheel && frame ? <BigWheelGame state={shown.bigwheel} balance={shown.balanceCents} busy={busy} saveError={shown.saveError} internalError={shown.internalError} error={shownError} locale={locale} table={shown.table} presentation={frame}
       runAction={action => runAction({ type: 'bigwheel', action })} onRetry={() => runAction({ type: 'retrySave' })}
       onMenu={() => void runAction({ type: 'goToMenu' })} overlayView={overlayView}/>
     : <>
@@ -363,39 +367,32 @@ function App() {
           <button disabled={busy || !state?.canNavigate} onClick={() => void runAction({ type: 'resetAll' }).then(ok => { if (ok) setConfirmReset(false); })}>{t('reset.confirm')}</button>
         </> : <button disabled={busy || !state?.canNavigate} onClick={() => setConfirmReset(true)}>{t('reset.startOver')}</button>}
       </section>
-      <footer role="status">{error || (state?.saveError ? t('save.failedRetry') : state ? t('menu.chooseGame') : t('blackjack.connection'))}</footer>
+      <footer role="status">{shownError || (state?.saveError ? t('save.failedRetry') : state ? t('menu.chooseGame') : t('blackjack.connection'))}</footer>
     </>}
 
   </main>;
 }
 
 function OpacityPanel() {
-  const [view, setView] = useState<OverlayViewState>({ revision: 0, visibility: 'expanded', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' });
+  const { view, loadError, apply } = useOverlayView();
   const [draft, setDraft] = useState<number | null>(null);
   const latestRequest = useRef(0);
-
-  useEffect(() => {
-    const apply = (state: OverlayViewState) => setView(current => state.revision >= current.revision ? state : current);
-    const unsubscribe = window.molsino.onOverlayState(apply);
-    void window.molsino.getOverlayState().then(apply);
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => { document.documentElement.lang = view.locale; }, [view.locale]);
 
   function change(percent: number): void {
     const requestId = ++latestRequest.current;
     setDraft(percent);
     void window.molsino.setOpacity(percent).then(state => {
-      setView(current => state.revision >= current.revision ? state : current);
+      apply(state);
       if (requestId === latestRequest.current) setDraft(null);
     }).catch(() => {
       if (requestId === latestRequest.current) setDraft(null);
     });
   }
 
+  if (!view) return <OverlayLoading failed={loadError}/>;
+
   const value = draft ?? view.opacityPercent;
-  return <main className="opacity-popover" style={{ opacity: value / 100 }} onMouseEnter={() => void window.molsino.opacityPopover({ phase: 'keep' })}
+  return <main className="opacity-popover" data-overlay-ready="true" style={{ opacity: value / 100 }} onMouseEnter={() => void window.molsino.opacityPopover({ phase: 'keep' })}
     onMouseLeave={() => void window.molsino.opacityPopover({ phase: 'hide' })}>
     <label className="opacity-control"><span aria-hidden="true">◐</span><input type="range" aria-label={translate(view.locale, 'opacity.label')} min="20" max="100" step="5" value={value} onChange={event => change(Number(event.currentTarget.value))}/><span className="opacity-percent">{value}%</span></label>
   </main>;
