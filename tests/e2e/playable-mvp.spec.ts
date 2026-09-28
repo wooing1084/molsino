@@ -1,3 +1,4 @@
+import { blackjackSnapshot } from './support/app-game';
 import { expect, test } from '@playwright/test';
 import { closeApp, launchApp, type LaunchedApp } from './support/app';
 import { fixturePath } from './support/fixtures';
@@ -22,7 +23,7 @@ test('MVP-01 베팅을 올리고 딜해 자연 블랙잭을 정산한 뒤 다음
   await expect(launched.page.locator('footer[role="status"]')).toHaveText('라운드 +$3.00');
   await expect(launched.page.locator('.balance strong')).toHaveText('$103.00');
   await expect(launched.page.getByText('BJ', { exact: false })).toBeVisible();
-  const result = await launched.page.evaluate(() => window.blackjack.getSnapshot());
+  const result = await launched.page.evaluate(blackjackSnapshot);
   expect(result).toMatchObject({ phase: 'result', balanceCents: 10_300 });
   expect(result.dealerHand.hiddenCardCount).toBe(0);
 

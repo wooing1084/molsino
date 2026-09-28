@@ -13,7 +13,17 @@ export interface LaunchedApp {
 export interface LaunchOptions {
   userDataDir?: string;
   shoeFixture?: string;
+  baccaratFixture?: string;
+  bigwheelFixture?: string;
   snapshotDelayMs?: number;
+  startAtMenu?: boolean;
+  autoDelayMs?: number;
+  preferredLanguages?: string[];
+  systemLanguagesError?: boolean;
+  overlayStateDelayMs?: number;
+  overlayStateError?: boolean;
+  preferencesWriteFailure?: boolean;
+  executablePath?: string;
 }
 
 async function createTempUserData(): Promise<string> {
@@ -29,13 +39,40 @@ export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedAp
     ...inheritedEnv,
     MOLSINO_TEST_USER_DATA: userDataDir,
     MOLSINO_TEST_HIDE_DOCK: '1',
+    // 기존 한국어 selector는 호스트 OS 언어와 독립적으로 유지한다.
+    MOLSINO_TEST_PREFERRED_LANGUAGES: JSON.stringify(options.preferredLanguages ?? ['ko-KR']),
   };
+  if (options.baccaratFixture) env.BACCARAT_TEST_SHOE_FIXTURE = options.baccaratFixture;
+  else delete env.BACCARAT_TEST_SHOE_FIXTURE;
+  if (options.bigwheelFixture) env.BIGWHEEL_TEST_SEGMENTS_FIXTURE = options.bigwheelFixture;
+  else delete env.BIGWHEEL_TEST_SEGMENTS_FIXTURE;
   if (options.shoeFixture) env.BLACKJACK_TEST_SHOE_FIXTURE = options.shoeFixture;
+  else delete env.BLACKJACK_TEST_SHOE_FIXTURE;
   if (options.snapshotDelayMs !== undefined) env.MOLSINO_TEST_SNAPSHOT_DELAY_MS = String(options.snapshotDelayMs);
   else delete env.MOLSINO_TEST_SNAPSHOT_DELAY_MS;
-  const app = await electron.launch({ args: ['.'], env });
+  if (options.autoDelayMs !== undefined) env.MOLSINO_TEST_AUTO_DELAY_MS = String(options.autoDelayMs);
+  else delete env.MOLSINO_TEST_AUTO_DELAY_MS;
+  if (options.systemLanguagesError) env.MOLSINO_TEST_SYSTEM_LANGUAGE_ERROR = '1';
+  else delete env.MOLSINO_TEST_SYSTEM_LANGUAGE_ERROR;
+  if (options.overlayStateDelayMs !== undefined) env.MOLSINO_TEST_OVERLAY_STATE_DELAY_MS = String(options.overlayStateDelayMs);
+  else delete env.MOLSINO_TEST_OVERLAY_STATE_DELAY_MS;
+  if (options.overlayStateError) env.MOLSINO_TEST_OVERLAY_STATE_ERROR = '1';
+  else delete env.MOLSINO_TEST_OVERLAY_STATE_ERROR;
+  if (options.preferencesWriteFailure) env.MOLSINO_TEST_PREFERENCES_WRITE_FAILURE = '1';
+  else delete env.MOLSINO_TEST_PREFERENCES_WRITE_FAILURE;
+  const executablePath = options.executablePath ?? (process.platform === 'darwin'
+    ? join(process.cwd(), `out/molsino-darwin-${process.arch}/molsino.app/Contents/MacOS/molsino`)
+    : join(process.cwd(), `out/molsino-win32-${process.arch}/molsino.exe`));
+  const app = await electron.launch({ executablePath, args: [], env });
   const page = await app.firstWindow();
   await page.locator('#root').waitFor({ state: 'attached' });
+  if (!options.startAtMenu) {
+    const snapshot = await page.evaluate(() => window.molsino.getSnapshot());
+    if (snapshot.screen === 'menu' && !snapshot.recovery) {
+      await page.getByRole('button', { name: '블랙잭', exact: true }).click();
+      await page.waitForFunction(async () => (await window.molsino.getSnapshot()).screen === 'blackjack');
+    }
+  }
   return { app, page, userDataDir };
 }
 
@@ -46,6 +83,7 @@ export async function relaunchApp(previous: LaunchedApp, options: Omit<LaunchOpt
 }
 
 export async function closeApp(launched: LaunchedApp, options: { cleanup?: boolean } = {}): Promise<void> {
-  await launched.app.close().catch(() => {});
+  const forceClose = setTimeout(() => launched.app.process().kill('SIGKILL'), 2000);
+  try { await launched.app.close().catch(() => {}); } finally { clearTimeout(forceClose); }
   if (options.cleanup !== false) await rm(launched.userDataDir, { recursive: true, force: true });
 }

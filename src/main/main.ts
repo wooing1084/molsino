@@ -1,15 +1,22 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
+import { createBigWheelSegmentSource } from './game/bigwheel-segment-source';
+import { createBaccaratShoeFactory } from './game/baccarat-shoe-source';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, protocol, screen, Tray } from 'electron';
 import { randomUUID } from 'node:crypto';
+import * as fileOperations from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createSession } from '../core/engine';
-import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, userCommandSchema, windowCommandSchema, type GameViewState, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
-import { GameStore } from './game/game-store';
+import { appCommandSchema, type AppView } from '../shared/app-contracts';
+import { amountEditFocusSchema, channels, opacityPercentSchema, opacityPopoverCommandSchema, recoveryChoiceSchema, resizeCommandSchema, windowCommandSchema, type OpacityPopoverCommand, type OverlayViewState, type WindowBounds } from '../shared/contracts';
+import { translate, type AppLocale } from '../shared/i18n';
+import { AppStore } from './game/app-store';
 import { createShoeFactory } from './game/shoe-source';
 import { isTrustedDocument, isTrustedIpcSender } from './ipc/trust';
-import { SESSION_SCHEMA_VERSION, SessionRepository, type SavedSession } from './persistence/session-repository';
+import { buildApplicationMenuTemplate, buildTrayMenuTemplate, type NativeMenuActions } from './native-menu';
+import { AppSessionRepository, newAppSession, type AppSession, type AppLoadResult } from './persistence/app-session-repository';
+import { PreferencesRepository } from './persistence/preferences-repository';
+import { readStartupLocale } from './startup-locale';
 import { configurePlatformWindow } from './platform/adapter';
-import { installHideShortcut } from './windows/hide-shortcut';
+import { installToggleShortcut } from './windows/hide-shortcut';
 import { ResizeController } from './windows/resize-controller';
 
 // E2E 테스트 전용: 격리된 userData로 실제 개발자 세션 파일을 건드리지 않게 한다. 미설정 시 동작 동일.
@@ -23,10 +30,14 @@ let opacityHideTimer: ReturnType<typeof setTimeout> | undefined;
 let tray: Tray | undefined;
 let resizeController: ResizeController | undefined;
 let quitting = false;
+let quitConfirmed = false;
+let quitPromptOpen = false;
 let clickThrough = false;
 let amountEditing = false;
-let gameStore: GameStore | undefined;
-let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false };
+let appStore: AppStore | undefined;
+let preferencesRepository: PreferencesRepository | undefined;
+let localeChangeInFlight = false;
+let overlayState: OverlayViewState = { revision: 0, visibility: 'hidden', opacityPercent: 65, opacityPopoverVisible: false, locale: 'ko' };
 let shownVisibility: 'expanded' | 'collapsed' = 'expanded';
 let expandedBounds: WindowBounds | undefined;
 type OpacityAnchor = Extract<OpacityPopoverCommand, { phase: 'show' }>['anchor'];
@@ -38,9 +49,13 @@ const requestedSnapshotDelay = process.env.MOLSINO_TEST_USER_DATA
   ? Number(process.env.MOLSINO_TEST_SNAPSHOT_DELAY_MS ?? 0) : 0;
 const snapshotDelayMs = Number.isSafeInteger(requestedSnapshotDelay)
   && requestedSnapshotDelay >= 0 && requestedSnapshotDelay <= 2_000 ? requestedSnapshotDelay : 0;
+const requestedOverlayDelay = process.env.MOLSINO_TEST_USER_DATA
+  ? Number(process.env.MOLSINO_TEST_OVERLAY_STATE_DELAY_MS ?? 0) : 0;
+const overlayStateDelayMs = Number.isSafeInteger(requestedOverlayDelay)
+  && requestedOverlayDelay >= 0 && requestedOverlayDelay <= 2_000 ? requestedOverlayDelay : 0;
 
-function sendGameState(state: GameViewState): void {
-  if (amountEditing && state.phase !== 'betting') endAmountEdit();
+function sendAppState(state: AppView): void {
+  if (amountEditing && (!canEditBet(state) || state.saveError)) endAmountEdit();
   if (!overlay || overlay.isDestroyed()) return;
   const contents = overlay.webContents;
   const frame = contents.isDestroyed() ? null : contents.mainFrame;
@@ -50,17 +65,21 @@ function sendGameState(state: GameViewState): void {
 }
 
 function sendOverlayState(): void {
+  const state = { ...overlayState };
   for (const [window, expectedURL] of [[overlay, documentURL], [opacityPanel, opacityDocumentURL]] as const) {
     if (!window || window.isDestroyed()) continue;
-    const contents = window.webContents;
-    const frame = contents.isDestroyed() ? null : contents.mainFrame;
-    if (frame && isTrustedDocument(frame.url, expectedURL)) {
-      contents.send(channels.overlayStateChanged, { ...overlayState });
-    }
+    const send = () => {
+      if (window.isDestroyed()) return;
+      const contents = window.webContents;
+      const frame = contents.isDestroyed() ? null : contents.mainFrame;
+      if (frame && isTrustedDocument(frame.url, expectedURL)) contents.send(channels.overlayStateChanged, state);
+    };
+    if (overlayStateDelayMs > 0) setTimeout(send, overlayStateDelayMs);
+    else send();
   }
 }
 
-function updateOverlayState(change: Partial<Pick<OverlayViewState, 'visibility' | 'opacityPercent' | 'opacityPopoverVisible'>>): void {
+function updateOverlayState(change: Partial<Pick<OverlayViewState, 'visibility' | 'opacityPercent' | 'opacityPopoverVisible' | 'locale'>>): void {
   overlayState = { ...overlayState, ...change, revision: overlayState.revision + 1 };
   sendOverlayState();
 }
@@ -87,11 +106,17 @@ function endAmountEdit(): void {
   overlay.setFocusable(false);
 }
 
+function canEditBet(s: AppView): boolean {
+  return s.screen === 'blackjack' ? Boolean(s.blackjack?.legalActions.includes('setBet'))
+    : s.screen === 'baccarat' ? Boolean(s.baccarat?.legalActions.includes('setBet'))
+    : s.screen === 'bigwheel' && Boolean(s.bigwheel?.legalActions.includes('setBet'));
+}
+
 function beginAmountEdit(): void {
-  const snapshot = gameStore?.getSnapshot();
+  const snapshot = appStore?.getSnapshot();
   if (!overlay || overlay.isDestroyed() || !overlay.isVisible() || clickThrough
-    || overlayState.visibility !== 'expanded' || snapshot?.phase !== 'betting'
-    || snapshot.saveError || !snapshot.legalActions.includes('setBet')) {
+    || overlayState.visibility !== 'expanded' || !snapshot || !canEditBet(snapshot)
+    || snapshot.saveError || snapshot.screen === 'menu' || appStore?.isBusy()) {
     throw new Error('Bet editing is unavailable');
   }
   if (amountEditing) return;
@@ -182,6 +207,11 @@ function hideOverlay(): void {
   }
   overlay?.hide();
 }
+function toggleOverlay(): void {
+  if (!overlay || overlay.isDestroyed()) return;
+  if (overlayState.visibility === 'hidden' || !overlay.isVisible()) reveal();
+  else hideOverlay();
+}
 function collapseOverlay(): void {
   if (!overlay || overlayState.visibility !== 'expanded') return;
   resizeController?.invalidate();
@@ -216,6 +246,40 @@ function setSize(width: number, height: number): void {
     overlay.setBounds(expandedBounds);
   }
 }
+function nativeMenuActions(): NativeMenuActions {
+  return {
+    reveal, hide: hideOverlay, passthrough: enableClickThrough,
+    setSmall: () => setSize(240, 180), setDefault: () => setSize(280, 180), setLarge: () => setSize(360, 240),
+    quit: () => app.quit(), selectLocale: locale => { void selectLocale(locale); },
+  };
+}
+
+function rebuildNativeMenus(): void {
+  const actions = nativeMenuActions();
+  if (tray && !tray.isDestroyed()) tray.setContextMenu(Menu.buildFromTemplate(buildTrayMenuTemplate(overlayState.locale, actions)));
+  const applicationTemplate = buildApplicationMenuTemplate(process.platform, overlayState.locale, actions.selectLocale);
+  Menu.setApplicationMenu(applicationTemplate ? Menu.buildFromTemplate(applicationTemplate) : null);
+}
+
+async function selectLocale(locale: AppLocale): Promise<void> {
+  if (locale === overlayState.locale) { rebuildNativeMenus(); return; }
+  if (!preferencesRepository || localeChangeInFlight) { rebuildNativeMenus(); return; }
+  localeChangeInFlight = true;
+  try {
+    await preferencesRepository.save({ schemaVersion: 1, locale });
+    updateOverlayState({ locale });
+    rebuildNativeMenus();
+  } catch {
+    rebuildNativeMenus();
+    void dialog.showMessageBox({
+      type: 'warning', message: translate(overlayState.locale, 'dialog.languageSaveError'),
+      buttons: [translate(overlayState.locale, 'dialog.dismiss')], defaultId: 0, cancelId: 0,
+    });
+  } finally {
+    localeChangeInFlight = false;
+  }
+}
+
 function setupTray(): void {
   // A generated monochrome bitmap avoids font/image dependencies for the starter.
   const bytes = Buffer.alloc(16 * 16 * 4);
@@ -230,47 +294,77 @@ function setupTray(): void {
   if (process.platform === 'darwin') icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip('molsino');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '보이기 / 클릭 통과 해제', click: reveal },
-    { label: '숨기기', click: hideOverlay },
-    { label: '클릭 통과', click: enableClickThrough },
-    { type: 'separator' },
-    { label: '작게', click: () => setSize(240, 180) },
-    { label: '기본 크기', click: () => setSize(280, 180) },
-    { label: '크게', click: () => setSize(360, 240) },
-    { type: 'separator' },
-    { label: '종료', click: () => app.quit() },
-  ]));
+  rebuildNativeMenus();
   tray.on('click', reveal);
 }
 
 async function start(): Promise<void> {
-  const createGameShoe = createShoeFactory(process.env.BLACKJACK_TEST_SHOE_FIXTURE);
-  const repository = new SessionRepository(app.getPath('userData'));
-  let loaded = await repository.load();
-  let unsubscribeGameState: (() => void) | undefined;
-  const initializeGame = (snapshot: SavedSession): void => {
-    unsubscribeGameState?.();
-    gameStore = new GameStore(
-      snapshot.state,
+  const testing = Boolean(process.env.MOLSINO_TEST_USER_DATA);
+  const createGameShoe = createShoeFactory(testing ? process.env.BLACKJACK_TEST_SHOE_FIXTURE : undefined);
+  const createBaccaratShoe = createBaccaratShoeFactory(testing ? process.env.BACCARAT_TEST_SHOE_FIXTURE : undefined);
+  const nextBigWheelSegment = createBigWheelSegmentSource(testing ? process.env.BIGWHEEL_TEST_SEGMENTS_FIXTURE : undefined);
+  const userDataDirectory = app.getPath('userData');
+  const firstRunLocale = readStartupLocale(() => {
+    if (testing && process.env.MOLSINO_TEST_SYSTEM_LANGUAGE_ERROR === '1') throw new Error('Injected system language query failure');
+    const injectedLanguages = testing ? process.env.MOLSINO_TEST_PREFERRED_LANGUAGES : undefined;
+    if (injectedLanguages === undefined) return app.getPreferredSystemLanguages();
+    const languages: unknown = JSON.parse(injectedLanguages);
+    if (!Array.isArray(languages) || !languages.every(language => typeof language === 'string')) {
+      throw new Error('Invalid preferred system language test input');
+    }
+    return languages;
+  });
+  const preferenceIO = testing && process.env.MOLSINO_TEST_PREFERENCES_WRITE_FAILURE === '1'
+    ? { ...fileOperations, rename: async (from: Parameters<typeof fileOperations.rename>[0], to: Parameters<typeof fileOperations.rename>[1]) => {
+      if (to === path.join(userDataDirectory, 'preferences.json')) {
+        throw Object.assign(new Error('Injected preference write failure'), { code: 'EACCES' });
+      }
+      await fileOperations.rename(from, to);
+    } } : undefined;
+  preferencesRepository = new PreferencesRepository(userDataDirectory, preferenceIO);
+  overlayState = { ...overlayState, locale: (await preferencesRepository.loadOrDefault(firstRunLocale)).locale };
+  const repository = new AppSessionRepository(userDataDirectory);
+  let loaded: AppLoadResult = { kind: 'missing' };
+  let startupUnavailable = false;
+  let unsubscribeAppState: (() => void) | undefined;
+  const initializeSession = (snapshot: AppSession): void => {
+    unsubscribeAppState?.();
+    const delay = testing ? Number(process.env.MOLSINO_TEST_AUTO_DELAY_MS ?? 0) : 0;
+    appStore = new AppStore(snapshot,
       { createShoe: createGameShoe, nextId: () => randomUUID() },
-      process.platform, repository, snapshot,
-    );
-    unsubscribeGameState = gameStore.subscribe(sendGameState);
-    gameStore.resumeDealer();
+      process.platform, repository,
+      Number.isSafeInteger(delay) && delay >= 0 && delay <= 30000 ? delay : 0, { createShoe: createBaccaratShoe, nextId: randomUUID }, { nextSegmentIndex: nextBigWheelSegment, nextId: randomUUID });
+    unsubscribeAppState = appStore.subscribe(sendAppState);
+    appStore.resumeAutomatic();
   };
-  if (loaded.kind === 'missing') {
-    const state = createSession(createGameShoe());
-    const snapshot: SavedSession = { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0, state, lastAppliedCommand: null };
-    await repository.save(snapshot);
-    loaded = { kind: 'ready', snapshot };
-  }
-  if (loaded.kind === 'ready') initializeGame(loaded.snapshot);
-  const recoveryState = (): GameViewState => ({
-    revision: 0, platform: process.platform, phase: 'recovery', balanceCents: 0,
-    pendingBetCents: 0, betStepCents: 100, playerHands: [], activeHandIndex: null,
-    dealerHand: { cards: [], hiddenCardCount: 0 }, legalActions: [],
-    recovery: { issue: loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
+  const loadSession = async (): Promise<void> => {
+    try {
+      loaded = await repository.load();
+      if (loaded.kind === 'missing') {
+        const snapshot = newAppSession();
+        await repository.save(snapshot);
+        loaded = { kind: 'ready', snapshot };
+      }
+      if (loaded.kind === 'ready') {
+        const screen = loaded.snapshot.activeRoundGameId ?? 'menu';
+        if (loaded.snapshot.screen !== screen) {
+          loaded.snapshot.screen = screen; loaded.snapshot.revision++;
+          await repository.save(loaded.snapshot);
+        }
+        initializeSession(loaded.snapshot);
+      }
+      startupUnavailable = false;
+    } catch {
+      startupUnavailable = true;
+    }
+  };
+  await loadSession();
+  const recoveryState = (): AppView => ({
+    revision: 0, sessionId: '00000000-0000-4000-8000-000000000000', viewSequence: 0,
+    screen: 'menu', activeRoundGameId: null, canNavigate: false,
+    table: { selectedLevel: 1, bestBankrollCents: 0, bestLevel: 1, entryBalanceCents: 100, minBetCents: 100, maxBetCents: 5000 },
+    platform: process.platform, balanceCents: 0, saveError: false, blackjack: null, baccarat: null, bigwheel: null,
+    recovery: { issue: startupUnavailable ? 'unavailable' : loaded.kind === 'recovery' ? loaded.issue : 'corrupt',
       backupAvailable: loaded.kind === 'recovery' && Boolean(loaded.backup) },
   });
   const rendererRoot = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}`);
@@ -314,8 +408,8 @@ async function start(): Promise<void> {
   });
   configurePlatformWindow(overlay);
   setupTray();
-  const disposeHideShortcut = installHideShortcut(globalShortcut, hideOverlay, message => console.warn(message));
-  app.once('will-quit', disposeHideShortcut);
+  const disposeToggleShortcut = installToggleShortcut(globalShortcut, toggleOverlay, message => console.warn(message));
+  app.once('will-quit', disposeToggleShortcut);
   const session = overlay.webContents.session;
   session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.webRequest.onHeadersReceived((details, callback) => callback({ responseHeaders: {
@@ -337,19 +431,22 @@ async function start(): Promise<void> {
   };
   ipcMain.handle(channels.snapshot, async event => {
     requireTrusted(event);
-    const snapshot = gameStore?.getSnapshot() ?? recoveryState();
+    const snapshot = appStore?.getSnapshot() ?? recoveryState();
     if (snapshotDelayMs > 0) await new Promise(resolve => setTimeout(resolve, snapshotDelayMs));
     return snapshot;
   });
   ipcMain.handle(channels.command, (event, value: unknown) => {
     requireTrusted(event);
-    const command = userCommandSchema.parse(value);
-    if (amountEditing && command.action.type === 'deal' && gameStore) {
+    const command = appCommandSchema.parse(value);
+    if (amountEditing && appStore && (((command.action.type === 'blackjack' || command.action.type === 'baccarat') && command.action.action.type === 'deal')
+      || (command.action.type === 'bigwheel' && command.action.action.type === 'spin'))) {
       return { ok: false, error: 'INVALID_ACTION' as const,
-        message: '베팅 금액 입력을 먼저 완료하세요.', state: gameStore.getSnapshot() };
+        message: '베팅 금액 입력을 먼저 완료하세요.', state: appStore.getSnapshot() };
     }
-    if (amountEditing && command.action.type === 'resetSession') endAmountEdit();
-    return gameStore?.dispatch(command) ?? {
+    if (command.action.type === 'goToMenu' || command.action.type === 'selectGame') {
+      endAmountEdit(); hideOpacityPanel(); resizeController?.invalidate();
+    }
+    return appStore?.dispatch(command) ?? {
       ok: false, error: 'RECOVERY_REQUIRED', message: '저장 복구 선택이 필요합니다.', state: recoveryState(),
     };
   });
@@ -357,20 +454,26 @@ async function start(): Promise<void> {
   ipcMain.handle(channels.recovery, async (event, value: unknown) => {
     requireTrusted(event);
     const choice = recoveryChoiceSchema.parse(value);
-    if (loaded.kind !== 'recovery' || gameStore || recovering) throw new Error('Recovery is unavailable');
+    if (appStore || recovering) throw new Error('Recovery is unavailable');
+    if (choice === 'retryLoad') {
+      if (!startupUnavailable) throw new Error('No load failure');
+      recovering = true;
+      try { await loadSession(); const state = (appStore as AppStore | undefined)?.getSnapshot() ?? recoveryState(); sendAppState(state); return state; }
+      finally { recovering = false; }
+    }
+    if (startupUnavailable || loaded.kind !== 'recovery') throw new Error('Recovery is unavailable');
     if (choice === 'restoreBackup' && !loaded.backup) throw new Error('No valid backup exists');
     recovering = true;
     try {
       await repository.archivePrimary();
-      const snapshot: SavedSession = choice === 'restoreBackup'
-        ? (loaded.backup as SavedSession)
-        : { schemaVersion: SESSION_SCHEMA_VERSION, revision: 0,
-          state: createSession(createGameShoe()), lastAppliedCommand: null };
+      const snapshot: AppSession = choice === 'restoreBackup' ? (loaded.backup as AppSession) : newAppSession();
+      const targetScreen = snapshot.activeRoundGameId ?? 'menu';
+      if (snapshot.screen !== targetScreen) { snapshot.screen = targetScreen; snapshot.revision++; }
       await repository.save(snapshot);
       loaded = { kind: 'ready', snapshot };
-      initializeGame(snapshot);
-      const state = gameStore!.getSnapshot();
-      sendGameState(state);
+      initializeSession(snapshot);
+      const state = appStore!.getSnapshot();
+      sendAppState(state);
       return state;
     } finally { recovering = false; }
   });
@@ -387,9 +490,15 @@ async function start(): Promise<void> {
       case 'expand': expandOverlay(); break;
     }
   });
-  ipcMain.handle(channels.overlayState, event => {
+  ipcMain.handle(channels.overlayState, async event => {
     requireOpacityTrusted(event);
-    return { ...overlayState };
+    if (testing && process.env.MOLSINO_TEST_OVERLAY_STATE_ERROR === '1') {
+      sendOverlayState();
+      throw new Error('Injected initial overlay state query failure');
+    }
+    const state = { ...overlayState };
+    if (overlayStateDelayMs > 0) await new Promise(resolve => setTimeout(resolve, overlayStateDelayMs));
+    return state;
   });
   ipcMain.handle(channels.opacity, (event, value: unknown) => {
     requireOpacityTrusted(event);
@@ -433,7 +542,7 @@ async function start(): Promise<void> {
     if (opacityPanel?.isVisible() && opacityAnchor) placeOpacityPanel(opacityAnchor);
   });
   overlay.on('close', event => { resizeController?.invalidate(); if (!quitting) { event.preventDefault(); hideOverlay(); } });
-  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeGameState?.(); });
+  overlay.on('closed', () => { resizeController?.invalidate(); unsubscribeAppState?.(); });
   overlay.webContents.on('did-start-navigation', () => { resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); });
   overlay.webContents.on('render-process-gone', () => { resizeController?.invalidate(); hideOverlay(); console.error('Renderer exited; restart the app from the tray.'); });
   overlay.once('ready-to-show', reveal);
@@ -444,12 +553,23 @@ else {
   app.on('second-instance', reveal);
   app.on('activate', reveal);
   app.on('before-quit', event => {
-    if (gameStore?.isBusy()) {
+    if (appStore?.isBusy()) {
       event.preventDefault();
-      void gameStore.whenIdle().then(() => {
-        if (gameStore?.hasPendingSave()) { reveal(); return; }
+      void appStore.whenIdle().then(() => {
+        if (appStore?.hasPendingSave()) { reveal(); return; }
         app.quit();
       });
+      return;
+    }
+    if (appStore?.hasPendingSave() && !quitConfirmed) {
+      event.preventDefault();
+      if (!quitPromptOpen) {
+        quitPromptOpen = true;
+        void dialog.showMessageBox({ type: 'warning', message: translate(overlayState.locale, 'dialog.unsaved'),
+          detail: translate(overlayState.locale, 'dialog.unsavedDetail'),
+          buttons: [translate(overlayState.locale, 'common.cancel'), translate(overlayState.locale, 'common.quit')], defaultId: 0, cancelId: 0,
+        }).then(({ response }) => { if (response === 1) { quitConfirmed = true; app.quit(); } }).finally(() => { quitPromptOpen = false; });
+      }
       return;
     }
     quitting = true; resizeController?.invalidate(); endAmountEdit(); hideOpacityPanel(); tray?.destroy();

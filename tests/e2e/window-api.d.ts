@@ -1,8 +1,8 @@
-import type { BlackjackAPI } from '../../src/shared/contracts';
+import type { MolsinoAPI } from '../../src/shared/app-contracts';
 
 declare global {
   interface Window {
-    blackjack: BlackjackAPI;
+    molsino: MolsinoAPI;
   }
 }
 

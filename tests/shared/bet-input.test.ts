@@ -18,4 +18,11 @@ describe('direct bet text parsing', () => {
     expect(parseBetInput('600.01', 60_001)).toEqual({ ok: true, cents: 60_001 });
     expect(parseBetInput('600.02', 60_001).ok).toBe(false);
   });
+
+  it('returns language-neutral error keys for the Renderer to translate', () => {
+    expect(parseBetInput('', 10_000)).toEqual({ ok: false, error: 'required' });
+    expect(parseBetInput('oops', 10_000)).toEqual({ ok: false, error: 'format' });
+    expect(parseBetInput('0.99', 10_000)).toEqual({ ok: false, error: 'belowMinimum' });
+    expect(parseBetInput('101', 10_000)).toEqual({ ok: false, error: 'balance' });
+  });
 });

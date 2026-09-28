@@ -1,8 +1,21 @@
 # molsino 빌드와 배포
 
-갱신일: 2026-09-17
+**목적:** molsino 데스크톱 앱의 빌드와 배포 절차를 안내한다.
 
-`molsino`는 Electron 데스크톱 게임 오버레이다. 현재 첫 게임으로 Blackjack을 제공한다. 최종 사용자에게는 Docker 이미지가 아니라 macOS 앱 ZIP 또는 Windows 설치 파일/포터블 ZIP을 전달한다.
+**요약:** macOS·Windows 산출물, 공통 준비, 플랫폼별 빌드, GitHub Actions, 산출물 확인과 공개 배포 준비 사항을 다룬다. `molsino`는 Electron 데스크톱 게임 오버레이이며 현재 첫 게임으로 Blackjack을 제공한다. 최종 사용자에게는 Docker 이미지가 아니라 macOS 앱 ZIP 또는 Windows 설치 파일·포터블 ZIP을 전달한다.
+
+**목차**
+
+- [1. 지원 산출물](#1-지원-산출물)
+- [2. 공통 준비](#2-공통-준비)
+- [3. macOS 빌드](#3-macos-빌드)
+- [4. Windows 빌드](#4-windows-빌드)
+- [5. GitHub Actions 자동 빌드](#5-github-actions-자동-빌드)
+- [6. 산출물 확인](#6-산출물-확인)
+- [7. 공개 배포 전에 필요한 작업](#7-공개-배포-전에-필요한-작업)
+- [8. 현재 제품 제한](#8-현재-제품-제한)
+
+갱신일: 2026-09-18
 
 ## 1. 지원 산출물
 
@@ -136,6 +149,10 @@ macOS 패키지 자체를 smoke 테스트하려면 실행 파일 경로를 지�
 MOLSINO_SMOKE_EXECUTABLE="out/molsino-darwin-universal/molsino.app/Contents/MacOS/molsino" npm run smoke
 ```
 
+### 기존 산출물 검증 기록
+
+2026-09-17 기록에는 macOS Universal ZIP과 Windows x64 포터블 ZIP 생성, macOS 패키지 smoke 통과가 남아 있다. 이는 해당 시점의 산출물 확인 기록이며 Windows 실장비에서의 설치·창 동작 검증을 뜻하지 않는다. 이후 빌드 결과는 실행한 환경과 명령을 함께 해당 세션 보고서에 남긴다.
+
 ## 7. 공개 배포 전에 필요한 작업
 
 ### macOS
@@ -155,7 +172,7 @@ MOLSINO_SMOKE_EXECUTABLE="out/molsino-darwin-universal/molsino.app/Contents/MacO
 
 ## 8. 현재 제품 제한
 
-- 게임은 플레이할 수 있지만 SessionRepository가 아직 없어서 앱 종료 후 잔액과 진행 중인 판이 초기화된다.
+- 현재 블랙잭 세션은 로컬에 저장되어 재실행 후 복원된다. 구체적인 게임 저장 상태는 [블랙잭 구현 현황](../games/blackjack/implementation-status.md), 창 설정의 재실행 초기화·다중 모니터 대응은 [메인 구현 현황](implementation-status.md)에서 확인한다.
 - 자동 업데이트와 GitHub Release 게시 자동화는 아직 구성하지 않았다.
-- 앱 전용 아이콘과 스토어 배포 설정은 후속 제품화 범위다.
+- 스토어 배포 설정은 후속 제품화 범위다.
 - Windows 실장비 GUI 검증은 아직 완료되지 않았다.

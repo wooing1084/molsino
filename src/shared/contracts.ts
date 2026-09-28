@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { HandStatus, LegalAction } from '../core/game-state';
 import type { Rank, Suit } from '../core/models';
 import type { SettlementOutcome } from '../core/settlement';
+import type { AppLocale } from './i18n';
 export type { SettlementOutcome } from '../core/settlement';
 
 export const channels = {
@@ -65,12 +66,18 @@ export const resizeCommandSchema = z.discriminatedUnion('phase', [
 ]);
 
 export type UserAction = z.infer<typeof userActionSchema>;
-export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew']);
+export const recoveryChoiceSchema = z.enum(['restoreBackup', 'startNew', 'retryLoad']);
 export type RecoveryChoice = z.infer<typeof recoveryChoiceSchema>;
 export type UserCommand = z.infer<typeof userCommandSchema>;
 export type WindowCommand = z.infer<typeof windowCommandSchema>;
 export type OverlayVisibility = 'expanded' | 'collapsed' | 'hidden';
-export interface OverlayViewState { revision: number; visibility: OverlayVisibility; opacityPercent: number; opacityPopoverVisible: boolean; }
+export interface OverlayViewState {
+  revision: number;
+  visibility: OverlayVisibility;
+  opacityPercent: number;
+  opacityPopoverVisible: boolean;
+  locale: AppLocale;
+}
 export type OpacityPopoverCommand = z.infer<typeof opacityPopoverCommandSchema>;
 export type ResizeEdge = z.infer<typeof resizeEdgeSchema>;
 export type ResizeCommand = z.infer<typeof resizeCommandSchema>;
@@ -109,10 +116,13 @@ export interface ResultEntryView {
 }
 
 export interface GameViewState {
+  roundId: string | null;
+  /** Public cards only; stable within roundId, including across split moves. */
+  cardRevealOrder: string[];
   revision: number;
   platform: string;
   phase: 'betting' | 'insuranceDecision' | 'playerTurn' | 'dealerTurn' | 'result' | 'recovery';
-  recovery?: { issue: 'corrupt' | 'futureSchema'; backupAvailable: boolean };
+  recovery?: { issue: 'corrupt' | 'futureSchema' | 'unavailable'; backupAvailable: boolean };
   saveError?: boolean;
   balanceCents: number;
   pendingBetCents: number;
@@ -141,11 +151,14 @@ export type CommandResult =
 export interface WindowBounds { x: number; y: number; width: number; height: number; }
 export interface ResizeResult { token?: string; bounds: WindowBounds; }
 
-export interface BlackjackAPI {
+export interface BlackjackAPI extends OverlayAPI {
   getSnapshot(): Promise<GameViewState>;
   dispatch(command: UserCommand): Promise<CommandResult>;
   recover(choice: RecoveryChoice): Promise<GameViewState>;
   onState(listener: (state: GameViewState) => void): () => void;
+}
+
+export interface OverlayAPI {
   windowCommand(command: WindowCommand): Promise<void>;
   getOverlayState(): Promise<OverlayViewState>;
   onOverlayState(listener: (state: OverlayViewState) => void): () => void;

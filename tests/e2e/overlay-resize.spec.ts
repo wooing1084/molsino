@@ -47,11 +47,11 @@ test('S01-02 API는 최솟값을 적용하고 종료된 token의 재사용을 �
   await setWindowBounds(launched.app, initial);
   await installCursorStub(launched.app, { x: initial.x, y: initial.y });
 
-  const started = await launched.page.evaluate(() => window.blackjack.resize({ phase: 'start', edge: 'nw' }));
+  const started = await launched.page.evaluate(() => window.molsino.resize({ phase: 'start', edge: 'nw' }));
   expect(started.token).toBeTruthy();
   const token = started.token!;
   await setCursorStub(launched.app, { x: initial.x + 10_000, y: initial.y + 10_000 });
-  await launched.page.evaluate(value => window.blackjack.resize({ phase: 'end', token: value }), token);
+  await launched.page.evaluate(value => window.molsino.resize({ phase: 'end', token: value }), token);
 
   const minimized = await getWindowBounds(launched.app);
   expect(minimized).toMatchObject({
@@ -60,7 +60,7 @@ test('S01-02 API는 최솟값을 적용하고 종료된 token의 재사용을 �
     width: 220,
     height: 150,
   });
-  await expect(launched.page.evaluate(value => window.blackjack.resize({ phase: 'update', token: value }), token))
+  await expect(launched.page.evaluate(value => window.molsino.resize({ phase: 'update', token: value }), token))
     .rejects.toThrow();
   await expect(getWindowBounds(launched.app)).resolves.toEqual(minimized);
 });
@@ -68,12 +68,12 @@ test('S01-02 API는 최솟값을 적용하고 종료된 token의 재사용을 �
 test('S01-03 cancel은 세션을 만료하고 창 크기를 유지한다', async () => {
   const before = await getWindowBounds(launched.app);
   await installCursorStub(launched.app, { x: before.x + before.width, y: before.y + before.height });
-  const started = await launched.page.evaluate(() => window.blackjack.resize({ phase: 'start', edge: 'se' }));
+  const started = await launched.page.evaluate(() => window.molsino.resize({ phase: 'start', edge: 'se' }));
   const token = started.token!;
-  await launched.page.evaluate(value => window.blackjack.resize({ phase: 'cancel', token: value }), token);
+  await launched.page.evaluate(value => window.molsino.resize({ phase: 'cancel', token: value }), token);
   await setCursorStub(launched.app, { x: before.x + 1_000, y: before.y + 1_000 });
 
-  await expect(launched.page.evaluate(value => window.blackjack.resize({ phase: 'update', token: value }), token))
+  await expect(launched.page.evaluate(value => window.molsino.resize({ phase: 'update', token: value }), token))
     .rejects.toThrow();
   await expect(getWindowBounds(launched.app)).resolves.toEqual(before);
 });

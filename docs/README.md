@@ -1,0 +1,67 @@
+# 프로젝트 문서 안내
+
+**목적:** 앱의 메인 기능과 게임별 기준 문서와 신규 설계를 구분해 찾는다.
+
+**요약:** `main/`은 오버레이·창·IPC 신뢰 경계·빌드 등 앱 기능을, `games/blackjack/`은 현재 블랙잭, `games/baccarat/`는 바카라, `games/bigwheel/`은 빅휠 규칙·구현·검증을 다룬다. 메인 메뉴·공용 잔액의 신규 계약은 메인 제품·기술 설계에 있다. 세션 로드맵과 보고서는 작업 순서 및 당시 검증 이력을 기록한다.
+
+## 목차
+
+- [메인 기능](#메인-기능)
+- [게임별 문서](#게임별-문서)
+- [문서 운영과 세션 이력](#문서-운영과-세션-이력)
+
+## 메인 기능
+
+| 필요한 정보 | 기준 문서 |
+| --- | --- |
+| 오버레이의 제품 동작·조작 | [제품 설계](main/product-design.md) |
+| 한국어·영어 표시와 OS별 언어 메뉴 | [제품 설계 §7](main/product-design.md#7-한국어영어와-네이티브-언어-메뉴), [기술 설계 §10](main/technical-design.md#10-영어-현지화와-네이티브-언어-메뉴) |
+| 설치한 앱의 조작·게임 플레이 | [사용 설명서](../USER_GUIDE.md) — 한국어·English 안내 |
+| 사용자용 Markdown 설명서 작성·갱신 기준 | [작성 설계](main/user-guide-design.md) |
+| 첫 실행 언어 선택과 실행 언어 유지의 정책·검증 | [제품 설계 §7.1](main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [검증 기준](main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
+| Electron 창·플랫폼·IPC 신뢰 경계 | [기술 설계](main/technical-design.md) |
+| 현재 구현 범위·파일 위치 | [구현 현황](main/implementation-status.md) |
+| 오버레이·보안 E2E 기준과 현재 범위 | [E2E 설계](main/e2e-test-plan.md), [E2E 현황](main/e2e-implementation-status.md) |
+| 패키징·배포 | [빌드와 배포](main/building-distribution.md) |
+
+## 게임별 문서
+
+### 블랙잭
+
+| 필요한 정보 | 기준 문서 |
+| --- | --- |
+| 게임 규칙·베팅·화면·완료 기준 | [제품 설계](games/blackjack/product-design.md) |
+| 엔진·게임 상태·저장 계약 | [기술 설계](games/blackjack/technical-design.md) |
+| 현재 구현 범위·파일 위치 | [구현 현황](games/blackjack/implementation-status.md) |
+| 게임 여정 E2E 기준과 현재 범위 | [E2E 설계](games/blackjack/e2e-test-plan.md), [E2E 현황](games/blackjack/e2e-implementation-status.md) |
+
+### 바카라
+
+N03에서 순수 규칙·공용 저장·플레이 화면을 연결했다.
+
+| 필요한 정보 | 기준 문서 |
+| --- | --- |
+| 게임 규칙·한 곳 베팅·P/B/T 기록 | [제품 설계](games/baccarat/product-design.md) |
+| 순수 규칙·공용 작성자 연결·복구 | [기술 설계](games/baccarat/technical-design.md) |
+| 현재 구현과 파일 위치 | [구현 현황](games/baccarat/implementation-status.md) |
+| 시나리오·검증 범위 | [E2E 설계](games/baccarat/e2e-test-plan.md), [E2E 현황](games/baccarat/e2e-implementation-status.md) |
+
+### 빅휠
+
+N05에서 강원랜드 규칙의 빅휠을 구현했다.
+
+| 필요한 정보 | 기준 문서 |
+| --- | --- |
+| 54칸·7구역 배분과 배당·복수 베팅·화면 | [제품·게임 규칙 설계](games/bigwheel/product-design.md) |
+| 엔진·자동 정산·v4 저장/이전·공개 상태 | [기술 설계](games/bigwheel/technical-design.md) |
+| 현재 구현과 파일 위치 | [구현 현황](games/bigwheel/implementation-status.md) |
+| 시나리오와 검증 범위 | [E2E 설계](games/bigwheel/e2e-test-plan.md)·[E2E 현황](games/bigwheel/e2e-implementation-status.md) |
+
+공용 잔액·메뉴 이동·전체 새 시작은 [메인 제품 설계](main/product-design.md#5-메인-메뉴와-공용-잔액의-신규-설계), 이전 형식 이관·원자 저장·명령 경계는 [메인 기술 설계](main/technical-design.md#9-여러-게임과-공용-잔액의-신규-계약)를 따른다.
+
+## 문서 운영과 세션 이력
+
+- [문서 작성 가이드](documentation-guide.md): 문서별 SSOT와 작성·갱신 규칙.
+- [N04 게임성 개선 설계 결정](main/gameplay-improvements-design.md): 구현에 반영한 초기 정책과 제품·기술·검증 기준 문서 연결.
+- [작업 세션 로드맵](work-session-roadmap.md): 세션의 순서·범위·완료 조건과 현재 다음 시작점. 이전 미진행 계획은 폐기.
+- [세션 보고서 목록](session-reports/session-list.md): 세션 당시 변경·검증 기록으로 이동하는 색인.
