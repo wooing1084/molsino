@@ -18,7 +18,7 @@
 | 한국어·영어 표시와 OS별 언어 메뉴 | [제품 설계 §7](main/product-design.md#7-한국어영어와-네이티브-언어-메뉴), [기술 설계 §10](main/technical-design.md#10-영어-현지화와-네이티브-언어-메뉴) |
 | 설치한 앱의 조작·게임 플레이 | [사용 설명서](../USER_GUIDE.md) — 한국어·English 안내 |
 | 사용자용 Markdown 설명서 작성·갱신 기준 | [작성 설계](main/user-guide-design.md) |
-| 첫 실행 언어 선택과 실행 언어 유지의 신규 설계 | [제품 설계 §7.1](main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [검증 계획](main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
+| 첫 실행 언어 선택과 실행 언어 유지의 정책·검증 | [제품 설계 §7.1](main/product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택), [기술 설계 §10.5](main/technical-design.md#105-n08-첫-실행-언어-결정과-보존), [검증 기준](main/e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택) |
 | Electron 창·플랫폼·IPC 신뢰 경계 | [기술 설계](main/technical-design.md) |
 | 현재 구현 범위·파일 위치 | [구현 현황](main/implementation-status.md) |
 | 오버레이·보안 E2E 기준과 현재 범위 | [E2E 설계](main/e2e-test-plan.md), [E2E 현황](main/e2e-implementation-status.md) |

@@ -33,7 +33,7 @@
 
 molsino는 다른 앱을 사용하는 동안 작은 투명 창에서 즐기는 로컬 싱글플레이 게임입니다. 설치 파일과 OS별 실행 방법은 [README의 릴리즈 다운로드와 실행](README.md#릴리즈-다운로드와-실행)을 따르세요.
 
-1. 앱을 실행합니다. 처음에는 한국어로 시작하며 초기 잔액은 **$100.00**, 레벨은 **Lv.1**입니다.
+1. 앱을 실행합니다. 첫 실행은 시스템 선호 언어에 따라 한국어 또는 영어로 시작하며 초기 잔액은 **$100.00**, 레벨은 **Lv.1**입니다. 한국어 화면으로 따라 하려면 [언어 선택](#3-언어-선택)에서 **한국어**를 선택하세요.
 2. 메뉴에서 플레이할 게임을 선택합니다.
 3. 베팅 금액칸을 눌러 `1.00`처럼 입력하고 **Enter**로 확정합니다. 블랙잭·바카라는 **딜**, 빅휠은 **회전**으로 판을 시작합니다.
 4. 블랙잭에서는 **히트** 또는 **스탠드** 등 표시된 행동을 선택합니다. 바카라의 카드 배분과 빅휠의 회전·정산은 자동으로 진행됩니다.
@@ -67,7 +67,9 @@ macOS의 아이콘은 화면 상단 메뉴 막대에 있고 Windows의 아이콘
 - Windows: 알림 영역의 `molsino` 아이콘 메뉴에서 **언어 / Language**를 엽니다.
 - **한국어** 또는 **English**를 선택합니다. 저장에 성공하면 표시가 바로 바뀝니다.
 
-현재 첫 실행은 OS 언어와 관계없이 한국어로 시작합니다. 선택한 언어는 재실행과 **새 시작** 후에도 유지되며 게임 규칙이나 잔액은 바뀌지 않습니다. 언어 저장 실패 안내가 나오면 기존 언어가 유지되므로 나중에 다시 선택하세요.
+언어 설정이 없는 첫 실행은 시스템 선호 언어 목록에서 먼저 나오는 한국어 또는 영어로 시작합니다. `ko-KR`은 한국어, `en-US`·`en-GB`는 영어이며 지원 언어가 없거나 목록을 조회하지 못하면 영어를 사용합니다. 이후에는 저장된 선택을 우선하므로 시스템 언어를 바꿔도 앱 언어가 바뀌지 않습니다. 이전 버전에서 저장한 한국어도 유지됩니다.
+
+선택한 언어는 재실행·화면 새로고침·**새 시작**과 앱 데이터가 유지되는 업데이트 후에도 유지되며 게임 규칙이나 잔액은 바뀌지 않습니다. 첫 언어 설정이나 복구한 언어를 저장하지 못해도 이번 실행에는 결정한 언어를 사용하지만 다음 실행의 보존은 보장되지 않습니다. 메뉴에서 언어를 바꿀 때 저장 실패 안내가 나오면 기존 언어가 유지되므로 나중에 다시 선택하세요.
 
 ### 4. 잔액·레벨·금액 입력
 
@@ -176,7 +178,7 @@ molsino의 좌·중앙·우 세 칸은 같은 휠의 당첨 칸과 이웃 칸을
 
 molsino is a local single-player game in a small transparent window that floats over other apps. For downloads and installation, follow the [README's release instructions](README.md#릴리즈-다운로드와-실행). On macOS, extract the Universal ZIP and open `molsino.app`. On Windows, use the installer or extract the entire portable ZIP and open `molsino.exe`.
 
-1. Open the app. First launch uses Korean, with **$100.00** and **Lv.1**. Choose **언어 / Language → English** from the macOS application menu or status icon menu, or the Windows notification area icon menu.
+1. Open the app. First launch follows your system language preferences, with **$100.00** and **Lv.1**. If needed, choose **언어 / Language → English** from the macOS application menu or status icon menu, or the Windows notification area icon menu.
 2. Select the game you want to play from the menu.
 3. Click the amount field, enter a number such as `1.00`, and press **Enter** to confirm. Use **Deal** for Blackjack or Baccarat, or **Spin** for Big Wheel.
 4. In Blackjack, choose an available action such as **Hit** or **Stand**. Baccarat deals automatically, and Big Wheel spins and settles automatically.
@@ -210,7 +212,9 @@ Hiding does not cancel a round. Automatic play and saving continue while hidden.
 - Windows: open **언어 / Language** in the `molsino` notification area icon menu.
 - Select **한국어** or **English**. The display changes as soon as the setting is saved successfully.
 
-Currently, first launch uses Korean regardless of your OS language. Your choice is retained after restarting or using **Start Over**. Switching language does not change game rules or your bankroll. If a language-saving warning appears, the previous language stays active; try selecting the language again later.
+When no language setting exists, first launch uses the first Korean or English entry in your system language preferences. `ko-KR` means Korean, and `en-US` or `en-GB` means English. If neither language is listed or the list cannot be read, the app uses English. After that, the saved choice takes priority, even if you change your system language. Korean saved by an earlier version is also retained.
+
+Your choice is retained after restarting, reloading the screen, using **Start Over**, or updating while keeping the app's data. Switching language does not change game rules or your bankroll. If the initial or recovered language setting cannot be saved, the chosen language is still used for that run, but retention on the next launch is not guaranteed. If a language-saving warning appears when you change language from the menu, the previous language stays active; try selecting the language again later.
 
 ### 4. Bankroll, levels, and amount entry
 

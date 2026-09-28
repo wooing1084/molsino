@@ -2,7 +2,7 @@
 
 **목적:** 게임 화면을 담는 Electron 앱의 창, 입력, 프로세스, IPC 신뢰 경계와 배포 계약을 정의한다.
 
-**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 언어 설정과 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭·바카라·빅휠을 연결한다. 앱 상태·저장은 §9, 현재 언어 계약은 §10.1~10.4, N08 미구현 계약은 §10.5에 둔다. 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
+**요약:** macOS·Windows 공통 오버레이와 플랫폼 정책, Main·Preload·Renderer 경계, 창 상태, 언어 설정과 검증 목표를 다룬다. 현재 앱은 메뉴와 공용 작성자를 통해 블랙잭·바카라·빅휠을 연결한다. 앱 상태·저장은 §9, 언어 저장·전환은 §10.1~10.4, 첫 실행 언어 결정과 보존은 §10.5에 둔다. 블랙잭 규칙과 게임별 상태는 [블랙잭 기술 설계](../games/blackjack/technical-design.md)가 담당한다. 사용자 동작은 [메인 기능 제품 설계](product-design.md), 현재 파일과 완료 상태는 [메인 구현 현황](implementation-status.md)을 따른다.
 
 ## 목차
 
@@ -394,7 +394,7 @@ Main은 현재 언어로 네이티브 메뉴 템플릿을 다시 만들고 `한�
 
 공개 언어 타입은 `AppLocale = 'ko' | 'en'`으로 제한한다. Main이 유일한 작성자이며 앱 시작 때 게임 세션과 별도의 `preferences.json`에서 읽는다. 형식은 `{ schemaVersion: 1, locale }`이고 같은 userData 안에서 원자 교체한다. 언어는 잔액·판·전체 새 시작 수명과 무관하므로 `app-session.json` v4에 넣거나 게임 revision을 올리지 않는다.
 
-언어 선택은 설정 저장 성공 후에만 확정한다. 성공하면 Main이 현재 언어와 네이티브 메뉴를 바꾸고 창 상태의 독립 revision을 올려 모든 신뢰된 Renderer에 알린다. 저장 실패면 이전 언어·메뉴·화면을 유지하고 네이티브 대화상자를 띄운다. primary·backup이 모두 없으면 한국어 설정을 만든다. primary가 없거나 손상·미래 형식이면 저장소가 제공한 유효한 backup의 언어를 복원한다. 유효한 backup이 없는 손상·미래 형식 또는 파일 읽기·초기화/복원 저장 실패는 게임 세션과 별개로 한국어 fallback을 사용한다. 초기화/복원 저장 실패 때 이미 선택한 언어를 유지하도록 개선할 범위는 §10.5에 둔다.
+네이티브 메뉴를 통한 실행 중 언어 변경은 설정 저장 성공 후에만 확정한다. 성공하면 Main이 현재 언어와 네이티브 메뉴를 바꾸고 창 상태의 독립 revision을 올려 모든 신뢰된 Renderer에 알린다. 저장 실패면 이전 언어·메뉴·화면을 유지하고 네이티브 대화상자를 띄운다. 시작 시 기존 설정·백업·시스템 선호의 우선순위와 읽기·초기화/복원 저장 실패의 계약은 §10.5를 따른다.
 
 `OverlayViewState`에 `locale`을 추가해 기존 `getOverlayState`/`onOverlayState` 신뢰 경계로 메인 창과 불투명도 창에 전달한다. Renderer에는 언어 변경 IPC를 노출하지 않는다. 네이티브 메뉴 callback만 저장소를 호출한다. 비신뢰 문서·subframe·조절창이 언어를 쓰지 못하며 게임 공개 상태와 미공개 정보는 그대로다.
 
@@ -410,24 +410,26 @@ Main은 현재 언어로 네이티브 메뉴 템플릿을 다시 만들고 `한�
 
 ### 10.5 N08 첫 실행 언어 결정과 보존
 
-**상태:** 2026-09-28 설계 완료·미구현. N06의 저장·메뉴·Renderer 계약을 재사용하고 [제품 설계 §7.1](product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택)의 시작 우선순위를 추가한다. §10.2의 현재 한국어 기본값과 새 시작 정책을 혼동하지 않는다.
+N06의 저장·메뉴·Renderer 계약을 재사용하고 [제품 설계 §7.1](product-design.md#71-n08-실행-언어-유지와-첫-실행-언어-선택)의 시작 우선순위를 연결한다. 현재 파일은 [구현 현황](implementation-status.md), 실제 실행 범위와 남은 검증은 [N08 보고서](../session-reports/N08-startup-locale.md)를 따른다.
 
 #### 시스템 언어 판별과 책임
 
-Main의 `app.whenReady()` 이후 시작 경로에서 [Electron `app.getPreferredSystemLanguages()`](https://www.electronjs.org/docs/latest/api/app#appgetpreferredsystemlanguages)를 읽는다. 지역·통화 설정이 아닌 사용자의 선호 언어 목록을 사용한다. `ko`·`en` 판별은 Electron에 의존하지 않는 작은 순수 함수로 분리하며 입력 태그의 공백·대소문자·`-`/`_` 지역 구분을 정규화하고 지원하지 않는 태그는 건너뛴다. 지원 언어 없음·빈 값·조회 예외는 `en`으로 처리한다.
+Main의 `app.whenReady()` 이후 시작 경로에서 [Electron `app.getPreferredSystemLanguages()`](https://www.electronjs.org/docs/latest/api/app#appgetpreferredsystemlanguages)를 읽는다. 지역·통화 설정이 아닌 사용자의 선호 언어 목록을 사용한다. [`src/main/startup-locale.ts`](../../src/main/startup-locale.ts)의 `resolvePreferredLocale()`은 Electron에 의존하지 않는 순수 함수다. 입력 태그의 공백·대소문자·`-`/`_` 지역 구분을 정규화하고 전체 태그를 `Intl.getCanonicalLocales()`로 검증한 뒤 목록의 첫 `ko`·`en`을 선택한다. 잘못되거나 지원하지 않는 태그는 건너뛰며 지원 언어 없음·빈 값은 `en`으로 처리한다. `readStartupLocale()`은 시스템 조회 예외도 `en`으로 처리한다.
 
-Electron 호출은 Main에, 설정 파일 판독·원자 저장은 `PreferencesRepository`에 유지한다. 첫 실행 계산값을 저장소에 기본 언어 인자로 전달하는 등 작은 연결을 사용하고 저장소에서 Electron을 import하지 않는다. Main은 지금처럼 환경설정을 먼저 읽고 `overlayState.locale`을 확정한 뒤 창과 메뉴를 만든다. Renderer의 `navigator.language`나 새 IPC로 언어를 추정하지 않는다.
+Electron 호출은 Main에, 설정 파일 판독·원자 저장은 `PreferencesRepository`에 유지한다. Main은 첫 실행 계산값을 `loadOrDefault(firstRunLocale)`에 전달하고 저장소에서 Electron을 import하지 않는다. 환경설정을 먼저 읽고 `overlayState.locale`을 확정한 뒤 창과 메뉴를 만든다. Renderer의 `navigator.language`나 새 IPC로 언어를 추정하지 않는다.
 
-Main의 순서만으로 첫 번역 표시를 보장하지 않는다. 현재 Renderer는 초기 `locale: 'ko'`를 렌더한 뒤 비동기로 창 상태를 받는다. App·불투명도 창은 최초의 유효한 `OverlayViewState` 수신 전에는 특정 언어의 사용자 문구·접근성 이름을 표시하지 않는 준비 상태를 둔다. 텍스트 없는 중립 대기는 허용하며 받은 locale과 `document.documentElement.lang`을 첫 번역 UI 표시 전에 맞춘다. 게임 snapshot이 먼저 도착해도 복구 안내와 게임 버튼을 기본 한국어로 먼저 노출하지 않는다. 기존 조회·구독과 revision 처리로 해결하고 동기 IPC는 추가하지 않는다.
+App·불투명도 창은 최초의 유효한 `OverlayViewState` 수신 전에는 특정 언어의 사용자 문구·접근성 이름을 표시하지 않는 준비 상태를 둔다. 텍스트 없는 중립 대기는 허용하며 받은 locale과 `document.documentElement.lang`을 첫 번역 UI 표시 전에 맞춘다. 게임 snapshot이 먼저 도착해도 복구 안내와 게임 버튼을 기본 한국어로 먼저 노출하지 않는다. 기존 조회·구독과 revision 처리로 해결하고 동기 IPC는 추가하지 않는다.
 
-최초 창 상태 조회가 실패하면 영구적으로 빈 화면에 머무르지 않도록 기존 연결 오류 경로와 연결한다. 언어를 확인할 수 없는 오류 안내는 중립 표식 또는 한국어·영어 병기를 허용하며 확인한 locale이 있으면 그 언어를 유지한다.
+[`src/renderer/use-overlay-view.ts`](../../src/renderer/use-overlay-view.ts)의 `useOverlayView()`를 두 창에서 공유한다. 구독을 먼저 등록한 뒤 최초 조회를 수행하고 유효하지 않은 상태·역행 revision·정리된 effect의 응답을 거부한다. 수락한 상태의 `lang`을 React UI 갱신 전에 설정한다. `index.html`에는 한국어 기본 표식을 두지 않는다. 게임 snapshot과 창 상태의 구독은 locale 변경 때문에 재시작하지 않으며, 수락한 표시 상태의 숨김·복원 경계는 기존 `usePresentation`에 전달한다.
+
+최초 창 상태 조회가 실패하면 한국어·영어를 병기한 연결 오류 안내를 표시해 영구적으로 빈 화면에 머무르지 않게 한다. 후속 유효 push를 받으면 해당 언어의 UI로 회복한다. 이미 유효 상태를 받은 뒤 늦게 실패한 조회는 현재 언어와 UI를 유지한다.
 
 #### 저장·복구의 실패 경계
 
 - 현재 `AtomicSessionRepository.load()`의 `missing`은 primary·backup이 모두 없는 경우다. 이때만 시스템 언어 계산값을 사용해 `{ schemaVersion: 1, locale }`를 저장한다.
 - `ready`의 기존 설정과 `recovery.backup`의 유효한 설정은 항상 시스템 언어보다 우선한다. 현재 v1에는 자동 기본값/명시 선택의 출처 정보가 없으므로 기존 `ko`를 재판별하지 않는다.
 - 유효 백업 없는 `corrupt`·`futureSchema`와 파일 읽기 자체의 실패는 기존 한국어 fallback을 유지한다. 읽기 예외를 첫 실행으로 오해해 시스템 언어로 바꾸지 않는다. 현재 저장소가 읽기 실패 뒤 백업까지 조사한다고 새로 보장하지 않는다.
-- 언어 선택을 끝낸 뒤 수행하는 초기 저장·백업 복원 저장과 파일 읽기의 예외를 구분한다. 저장 실패가 첫 실행에서 선택한 `en` 또는 유효한 백업의 `en`을 넓은 catch에서 `ko`로 바꾸지 않게 한다. 이번 실행에는 선택한 값을 반환하고 실패를 기록하되 게임 세션 초기화를 계속한다.
+- `PreferencesRepository.loadOrDefault()`는 파일 읽기와 선택 후 초기 저장·백업 복원 저장의 예외를 별도로 처리한다. 저장에 실패해도 이번 실행에는 선택한 값을 반환하고 `console.warn`으로 실패를 기록하되 게임 세션 초기화를 계속한다. 파일 읽기 실패와 선택 후 저장 실패를 같은 한국어 fallback 경로로 처리하지 않는다.
 - 첫 실행 저장 실패 후 다음 실행에도 파일이 없으면 시스템 언어를 다시 결정할 수 있다. 별도 출처 메타데이터·백그라운드 재시도·새 설정 복구 화면은 추가하지 않는다.
 - 네이티브 메뉴의 `selectLocale()`는 기존 저장 성공 후 확정 정책을 유지한다. 명시적인 언어 변경의 저장 실패는 현재 언어·메뉴 체크 상태와 경고를 유지한다.
 
@@ -435,6 +437,8 @@ Main의 순서만으로 첫 번역 표시를 보장하지 않는다. 현재 Rend
 
 #### 검증 연결
 
-예정 변경 위치는 `src/main/main.ts`, `src/main/persistence/preferences-repository.ts`, `src/renderer/main.tsx`, 순수 언어 판별 함수와 관련 테스트다. `tests/e2e/support/app.ts`에 시스템 선호 목록과 필요한 초기 창 상태 지연을 지정할 테스트 입력을 연결한다. 주입은 기존 `MOLSINO_TEST_USER_DATA`로 격리된 테스트에서만 허용하고 일반 실행은 실제 OS API를 사용한다. 기존 한국어 UI 테스트에는 `ko-KR`을 명시해 실행 머신의 언어에 따라 selector가 달라지지 않게 한다. 이 테스트 입력을 사용자 설정이나 제품 공개 API로 노출하지 않는다.
+시작 연결은 [`src/main/main.ts`](../../src/main/main.ts), 언어 판별은 [`src/main/startup-locale.ts`](../../src/main/startup-locale.ts), 설정 읽기·저장은 [`PreferencesRepository`](../../src/main/persistence/preferences-repository.ts), 첫 표시 경계는 [`src/renderer/main.tsx`](../../src/renderer/main.tsx)와 [`use-overlay-view.ts`](../../src/renderer/use-overlay-view.ts)가 담당한다. [`startup-locale.test.ts`](../../tests/main/startup-locale.test.ts)와 [`preferences-repository.test.ts`](../../tests/main/preferences-repository.test.ts)는 순수 판별·시스템 조회 예외와 설정 읽기·원자 저장 실패를 구분해 검사한다.
 
-새 프로덕션 패키지 시나리오는 [N08 검증 기준](e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택)을 따른다. 선호 목록 주입 결과와 실제 OS 조회 관찰은 별도로 기록하고 N06의 언어 보존·진행 판 불변·저장 실패 회귀를 유지한다. 구현 완료 때 README와 N07 사용자 설명서의 첫 실행 안내를 갱신한다.
+[`tests/e2e/support/app.ts`](../../tests/e2e/support/app.ts)는 시스템 선호 목록·조회 예외, 초기 창 상태 응답과 push의 지연·조회 실패, 설정 저장 실패를 지정할 테스트 입력을 연결한다. 주입은 기존 `MOLSINO_TEST_USER_DATA`로 격리된 테스트에서만 허용하고 일반 실행은 실제 OS API를 사용한다. 기존 한국어 UI 테스트는 `ko-KR`을 명시해 실행 머신의 언어에 따라 selector가 달라지지 않게 한다. 이 테스트 입력을 사용자 설정이나 제품 공개 API로 노출하지 않는다.
+
+[`startup-locale.spec.ts`](../../tests/e2e/startup-locale.spec.ts)의 프로덕션 패키지 시나리오는 [N08 검증 기준](e2e-test-plan.md#6-n08-실행-언어-유지와-첫-실행-언어-선택)을 따른다. 선호 목록 주입 결과와 실제 OS 조회 관찰은 별도로 기록하고 N06의 언어 보존·진행 판 불변·저장 실패 회귀를 유지한다. 초기 DOM 기록과 지연 전달 검사는 실제 OS 합성 프레임의 깜빡임 측정으로 표현하지 않는다. README와 N07 사용자 설명서의 두 언어 안내도 현재 시작 정책을 따른다.
